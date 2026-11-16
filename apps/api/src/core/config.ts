@@ -25,6 +25,11 @@ const envSchema = z.object({
   LOGIN_LOCK_BASE_SECONDS: z.coerce.number().int().positive().default(60),
   LOGIN_LOCK_MAX_SECONDS: z.coerce.number().int().positive().default(1800),
   RATE_LIMIT_MAX_PER_MINUTE: z.coerce.number().int().positive().default(600),
+  /** Prefijo de las etiquetas autogeneradas de activos: `INV` -> `INV-000123` (D6). */
+  ASSET_TAG_PREFIX: z
+    .string()
+    .regex(/^[A-Za-z0-9]{1,10}$/, 'letras y números, hasta 10 caracteres')
+    .default('INV'),
   METRICS_TOKEN: z
     .string()
     .optional()
@@ -42,6 +47,7 @@ export interface AppConfig {
   databaseUrl: string;
   migrationDatabaseUrl: string | undefined;
   metricsToken: string | undefined;
+  assetTagPrefix: string;
   session: {
     idleTimeoutSeconds: number;
     absoluteTimeoutSeconds: number;
@@ -82,6 +88,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     databaseUrl: e.DATABASE_URL,
     migrationDatabaseUrl: e.MIGRATION_DATABASE_URL,
     metricsToken: e.METRICS_TOKEN,
+    assetTagPrefix: e.ASSET_TAG_PREFIX,
     session: {
       idleTimeoutSeconds: e.SESSION_IDLE_TIMEOUT_SECONDS,
       absoluteTimeoutSeconds: e.SESSION_ABSOLUTE_TIMEOUT_SECONDS,

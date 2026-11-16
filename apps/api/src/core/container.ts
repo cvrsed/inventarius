@@ -8,6 +8,8 @@ import { Argon2Hasher, type PasswordHasher } from '../modules/auth/password.js';
 import { AuthRepository } from '../modules/auth/repository.js';
 import { AuthService } from '../modules/auth/service.js';
 import { LoginThrottle } from '../modules/auth/throttle.js';
+import { CatalogRepository } from '../modules/catalog/repository.js';
+import { CatalogService } from '../modules/catalog/service.js';
 import { RbacRepository } from '../modules/rbac/repository.js';
 import { RbacService } from '../modules/rbac/service.js';
 import { UsersRepository } from '../modules/users/repository.js';
@@ -18,6 +20,7 @@ export interface Services {
   rbac: RbacService;
   users: UsersService;
   auth: AuthService;
+  catalog: CatalogService;
 }
 
 export interface ContainerDeps {
@@ -68,5 +71,6 @@ export function buildServices(deps: ContainerDeps): Services {
     config.session,
     clock,
   ));
-  return { audit, rbac, users, auth };
+  const catalog = new CatalogService(new CatalogRepository(), db, audit);
+  return { audit, rbac, users, auth, catalog };
 }

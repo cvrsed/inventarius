@@ -22,6 +22,7 @@ import { cookieNames } from './modules/auth/cookies.js';
 import type { PasswordHasher } from './modules/auth/password.js';
 import { auditRoutes } from './modules/audit/routes.js';
 import { authRoutes } from './modules/auth/routes.js';
+import { catalogRoutes } from './modules/catalog/routes.js';
 import { rbacRoutes } from './modules/rbac/routes.js';
 import { usersRoutes } from './modules/users/routes.js';
 import {
@@ -197,6 +198,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
             await v1.register(usersRoutes, { users: services.users });
             await v1.register(rbacRoutes, { rbac: services.rbac });
             await v1.register(auditRoutes, { audit: services.audit });
+            await v1.register(catalogRoutes, { catalog: services.catalog });
           },
           { prefix: '/v1' },
         );

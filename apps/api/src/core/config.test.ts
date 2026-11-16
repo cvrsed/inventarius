@@ -24,6 +24,14 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ ...valid, PORT: 'abc' })).toThrowError(/PORT/);
   });
 
+  it('el prefijo de las etiquetas de activo es INV por defecto y se valida (D6)', () => {
+    expect(loadConfig(valid).assetTagPrefix).toBe('INV');
+    expect(loadConfig({ ...valid, ASSET_TAG_PREFIX: 'ZEN' }).assetTagPrefix).toBe('ZEN');
+    expect(() => loadConfig({ ...valid, ASSET_TAG_PREFIX: 'con espacio' })).toThrowError(
+      /ASSET_TAG_PREFIX/,
+    );
+  });
+
   it('marca isProduction según NODE_ENV', () => {
     expect(loadConfig({ ...valid, NODE_ENV: 'production' }).isProduction).toBe(true);
   });
