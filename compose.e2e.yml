@@ -9,6 +9,14 @@ name: inventarius-e2e
 x-app-env: &app-env
   NODE_ENV: production
   LOG_LEVEL: warn
+  # Sin HTTPS dentro de la red de Compose: la cookie no puede ser Secure/__Host- aquí.
+  SESSION_COOKIE_SECURE: 'false'
+  # Expiración inactiva corta para probarla en e2e sin esperar horas.
+  SESSION_IDLE_TIMEOUT_SECONDS: '15'
+  # Todos los tests entran desde la misma IP: se relajan los límites por IP (se prueban aparte con otros umbrales).
+  LOGIN_RATE_LIMIT_PER_MINUTE: '1000'
+  LOGIN_MAX_FAILURES_PER_IP: '1000'
+  RATE_LIMIT_MAX_PER_MINUTE: '5000'
   DATABASE_URL: postgres://inventarius_app:e2e-app-password@postgres:5432/inventarius
   MIGRATION_DATABASE_URL: postgres://inventarius_migrator:e2e-migrator-password@postgres:5432/inventarius
 
@@ -37,11 +45,33 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
 
+  # Primer administrador por el CLI (RF-02), como se hará en producción. Credencial ficticia de pruebas.
+  seed:
+    build: { context: ., target: api }
+    command:
+      [
+        'node',
+        'dist/cli.js',
+        'create-admin',
+        '--email',
+        'admin@e2e.test',
+        '--name',
+        'Admin E2E',
+        '--password-env',
+        'E2E_ADMIN_PASSWORD',
+      ]
+    environment:
+      <<: *app-env
+      E2E_ADMIN_PASSWORD: e2e-Admin-Password-2026
+    restart: 'no'
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
   api:
     build: { context: ., target: api }
     environment: *app-env
     depends_on:
-      migrate: { condition: service_completed_successfully }
+      seed: { condition: service_completed_successfully }
     healthcheck:
       test:
         [
@@ -59,7 +89,7 @@ services:
     command: ['node', 'dist/worker.js']
     environment: *app-env
     depends_on:
-      migrate: { condition: service_completed_successfully }
+      seed: { condition: service_completed_successfully }
 
   web:
     build: { context: ., target: web }
@@ -75,6 +105,8 @@ services:
     build: { context: ., target: e2e }
     environment:
       BASE_URL: http://web:8080
+      E2E_ADMIN_EMAIL: admin@e2e.test
+      E2E_ADMIN_PASSWORD: e2e-Admin-Password-2026
     volumes:
       - ./e2e/playwright-report:/repo/e2e/playwright-report
       - ./e2e/test-results:/repo/e2e/test-results

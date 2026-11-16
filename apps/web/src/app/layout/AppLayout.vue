@@ -1,9 +1,17 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRoute } from 'vue-router';
+import { useAuthStore } from '@/features/auth/useAuthStore';
 import AppNav from './AppNav.vue';
 import ThemeToggle from './ThemeToggle.vue';
+import UserMenu from './UserMenu.vue';
 
 const { t } = useI18n();
+const route = useRoute();
+const auth = useAuthStore();
+/** Sin menú en el login ni mientras la contraseña temporal sigue pendiente. */
+const showNav = computed(() => !route.meta.bare && !!auth.user && !auth.user.mustChangePassword);
 </script>
 
 <template>
@@ -18,24 +26,31 @@ const { t } = useI18n();
         <span class="text-lg font-semibold">{{ t('app.name') }}</span>
         <span class="app-muted hidden text-sm sm:inline">{{ t('app.tagline') }}</span>
       </div>
-      <ThemeToggle />
+      <div class="flex items-center gap-1">
+        <UserMenu />
+        <ThemeToggle />
+      </div>
     </header>
 
     <div class="flex flex-1">
-      <aside class="app-sidebar hidden w-56 shrink-0 border-r p-3 md:block">
+      <aside v-if="showNav" class="app-sidebar hidden w-56 shrink-0 border-r p-3 md:block">
         <AppNav orientation="vertical" />
       </aside>
 
       <main
         id="contenido"
-        class="mx-auto w-full max-w-6xl flex-1 px-4 py-6 pb-28 md:px-8 md:pb-8"
+        class="mx-auto w-full max-w-6xl min-w-0 flex-1 px-4 py-6 md:px-8 md:pb-8"
+        :class="showNav ? 'pb-28' : ''"
         tabindex="-1"
       >
         <RouterView />
       </main>
     </div>
 
-    <div class="app-bottom-nav fixed inset-x-0 bottom-0 z-10 border-t px-2 py-1 md:hidden">
+    <div
+      v-if="showNav"
+      class="app-bottom-nav fixed inset-x-0 bottom-0 z-10 border-t px-2 py-1 md:hidden"
+    >
       <AppNav orientation="horizontal" />
     </div>
   </div>

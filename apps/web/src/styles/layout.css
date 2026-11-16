@@ -58,3 +58,7 @@
 .app-bottom-nav {
   padding-block-end: env(safe-area-inset-bottom, 0px);
 }
+
+.field-error {
+  color: var(--p-form-field-invalid-placeholder-color, var(--p-red-700));
+}

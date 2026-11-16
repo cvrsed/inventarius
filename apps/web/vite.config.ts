@@ -19,11 +19,18 @@ export default defineConfig({
   build: { target: 'es2023' },
   test: {
     environment: 'jsdom',
+    setupFiles: ['./src/test-setup.ts'],
     include: ['src/**/*.test.ts'],
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,vue}'],
-      exclude: ['src/**/*.test.ts', 'src/main.ts', 'src/env.d.ts'],
+      exclude: [
+        'src/**/*.test.ts',
+        'src/test-setup.ts',
+        'src/test-utils.ts',
+        'src/main.ts',
+        'src/env.d.ts',
+      ],
       thresholds: { lines: 70, statements: 70, functions: 70, branches: 60 },
     },
   },

@@ -1,14 +1,11 @@
-import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { ADMIN, expectNoA11yViolations, horizontalOverflow, loginViaApi } from './support';
 
-const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
+test.describe('página de inicio (con sesión)', () => {
+  test.beforeEach(async ({ page }) => {
+    await loginViaApi(page.request, ADMIN.email, ADMIN.password);
+  });
 
-async function expectNoA11yViolations(page: Page): Promise<void> {
-  const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
-  expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
-}
-
-test.describe('página de inicio', () => {
   test('muestra el layout y el estado real de la API', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1, name: 'Inicio' })).toBeVisible();
@@ -16,26 +13,18 @@ test.describe('página de inicio', () => {
     await expect(page).toHaveTitle('Inventarius');
   });
 
-  test('pasa axe (WCAG 2.2 AA) en modo claro', async ({ page }) => {
+  test('pasa axe (WCAG 2.2 AA) en modo claro y oscuro', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByText('Todo funciona con normalidad')).toBeVisible();
     await expectNoA11yViolations(page);
-  });
-
-  test('pasa axe (WCAG 2.2 AA) en modo oscuro', async ({ page }) => {
-    await page.goto('/');
     await page.getByRole('button', { name: 'Cambiar a modo oscuro' }).click();
     await expect(page.locator('html')).toHaveClass(/app-dark/);
-    await expect(page.getByText('Todo funciona con normalidad')).toBeVisible();
     await expectNoA11yViolations(page);
   });
 
   test('no hay scroll horizontal', async ({ page }) => {
     await page.goto('/');
-    const overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
-    );
-    expect(overflow).toBe(false);
+    expect(await horizontalOverflow(page)).toBe(false);
   });
 
   test('el enlace para saltar al contenido enfoca el main', async ({ page }) => {
@@ -50,9 +39,11 @@ test.describe('página de inicio', () => {
     page,
   }, info) => {
     await page.goto('/');
-    const nav = page.getByRole('navigation', { name: 'Navegación principal' });
-    await expect(nav).toHaveCount(1);
-    const box = await nav.getByRole('link', { name: 'Inicio' }).boundingBox();
+    const link = page
+      .getByRole('navigation', { name: 'Navegación principal' })
+      .getByRole('link', { name: 'Inicio' });
+    await expect(link).toBeVisible();
+    const box = await link.boundingBox();
     expect(box).not.toBeNull();
     if (info.project.name === 'mobile') {
       expect(box!.y).toBeGreaterThan(500);
@@ -77,7 +68,10 @@ test.describe('API publicada tras el proxy', () => {
   });
 
   test('las métricas no se exponen a través del proxy público', async ({ request }) => {
-    const res = await request.get('/api/metrics');
-    expect(res.status()).toBe(404);
+    expect((await request.get('/api/metrics')).status()).toBe(404);
+  });
+
+  test('las rutas protegidas exigen sesión', async ({ request }) => {
+    expect((await request.get('/api/v1/users')).status()).toBe(401);
   });
 });

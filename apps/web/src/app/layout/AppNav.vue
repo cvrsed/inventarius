@@ -1,10 +1,14 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { navigationItems } from '@/app/navigation';
+import { useAuthStore } from '@/features/auth/useAuthStore';
 
 defineProps<{ orientation: 'vertical' | 'horizontal' }>();
 
 const { t } = useI18n();
+const auth = useAuthStore();
+const items = computed(() => navigationItems.filter((i) => auth.canAny(i.permissions ?? [])));
 </script>
 
 <template>
@@ -13,7 +17,7 @@ const { t } = useI18n();
       class="m-0 flex list-none gap-1 p-0"
       :class="orientation === 'vertical' ? 'flex-col' : 'flex-row justify-around'"
     >
-      <li v-for="item in navigationItems" :key="item.routeName">
+      <li v-for="item in items" :key="item.routeName">
         <RouterLink
           class="app-nav-link gap-3 px-3 py-2"
           :class="orientation === 'horizontal' ? 'flex-col justify-center text-xs' : ''"

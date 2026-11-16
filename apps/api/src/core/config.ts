@@ -21,6 +21,7 @@ const envSchema = z.object({
   SESSION_COOKIE_SECURE: z.enum(['true', 'false']).optional(),
   LOGIN_MAX_FAILURES_PER_ACCOUNT: z.coerce.number().int().positive().default(5),
   LOGIN_MAX_FAILURES_PER_IP: z.coerce.number().int().positive().default(20),
+  LOGIN_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(20),
   LOGIN_LOCK_BASE_SECONDS: z.coerce.number().int().positive().default(60),
   LOGIN_LOCK_MAX_SECONDS: z.coerce.number().int().positive().default(1800),
   RATE_LIMIT_MAX_PER_MINUTE: z.coerce.number().int().positive().default(600),
@@ -52,6 +53,8 @@ export interface AppConfig {
     maxFailuresPerIp: number;
     lockBaseSeconds: number;
     lockMaxSeconds: number;
+    /** Peticiones de login por minuto y por IP (rate limit HTTP, aparte del bloqueo por fallos). */
+    rateLimitPerMinute: number;
   };
   rateLimitMaxPerMinute: number;
 }
@@ -91,6 +94,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       maxFailuresPerIp: e.LOGIN_MAX_FAILURES_PER_IP,
       lockBaseSeconds: e.LOGIN_LOCK_BASE_SECONDS,
       lockMaxSeconds: e.LOGIN_LOCK_MAX_SECONDS,
+      rateLimitPerMinute: e.LOGIN_RATE_LIMIT_PER_MINUTE,
     },
     rateLimitMaxPerMinute: e.RATE_LIMIT_MAX_PER_MINUTE,
   };
