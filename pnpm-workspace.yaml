@@ -10,6 +10,7 @@ allowBuilds:
   cpu-features: false
   protobufjs: false
   ssh2: false
+  vue-demi: false
 
 # RNF-09: versiones exactas siempre.
 savePrefix: ''
