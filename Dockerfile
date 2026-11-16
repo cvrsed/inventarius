@@ -34,6 +34,10 @@ RUN pnpm --filter @inventarius/shared build \
 # ---- runtime API + worker + migraciones (mismo código, distinto comando) ----
 FROM ${NODE_IMAGE} AS api
 ENV NODE_ENV=production
+# La imagen base está fijada por digest y puede quedar atrás de parches de seguridad de Debian (p. ej. zlib).
+RUN apt-get update \
+ && apt-get upgrade -y --no-install-recommends \
+ && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build --chown=node:node /out/api ./
 USER node

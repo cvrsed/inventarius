@@ -126,4 +126,5 @@ jobs:
           image-ref: inventarius-${{ matrix.target }}:ci
           severity: CRITICAL,HIGH
           ignore-unfixed: true
+          trivyignores: .trivyignore
           exit-code: '1'
