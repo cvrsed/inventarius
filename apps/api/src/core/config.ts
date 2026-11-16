@@ -8,6 +8,22 @@ const envSchema = z.object({
   APP_TIMEZONE: z.string().min(1).default('America/Santiago'),
   DATABASE_URL: z.string().min(1),
   MIGRATION_DATABASE_URL: z.string().min(1).optional(),
+  SESSION_IDLE_TIMEOUT_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(8 * 3600),
+  SESSION_ABSOLUTE_TIMEOUT_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(7 * 24 * 3600),
+  SESSION_COOKIE_SECURE: z.enum(['true', 'false']).optional(),
+  LOGIN_MAX_FAILURES_PER_ACCOUNT: z.coerce.number().int().positive().default(5),
+  LOGIN_MAX_FAILURES_PER_IP: z.coerce.number().int().positive().default(20),
+  LOGIN_LOCK_BASE_SECONDS: z.coerce.number().int().positive().default(60),
+  LOGIN_LOCK_MAX_SECONDS: z.coerce.number().int().positive().default(1800),
+  RATE_LIMIT_MAX_PER_MINUTE: z.coerce.number().int().positive().default(600),
   METRICS_TOKEN: z
     .string()
     .optional()
@@ -25,6 +41,19 @@ export interface AppConfig {
   databaseUrl: string;
   migrationDatabaseUrl: string | undefined;
   metricsToken: string | undefined;
+  session: {
+    idleTimeoutSeconds: number;
+    absoluteTimeoutSeconds: number;
+    /** Con `Secure` la cookie usa el prefijo `__Host-`; requiere HTTPS (o localhost). */
+    cookieSecure: boolean;
+  };
+  login: {
+    maxFailuresPerAccount: number;
+    maxFailuresPerIp: number;
+    lockBaseSeconds: number;
+    lockMaxSeconds: number;
+  };
+  rateLimitMaxPerMinute: number;
 }
 
 /**
@@ -50,5 +79,19 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     databaseUrl: e.DATABASE_URL,
     migrationDatabaseUrl: e.MIGRATION_DATABASE_URL,
     metricsToken: e.METRICS_TOKEN,
+    session: {
+      idleTimeoutSeconds: e.SESSION_IDLE_TIMEOUT_SECONDS,
+      absoluteTimeoutSeconds: e.SESSION_ABSOLUTE_TIMEOUT_SECONDS,
+      cookieSecure: e.SESSION_COOKIE_SECURE
+        ? e.SESSION_COOKIE_SECURE === 'true'
+        : e.NODE_ENV === 'production',
+    },
+    login: {
+      maxFailuresPerAccount: e.LOGIN_MAX_FAILURES_PER_ACCOUNT,
+      maxFailuresPerIp: e.LOGIN_MAX_FAILURES_PER_IP,
+      lockBaseSeconds: e.LOGIN_LOCK_BASE_SECONDS,
+      lockMaxSeconds: e.LOGIN_LOCK_MAX_SECONDS,
+    },
+    rateLimitMaxPerMinute: e.RATE_LIMIT_MAX_PER_MINUTE,
   };
 }

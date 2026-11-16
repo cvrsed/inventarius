@@ -47,10 +47,49 @@ export class UnauthorizedError extends DomainError {
   }
 }
 
+export class PasswordChangeRequiredError extends DomainError {
+  readonly status = 403;
+  readonly slug = 'password-change-required';
+  readonly title = 'Debes cambiar tu contraseña';
+  constructor() {
+    super('Tu contraseña es temporal: cámbiala para continuar');
+  }
+}
+
 export class ValidationError extends DomainError {
   readonly status = 422;
   readonly slug = 'validation';
   readonly title = 'Datos inválidos';
+}
+
+export class PreconditionRequiredError extends DomainError {
+  readonly status = 428;
+  readonly slug = 'precondition-required';
+  readonly title = 'Falta If-Match';
+  constructor() {
+    super('Envía la versión del recurso en la cabecera If-Match para evitar pisar cambios ajenos');
+  }
+}
+
+export class PreconditionFailedError extends DomainError {
+  readonly status = 412;
+  readonly slug = 'precondition-failed';
+  readonly title = 'El recurso cambió';
+  constructor() {
+    super('Alguien más modificó este registro. Recárgalo y vuelve a intentar.');
+  }
+}
+
+export class TooManyRequestsError extends DomainError {
+  readonly status = 429;
+  readonly slug = 'too-many-requests';
+  readonly title = 'Demasiados intentos';
+  constructor(
+    message: string,
+    readonly retryAfterSeconds: number,
+  ) {
+    super(message);
+  }
 }
 
 const TYPE_BASE = 'https://inventarius.local/problems/';

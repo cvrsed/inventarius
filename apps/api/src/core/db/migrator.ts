@@ -49,6 +49,10 @@ async function grantAppAccess(migrationUrl: string): Promise<void> {
           EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA %I GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${APP_ROLE}', s);
           EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA %I GRANT USAGE, SELECT ON SEQUENCES TO ${APP_ROLE}', s);
         END LOOP;
+        -- audit_log es append-only: lo último que se hace, para que ningún GRANT genérico lo reabra (RF-30).
+        IF to_regclass('public.audit_log') IS NOT NULL THEN
+          REVOKE UPDATE, DELETE, TRUNCATE ON public.audit_log FROM ${APP_ROLE};
+        END IF;
       END
       $do$;
     `);

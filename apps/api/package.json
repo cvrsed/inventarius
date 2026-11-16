@@ -12,15 +12,20 @@
     "migrate": "tsx --conditions=source --env-file-if-exists=../../.env src/migrate.ts",
     "db:generate": "drizzle-kit generate",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run --exclude \"**/*.int.test.ts\"",
+    "test": "vitest run --project unit",
     "test:coverage": "vitest run --coverage",
-    "test:int": "vitest run int.test"
+    "test:int": "vitest run --project int",
+    "cli": "tsx --conditions=source --env-file-if-exists=../../.env src/cli.ts"
   },
   "dependencies": {
+    "@fastify/cookie": "11.1.5",
+    "@fastify/csrf-protection": "8.0.2",
     "@fastify/helmet": "13.2.0",
+    "@fastify/rate-limit": "11.2.2",
     "@fastify/swagger": "9.9.4",
     "@fastify/under-pressure": "9.2.1",
     "@inventarius/shared": "workspace:*",
+    "argon2": "0.45.2",
     "drizzle-orm": "0.45.4",
     "fastify": "5.12.8",
     "fastify-metrics": "15.0.1",

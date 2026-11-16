@@ -15,6 +15,20 @@
       "when": 1794822521695,
       "tag": "0001_app_meta",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794824430214,
+      "tag": "0002_identity",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794824436658,
+      "tag": "0003_seed_rbac",
+      "breakpoints": true
     }
   ]
 }

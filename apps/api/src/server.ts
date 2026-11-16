@@ -3,10 +3,11 @@ import { loadConfig } from './core/config.js';
 import { createDb, pingDatabase, pingQueue } from './core/db/client.js';
 
 const config = loadConfig();
-const { pool, close } = createDb(config.databaseUrl);
+const { pool, db, close } = createDb(config.databaseUrl);
 
 const app = await buildApp({
   config,
+  db,
   health: { database: () => pingDatabase(pool), queue: () => pingQueue(pool) },
 });
 
