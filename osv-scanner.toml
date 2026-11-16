@@ -1,0 +1,17 @@
+# Vulnerabilidades de severidad media en dependencias transitivas SOLO de herramientas de desarrollo
+# (drizzle-kit -> @esbuild-kit, testcontainers -> archiver/glob). No entran a las imágenes de runtime:
+# `pnpm deploy --prod` las excluye. Se revisan de nuevo en la fecha indicada o cuando el padre las actualice.
+[[IgnoredVulns]]
+id = "GHSA-67mh-4wv8-2f99"
+ignoreUntil = 2027-02-16
+reason = "esbuild 0.18.20 transitivo de drizzle-kit; solo dev server de esbuild, no se usa"
+
+[[IgnoredVulns]]
+id = "GHSA-3g3m-2fjr-6pw4"
+ignoreUntil = 2027-02-16
+reason = "glob transitivo de herramientas de dev; la CLI de glob con -c no se usa"
+
+[[IgnoredVulns]]
+id = "GHSA-g3hv-75wg-m249"
+ignoreUntil = 2027-02-16
+reason = "minimatch transitivo de herramientas de dev; sin entrada no confiable"

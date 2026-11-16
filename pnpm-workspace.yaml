@@ -1,0 +1,16 @@
+packages:
+  - apps/*
+  - packages/*
+  - e2e
+
+# pnpm 12 bloquea scripts de instalación por defecto; solo se permite lo estrictamente necesario.
+allowBuilds:
+  esbuild: true
+  lefthook: true
+  cpu-features: false
+  protobufjs: false
+  ssh2: false
+  vue-demi: false
+
+# RNF-09: versiones exactas siempre.
+savePrefix: ''

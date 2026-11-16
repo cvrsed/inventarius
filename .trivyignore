@@ -1,0 +1,5 @@
+# Hallazgos aceptados temporalmente. Cada entrada: motivo y fecha de revisión.
+# CVE-2026-78661: golang.org/x/net v0.60.0 dentro del binario de Caddy 2.11.9 (net/html). Corregido en x/net 0.62.0,
+# pero no hay imagen oficial de Caddy más nueva. Caddy solo sirve estáticos y hace proxy; no parsea HTML de terceros.
+# Revisar cuando Renovate proponga una imagen nueva de Caddy, y a más tardar el 2026-12-16.
+CVE-2026-78661
