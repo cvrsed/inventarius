@@ -1,6 +1,6 @@
 # ADR 0003 — UI con PrimeVue en modo styled, en lugar de Volt
 
-- Estado: aceptada
+- Estado: **Reemplazado por [0004](0004-ui-nuxt-ui-v4.md)**
 - Fecha: 2026-11-16
 
 ## Contexto
