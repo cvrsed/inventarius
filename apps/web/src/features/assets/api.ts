@@ -66,6 +66,8 @@ export function useAsset(id: Ref<string>) {
   return useQuery({
     queryKey: computed(() => ['asset', id.value] as const),
     queryFn: ({ signal }) => api(`/api/v1/assets/${id.value}`, assetSchema, { signal }),
+    // Sin id (formulario de alta) no hay nada que pedir.
+    enabled: computed(() => id.value !== ''),
   });
 }
 

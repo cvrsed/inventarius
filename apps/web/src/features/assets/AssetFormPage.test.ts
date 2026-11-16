@@ -65,6 +65,12 @@ describe('AssetFormPage (RF-20)', () => {
     expect(fetchMock.mock.calls.some((c) => c[1]?.method === 'POST')).toBe(false);
   });
 
+  it('el alta no pide ningún activo (no hay id): un GET vacío retrasaba los avisos por sus reintentos', async () => {
+    const { fetchMock } = await mountAt('/activos/nuevo');
+    const urls = fetchMock.mock.calls.map((c) => String(c[0]));
+    expect(urls.filter((u) => /\/api\/v1\/assets\/?(\?|$)/.test(u))).toEqual([]);
+  });
+
   it('la edición carga el activo y manda solo lo necesario con If-Match', async () => {
     const { w, fetchMock } = await mountAt(`/activos/${ID}/editar`, {
       [`PATCH /api/v1/assets/${ID}`]: () => ({ ...existing, name: 'Notebook v2' }),
