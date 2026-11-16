@@ -199,8 +199,13 @@ export class AuthService {
     await this.repo.deleteSessionsOfUser(exec, userId);
   }
 
-  /** Limpieza de sesiones vencidas (se invocará desde un job programado cuando exista el worker de mantenimiento). */
-  async purgeExpired(): Promise<void> {
-    await this.repo.deleteExpiredSessions(this.db, this.clock.now());
+  /**
+   * Borra las sesiones vencidas (absolutas o inactivas) y devuelve cuántas eran. Lo invoca cada hora el job
+   * de mantenimiento; la validez de una sesión no depende de él, porque `resolve` ya rechaza las vencidas.
+   */
+  async purgeExpired(): Promise<number> {
+    const now = this.clock.now();
+    const idleBefore = new Date(now.getTime() - this.cfg.idleTimeoutSeconds * 1000);
+    return this.repo.deleteExpiredSessions(this.db, now, idleBefore);
   }
 }

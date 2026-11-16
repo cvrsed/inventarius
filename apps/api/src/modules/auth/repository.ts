@@ -1,4 +1,4 @@
-import { and, eq, lt, ne, sql } from 'drizzle-orm';
+import { and, eq, lt, ne, or, sql } from 'drizzle-orm';
 import type { Executor } from '../../core/db/executor.js';
 import { loginThrottle, sessions } from '../../core/db/schema.js';
 
@@ -66,8 +66,13 @@ export class AuthRepository {
       );
   }
 
-  async deleteExpiredSessions(exec: Executor, before: Date): Promise<void> {
-    await exec.delete(sessions).where(lt(sessions.expiresAt, before));
+  /** Borra las sesiones vencidas por tiempo absoluto (`now`) o por inactividad (sin actividad desde `idleBefore`). */
+  async deleteExpiredSessions(exec: Executor, now: Date, idleBefore: Date): Promise<number> {
+    const rows = await exec
+      .delete(sessions)
+      .where(or(lt(sessions.expiresAt, now), lt(sessions.lastSeenAt, idleBefore)))
+      .returning({ id: sessions.id });
+    return rows.length;
   }
 
   async getThrottles(exec: Executor, keys: string[]): Promise<ThrottleRow[]> {

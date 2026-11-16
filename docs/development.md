@@ -24,7 +24,7 @@ Con un Postgres accesible y las variables de `.env.example` en un `.env`:
 ```bash
 pnpm --filter @inventarius/api migrate
 pnpm --filter @inventarius/api dev          # API
-pnpm --filter @inventarius/api dev:worker   # worker
+pnpm --filter @inventarius/api dev:worker   # worker (purga de sesiones vencidas cada hora)
 pnpm --filter @inventarius/web dev
 ```
 

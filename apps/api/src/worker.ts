@@ -1,7 +1,10 @@
 import { pino } from 'pino';
 import { PgBoss } from 'pg-boss';
 import { loadConfig } from './core/config.js';
+import { buildServices } from './core/container.js';
+import { createDb } from './core/db/client.js';
 import { buildLoggerOptions } from './core/logger.js';
+import { startMaintenanceJobs } from './jobs/maintenance.js';
 
 const config = loadConfig();
 const log = pino(buildLoggerOptions(config));
@@ -14,12 +17,20 @@ const boss = new PgBoss({
 });
 boss.on('error', (err) => log.error({ err }, 'error de pg-boss'));
 
+const { pool, db } = createDb(config.databaseUrl);
+pool.on('error', (err) => log.error({ err }, 'error en una conexión inactiva de la BD'));
+const services = buildServices({ db, config });
+
 await boss.start();
-log.info('worker iniciado (sin handlers hasta F3)');
+await startMaintenanceJobs(boss, { purgeSessions: () => services.auth.purgeExpired(), log });
+log.info('worker iniciado: purga de sesiones cada hora');
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.once(signal, () => {
     log.info({ signal }, 'cerrando worker');
-    void boss.stop({ graceful: true }).then(() => process.exit(0));
+    void boss
+      .stop({ graceful: true })
+      .then(() => pool.end())
+      .then(() => process.exit(0));
   });
 }
