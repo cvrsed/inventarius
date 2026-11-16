@@ -54,10 +54,17 @@ export const assetFiltersSchema = z.object({
 });
 export type AssetFilters = z.infer<typeof assetFiltersSchema>;
 
+const sortParam = z
+  .string()
+  .max(40)
+  .refine((v) => assetSortSchema.safeParse(v).success, 'Orden no válido')
+  .optional();
+
 export const assetListQuerySchema = pageQuerySchema.extend({
   ...assetFiltersSchema.shape,
-  sort: z.string().max(40).optional(),
+  sort: sortParam,
 });
+export const assetExportQuerySchema = assetFiltersSchema.extend({ sort: sortParam });
 export type AssetListQuery = z.infer<typeof assetListQuerySchema>;
 
 export const assetListItemSchema = z.object({

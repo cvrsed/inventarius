@@ -307,6 +307,10 @@ export class UsersService implements ActorDirectory {
     return this.repo.setPassword(exec, userId, passwordHash, mustChangePassword);
   }
 
+  searchAssignable(q: string | undefined, limit: number) {
+    return this.repo.searchActive(this.db, q, limit);
+  }
+
   namesByIds(ids: string[]): Promise<Map<string, string>> {
     return this.repo.namesByIds(this.db, ids);
   }

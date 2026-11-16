@@ -2,6 +2,8 @@ import type { Clock } from './clock.js';
 import { systemClock } from './clock.js';
 import type { AppConfig } from './config.js';
 import type { Executor } from './db/executor.js';
+import { AssetsRepository } from '../modules/assets/repository.js';
+import { AssetsService } from '../modules/assets/service.js';
 import { AuditRepository } from '../modules/audit/repository.js';
 import { AuditService } from '../modules/audit/service.js';
 import { Argon2Hasher, type PasswordHasher } from '../modules/auth/password.js';
@@ -21,6 +23,7 @@ export interface Services {
   users: UsersService;
   auth: AuthService;
   catalog: CatalogService;
+  assets: AssetsService;
 }
 
 export interface ContainerDeps {
@@ -72,5 +75,16 @@ export function buildServices(deps: ContainerDeps): Services {
     clock,
   ));
   const catalog = new CatalogService(new CatalogRepository(), db, audit);
-  return { audit, rbac, users, auth, catalog };
+  const assets = new AssetsService(
+    new AssetsRepository(),
+    db,
+    audit,
+    catalog,
+    {
+      find: (exec, id) => users.findById(id, exec),
+      search: (q, limit) => users.searchAssignable(q, limit),
+    },
+    config.assetTagPrefix,
+  );
+  return { audit, rbac, users, auth, catalog, assets };
 }

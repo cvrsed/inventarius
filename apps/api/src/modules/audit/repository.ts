@@ -17,6 +17,8 @@ export interface AuditRow {
 export interface AuditFilters {
   actorId?: string | undefined;
   entity?: string | undefined;
+  /** Con `entity`: el historial de un registro concreto (RF-24). */
+  entityId?: string | undefined;
   action?: string | undefined;
   from?: Date | undefined;
   to?: Date | undefined;
@@ -38,6 +40,7 @@ export class AuditRepository {
     const conds: SQL[] = [];
     if (filters.actorId) conds.push(eq(auditLog.actorId, filters.actorId));
     if (filters.entity) conds.push(eq(auditLog.entity, filters.entity));
+    if (filters.entityId) conds.push(eq(auditLog.entityId, filters.entityId));
     if (filters.action) conds.push(eq(auditLog.action, filters.action));
     if (filters.from) conds.push(gte(auditLog.at, filters.from));
     if (filters.to) conds.push(lte(auditLog.at, filters.to));
