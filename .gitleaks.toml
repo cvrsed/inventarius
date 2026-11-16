@@ -1,0 +1,18 @@
+# Configuración de gitleaks. Extiende las reglas por defecto.
+title = "inventarius"
+
+[extend]
+useDefault = true
+
+# Las contraseñas de los tests y fixtures son ficticias (CLAUDE.md: nunca secretos reales ahí).
+# Se permite SOLO la regla generic-api-key y SOLO en archivos de prueba; en código de producción sigue activa.
+[[allowlists]]
+description = "Contraseñas ficticias de tests y fixtures e2e"
+condition = "AND"
+regexTarget = "match"
+rules = ["generic-api-key"]
+paths = [
+  '''.*\.test\.ts$''',
+  '''e2e/tests/.*''',
+  '''apps/api/test/.*''',
+]
