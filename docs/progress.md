@@ -43,6 +43,44 @@
 
 **Aprendizajes**: `up --exit-code-from` aborta con servicios one-shot; `npm i -g pnpm --ignore-scripts` deja un `pnpm` no ejecutable por `exec`; axe detectó contraste insuficiente en los mensajes de Aura (corregido en el preset).
 
-## Plan F1 — Identidad (rama `phase/f1-identidad`, apilada sobre F0)
+## F1 — Identidad (rama `phase/f1-identidad`, apilada sobre `phase/f0-fundaciones`)
 
-Se detalla al empezar F1.
+**Hecho**
+
+- [x] RF-01 login con cookie de sesión (`HttpOnly`, `SameSite=Strict`, `__Host-` con HTTPS), logout, expiración inactiva y absoluta
+- [x] RF-02 CLI `create-admin` (contraseña por env o sin eco; `--if-missing`)
+- [x] RF-03 CRUD de usuarios, activar/desactivar (invalida sesiones), regla de al menos un administrador activo
+- [x] RF-04 cambio de contraseña propio y reseteo por administrador (temporal de un uso, cambio obligatorio)
+- [x] RF-05 bloqueo progresivo por cuenta y por IP + rate limit en login
+- [x] Roles y permisos sembrados (4 roles, 12 permisos), CRUD de roles con matriz editable, `If-Match`/ETag en PATCH
+- [x] Decorador declarativo de acceso: toda ruta de `/api/v1` debe declararlo o la app no arranca
+- [x] CSRF de doble envío, hash del token de sesión en BD, rotación en cada login
+- [x] RF-30/RF-31 auditoría append-only (privilegios de BD) con diff y vista filtrable
+- [x] UI: login, cambio de contraseña, usuarios, roles, auditoría; guards por permiso; menú filtrado
+- [x] Tests: 117 api (45 de integración con Postgres 18), 56 web, 16 shared; 40 e2e (escritorio y 360 px, axe claro/oscuro)
+- [x] Criterios de aceptación: permisos por rol en **todas** las rutas (test que recorre `routeAccess` contra los 4 roles y anónimo),
+      test que detecta rutas sin permiso (`assertRouteDeclaresAccess`), login/bloqueo/expiración en e2e
+
+**Pendiente / no verificado**
+
+- Los PR se abrieron sin que CI de F1 haya corrido; F0 tuvo un primer run con fallos (corregidos, ver bitácora) y su segundo run está pendiente de resultado.
+- Sesiones vencidas solo se purgan al usarse (Q17); no hay job de mantenimiento todavía.
+- Panel abierto de `MultiSelect` con checkboxes internos sin etiqueta (Q21).
+
+**Cómo probarlo**: `docs/development.md` (incluye `create-admin`). `pnpm lint && pnpm typecheck && pnpm test:coverage`;
+`pnpm --filter @inventarius/api test:int`; e2e con `compose.e2e.yml`. Controles en `docs/security.md`.
+
+## Resumen de la sesión (2026-11-16)
+
+- **PRs abiertos**: #1 `phase/f0-fundaciones` → `main`; #2 `phase/f1-identidad` → `phase/f0-fundaciones` (apilado).
+- **CI**: F0 corrió una vez; pasaron lint, tests, integración, e2e y seguridad. Fallaron `Build de imágenes y Trivy`
+  (zlib en la imagen api: corregido con `apt-get upgrade`; CVE de `x/net` en Caddy sin imagen nueva: en `.trivyignore`)
+  y se corrigió además que `pnpm test` ejecutaba el paquete e2e. Ese arreglo está subido pero **su resultado en CI no se había visto al escribir esto**.
+  F1 aún no tiene run de CI.
+- **Decisiones provisionales que requieren revisión de Rodrigo** (detalle en `docs/open-questions.md`): PrimeVue 4.x en vez de 5 (Q2),
+  TypeScript 6 en vez de 7 (Q3), `primeicons` como dependencia nueva (Q9), vulnerabilidades ignoradas (Q11, Q22),
+  sesión absoluta de 7 días (Q15), umbrales de bloqueo (Q16), roles semilla no borrables ni renombrables (Q13), correo no editable (Q18).
+- **Bugs reales que encontraron las pruebas** (corregidos): `--ignore-scripts` dejaba un `pnpm` no ejecutable; `up --exit-code-from`
+  abortaba con servicios de un solo uso; contraste AA en mensajes de Aura; `aria-expanded` inválido en el input de contraseña de PrimeVue;
+  claves i18n con punto que no resolvían; ruta `/api/metrics` visible tras Caddy.
+- **Siguiente paso sugerido**: revisar y mergear #1, luego #2 (cambiar su base a `main`); empezar F2 (Inventario) solo con instrucción explícita.
