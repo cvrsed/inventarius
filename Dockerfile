@@ -37,7 +37,10 @@ ENV NODE_ENV=production
 # La imagen base está fijada por digest y puede quedar atrás de parches de seguridad de Debian (p. ej. zlib).
 RUN apt-get update \
  && apt-get upgrade -y --no-install-recommends \
- && rm -rf /var/lib/apt/lists/*
+ && rm -rf /var/lib/apt/lists/* \
+# El runtime no necesita npm/npx/corepack: se quitan para reducir superficie (y sus dependencias vendorizadas en Trivy).
+ && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+    /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 WORKDIR /app
 COPY --from=build --chown=node:node /out/api ./
 USER node
