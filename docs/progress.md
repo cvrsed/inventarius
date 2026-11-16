@@ -2,13 +2,13 @@
 
 ## Estado
 
-| Fase           | Estado    | Rama / PR              |
-| -------------- | --------- | ---------------------- |
-| F0 Fundaciones | En curso  | `phase/f0-fundaciones` |
-| F1 Identidad   | Pendiente | —                      |
-| F2 Inventario  | Pendiente | —                      |
-| F3 LoRaWAN     | Pendiente | —                      |
-| F4 Cierre      | Pendiente | —                      |
+| Fase           | Estado      | Rama / PR              |
+| -------------- | ----------- | ---------------------- |
+| F0 Fundaciones | En curso    | `phase/f0-fundaciones` |
+| F1 Identidad   | Pendiente   | —                      |
+| F2 Inventario  | En revisión | `phase/f2-inventario`  |
+| F3 LoRaWAN     | Pendiente   | —                      |
+| F4 Cierre      | Pendiente   | —                      |
 
 ## Bitácora
 
@@ -124,3 +124,95 @@ condición de exports renombrada a `inventarius-source`; selects de página con 
   claves i18n con punto que no resolvían; ruta `/api/metrics` visible tras Caddy.
 - **Pendiente de Rodrigo**: issues #3 (Caddy, 2026-12-16) y #4 (lista de contraseñas).
 - **Siguiente paso sugerido**: revisar y mergear #1, luego #2 (cambiar su base a `main`); empezar F2 (Inventario) solo con instrucción explícita.
+
+## F2 — Inventario (rama `phase/f2-inventario`, desde `main`)
+
+**Hecho**
+
+- [x] Catálogo RF-10 a RF-14: categorías, fabricantes, modelos (defaults LoRaWAN solo en categorías `lorawan`), ubicaciones
+      jerárquicas (ruta completa, sin ciclos) y estados con tipo; versión optimista (`If-Match`), auditoría, y «no se borra lo
+      que está en uso, se desactiva».
+- [x] Activos RF-20, RF-22 a RF-26: alta con etiqueta autogenerable (`ASSET_TAG_PREFIX`), edición, asignación a usuario o
+      ubicación y devolución, baja lógica con motivo, restauración por administrador (`asset:restore`), historial con
+      antes/después y exportación CSV. RF-21 (sección LoRaWAN) y los filtros «estado LNS»/DevEUI son de F3 (Q25).
+- [x] Vistas móviles RF-40 a RF-42: tarjetas bajo 768 px, ficha con las acciones principales en la primera pantalla, manifest,
+      íconos y aviso sin conexión.
+- [x] UI: listados con `UTable`, paginación, orden y filtros del lado servidor, reflejados en la URL; selectores con búsqueda
+      en el servidor; formularios y diálogos en es-CL.
+- [x] Runners de GitHub Actions fijados a `ubuntu-24.04` (RNF-09).
+- [x] ADR 0005, CHANGELOG, `docs/development.md` y Q23 a Q35 en `docs/open-questions.md`.
+
+**Criterio de rendimiento (RNF-06): 10.000 activos**
+
+Medición reproducible: `apps/api/src/modules/assets/assets.perf.int.test.ts` (Postgres 18 en contenedor, siembra por SQL,
+60 muestras por caso a través de Fastify con `inject`, sesión de Lector). Presupuesto: p95 < 300 ms.
+
+| caso                          | p50 (ms) | p95 (ms) | máx (ms) |
+| ----------------------------- | -------- | -------- | -------- |
+| página 1, orden por etiqueta  | 59,9     | 63,7     | 66,1     |
+| página 1 con 100 filas        | 60,3     | 64,8     | 72,7     |
+| página profunda (400)         | 65,9     | 71,0     | 79,2     |
+| búsqueda por texto            | 41,2     | 44,0     | 53,0     |
+| búsqueda por serie            | 52,3     | 56,7     | 61,8     |
+| filtro por estado y ubicación | 12,8     | 15,2     | 17,8     |
+| orden por nombre descendente  | 59,8     | 67,0     | 75,6     |
+| orden por modelo con filtro   | 25,2     | 27,1     | 48,7     |
+
+El peor p95 es ~71 ms, unas 4 veces por debajo del objetivo. La medición excluye red y Caddy (Q33). Bundle inicial del
+frontend en el build de e2e: `index` 93,6 KB gzip + CSS 27,4 KB (objetivo < 250 KB gzip), rutas con carga diferida.
+
+**Pruebas**
+
+- API: **API_UNIT** unitarias; **API_INT** de integración con Postgres 18 (catálogo, activos, permisos por rol en todas las rutas
+  —incluidas las nuevas—, concurrencia de asignaciones, rendimiento).
+- Shared: 26. Web: **WEB** (listados, ficha por permisos, formularios, historial, estado en la URL, aviso sin conexión).
+- e2e (Playwright + axe, escritorio 1280 px y móvil 360 px): **E2E**.
+
+**Decisiones provisionales** (detalle en `docs/open-questions.md`, Q23 a Q35): permiso `asset:restore`; filtros planos en la
+query; estados semilla y «Asignado» de sistema; no se cambia estado ni se da de baja un activo asignado; CSV con BOM;
+sin service worker; historial desde auditoría (ADR 0005).
+
+**Errores reales que encontraron las pruebas** (corregidos, cada uno con su test):
+
+- El refresco de la sesión era fijo de 30 s: con una inactividad menor (15 s en e2e) la sesión moría aunque el usuario trabajara.
+  Ahora el refresco es como mucho una cuarta parte de la inactividad (`session-touch.int.test.ts`).
+- El formulario de activo ignoraba lo escrito en los campos de texto (el manejador devolvía una función en vez de ejecutarla).
+- El alta de activo pedía `GET /assets/` sin id; el 400 y sus reintentos retrasaban ~7 s el aviso de éxito.
+- Un enlace con `page=2` volvía a la página 1 (el paginador emitía la página 1 con total 0 y la búsqueda reescribía la URL al
+  volver atrás); además un temporizador de búsqueda seguía vivo tras desmontar la página.
+- Tarjetas del listado con `aria-label` que no contenía su texto visible (axe `label-content-name-mismatch`).
+- Las fechas de consultas SQL crudas llegaban como texto desde el driver (ubicaciones).
+
+**Cómo probarlo**
+
+```bash
+pnpm install
+pnpm lint && pnpm typecheck && pnpm test            # unitarios (shared, api, web)
+pnpm --filter @inventarius/api test:int             # integración con Postgres 18 (Docker)
+pnpm --filter @inventarius/api exec vitest run --project int assets.perf --disableConsoleIntercept   # RNF-06
+docker compose -f compose.e2e.yml up -d --build --wait web worker
+docker compose -f compose.e2e.yml run --rm --build e2e
+docker compose -f compose.e2e.yml down --volumes
+```
+
+A mano: `docker compose up --build`, crea el administrador (`docs/development.md`), entra a http://localhost:5173 y recorre
+Catálogo → Activos → Nuevo activo → Asignar/Devolver → Dar de baja/Restaurar; prueba también a 360 px y con el modo oscuro.
+
+**Pendiente / no verificado**
+
+- Instalar la app en un celular real (Q31) y repetir la medición de rendimiento contra el despliegue real (Q33).
+- Agregar `ASSET_TAG_PREFIX=INV` a `.env.example` (Q32).
+
+## Resumen de la sesión F2 (2026-11-16)
+
+- **Rama y PR**: `phase/f2-inventario` desde `main` → PR hacia `main`. No se empezó F3.
+- **Alcance entregado**: catálogo (RF-10 a RF-14), activos con historial (RF-20, RF-22 a RF-26), vistas móviles (RF-40 a RF-42),
+  rendimiento con 10.000 activos (peor p95 ≈ 71 ms frente a 300 ms), e2e de CRUD completo en escritorio y 360 px con axe en claro
+  y oscuro, y runners fijados a `ubuntu-24.04`. RF-21 y los filtros de LNS quedan para F3 (Q25).
+- **Decisiones provisionales que requieren revisión de Rodrigo** (detalle en `docs/open-questions.md`): permiso nuevo
+  `asset:restore` (Q23), filtros planos en la query en vez de `filter[campo]` (Q24), estados semilla y «Asignado» de sistema
+  (Q26), no cambiar estado ni dar de baja un activo asignado (Q27), formato del CSV (Q30), sin service worker (Q31).
+- **Pendiente de Rodrigo**: agregar `ASSET_TAG_PREFIX=INV` a `.env.example` (la sesión no puede leer ni editar ese archivo, Q32);
+  instalar la app en un celular real (Q31); repetir la medición de rendimiento contra el despliegue real (Q33).
+- **CI**: el PR corre por primera vez los jobs de esta rama; el estado se anota en el PR.
+- **Siguiente paso sugerido**: revisar y mergear el PR de F2; empezar F3 (LoRaWAN) solo con instrucción explícita.

@@ -36,6 +36,20 @@ Referencia: sección 10 del requerimiento. Este documento crece por fase; aquí 
   entidad, diff) en la misma transacción que el cambio. Nunca se guardan contraseñas ni hashes en el diff.
 - Append-only: el usuario de BD de la aplicación no tiene `UPDATE`, `DELETE` ni `TRUNCATE` sobre la tabla (verificado en test).
 
+## Inventario (F2)
+
+- **Permisos por ruta:** lectura de activos y catálogo con `asset:read`; escritura de activos `asset:write`; asignar y devolver
+  `asset:checkout`; baja `asset:delete`; restaurar `asset:restore` (solo Administrador); catálogo `catalog:write`. El test de
+  permisos por rol recorre todas las rutas nuevas y falla si alguna no declara su acceso.
+- **Exportación CSV (RF-26):** exige `asset:read`, nunca incluye claves ni secretos y neutraliza las celdas que empiezan con
+  `=`, `+`, `-`, `@`, tab o retorno (inyección de fórmulas al abrir en una planilla). Respuesta con `Cache-Control: no-store`.
+- **Búsqueda y orden:** los comodines `%` y `_` del texto buscado se escapan; el orden solo acepta columnas de una lista
+  blanca (nunca se interpola texto del usuario en `ORDER BY`).
+- **Concurrencia:** `PATCH` con `If-Match`; la asignación bloquea la fila del activo y un índice único parcial impide dos
+  asignaciones abiertas del mismo activo.
+- **Datos personales:** `GET /assignees` entrega solo id y nombre (no correo) de usuarios activos, a quien puede asignar.
+- **Auditoría:** toda escritura de catálogo y activos queda en `audit_log` dentro de la misma transacción (RF-30).
+
 ## Excepciones de vulnerabilidades
 
 Cada hallazgo que el CI ignora está aquí, con motivo y fecha de revisión. Al vencer la fecha el CI vuelve a fallar

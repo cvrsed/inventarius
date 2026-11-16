@@ -5,6 +5,18 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). D
 
 ## [Sin publicar]
 
+### F2 — Inventario
+- Catálogo: categorías, fabricantes, modelos (con valores LoRaWAN por defecto), ubicaciones jerárquicas y estados con tipo;
+  no se borra lo que está en uso, se desactiva (RF-10 a RF-14).
+- Activos: alta con etiqueta autogenerable (`ASSET_TAG_PREFIX`), edición con `If-Match`, asignación a usuario o ubicación,
+  devolución, baja lógica con motivo y restauración por administrador, historial con antes/después y exportación CSV
+  (RF-20, RF-22 a RF-26). Búsqueda con `pg_trgm`; listado verificado con 10.000 activos (RNF-06).
+- Permiso nuevo `asset:restore` (solo Administrador).
+- UI: listados con paginación, orden y filtros del lado servidor reflejados en la URL, tarjetas bajo 768 px, ficha de
+  activo con acciones al alcance (RF-40, RF-41) y app instalable con aviso sin conexión (RF-42).
+- e2e de CRUD completo en escritorio y 360 px con axe en claro y oscuro (diálogos y selectores abiertos).
+- CI: runners fijados a `ubuntu-24.04` (RNF-09). ADR 0005.
+
 ### F1 — Identidad
 - Login con sesión en cookie `HttpOnly`/`SameSite=Strict`, CSRF de doble envío, rate limit, bloqueo progresivo por cuenta e IP,
   expiración inactiva y absoluta (RF-01, RF-05).

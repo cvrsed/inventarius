@@ -80,3 +80,14 @@ de un usuario) están en `docs/operations.md`.
 (por defecto `true` solo en producción; con `true` la cookie usa el prefijo `__Host-` y exige HTTPS),
 `LOGIN_MAX_FAILURES_PER_ACCOUNT` (5), `LOGIN_MAX_FAILURES_PER_IP` (20), `LOGIN_LOCK_BASE_SECONDS` (60),
 `LOGIN_LOCK_MAX_SECONDS` (1800), `LOGIN_RATE_LIMIT_PER_MINUTE` (20), `RATE_LIMIT_MAX_PER_MINUTE` (600).
+
+## Etiquetas de activo (RF-20)
+
+`ASSET_TAG_PREFIX` (por defecto `INV`) fija el prefijo de las etiquetas autogeneradas: `INV-000123`. Debe tener solo
+letras y números (hasta 10). Cambiarlo no renumera los activos existentes. Agrégala a tu `.env` si quieres otro prefijo.
+
+## Datos de prueba de rendimiento (RNF-06)
+
+`pnpm --filter @inventarius/api exec vitest run --project int assets.perf --disableConsoleIntercept` siembra 10.000 activos
+en un Postgres 18 temporal, mide ocho consultas típicas del listado y falla si algún p95 supera 300 ms. Imprime la tabla de
+tiempos al terminar.
