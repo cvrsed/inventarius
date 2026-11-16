@@ -2,13 +2,13 @@
 
 ## Estado
 
-| Fase | Estado | Rama / PR |
-|---|---|---|
-| F0 Fundaciones | En curso | `phase/f0-fundaciones` |
-| F1 Identidad | Pendiente | — |
-| F2 Inventario | Pendiente | — |
-| F3 LoRaWAN | Pendiente | — |
-| F4 Cierre | Pendiente | — |
+| Fase           | Estado    | Rama / PR              |
+| -------------- | --------- | ---------------------- |
+| F0 Fundaciones | En curso  | `phase/f0-fundaciones` |
+| F1 Identidad   | Pendiente | —                      |
+| F2 Inventario  | Pendiente | —                      |
+| F3 LoRaWAN     | Pendiente | —                      |
+| F4 Cierre      | Pendiente | —                      |
 
 ## Bitácora
 
