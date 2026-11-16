@@ -27,8 +27,11 @@ test.describe('gestión de usuarios (RF-03, RF-04)', () => {
     await dialog.getByLabel('Nombre').fill('Persona Nueva');
     await dialog.getByLabel('Correo').fill(email);
     await dialog.locator('.p-multiselect').click();
+    await expect(page.locator('.p-multiselect-overlay')).toBeVisible();
+    // axe con el panel de roles ABIERTO: los checkboxes de cada opción deben tener nombre accesible (RNF-02).
+    await expectNoA11yViolations(page);
     await page.getByRole('option', { name: 'Lector' }).click();
-    // Un clic fuera del panel lo cierra; el panel abierto de MultiSelect trae checkboxes internos sin etiqueta (Q21).
+    // Un clic fuera del panel lo cierra.
     await dialog.getByText('Nombre', { exact: true }).click();
     await expect(page.locator('.p-multiselect-overlay')).toBeHidden();
     await dialog.getByLabel('Contraseña inicial').fill(STRONG_PASSWORD);

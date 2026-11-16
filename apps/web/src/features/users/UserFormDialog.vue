@@ -15,6 +15,13 @@ import { ApiError } from '@/shared/api/http';
 import PasswordField from '@/shared/ui/PasswordField.vue';
 import { useRolesQuery, useUserMutations } from './api';
 
+/**
+ * Cada opción del panel ya es `role="option"` con su `aria-label`; el checkbox interno de PrimeVue es solo
+ * decorativo y, al ser enfocable dentro de otro control, axe lo marca (nested-interactive, RNF-02).
+ * `inert` lo saca del árbol de accesibilidad y del foco; el clic lo recibe la opción.
+ */
+const multiSelectPt = { pcOptionCheckbox: { root: { inert: '' } } };
+
 const props = defineProps<{ user: UserDto | null; creating: boolean }>();
 const visible = defineModel<boolean>('visible', { required: true });
 
@@ -163,6 +170,7 @@ async function submit(): Promise<void> {
           option-label="name"
           option-value="id"
           display="chip"
+          :pt="multiSelectPt"
           :invalid="!!fieldErrors['roleIds']"
           fluid
         />

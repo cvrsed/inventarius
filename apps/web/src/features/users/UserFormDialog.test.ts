@@ -76,6 +76,18 @@ describe('UserFormDialog', () => {
     w.unmount();
   });
 
+  it('los checkboxes decorativos del panel de roles quedan fuera del foco y de la accesibilidad (RNF-02)', async () => {
+    mockApi({ 'GET /api/v1/roles': () => [role] });
+    const w = open({ user: null, creating: true });
+    await flushPromises();
+    (document.body.querySelector('.p-multiselect') as HTMLElement).click();
+    await flushPromises();
+    const boxes = document.body.querySelectorAll('.p-multiselect-option .p-checkbox');
+    expect(boxes.length).toBeGreaterThan(0);
+    for (const box of boxes) expect(box.hasAttribute('inert')).toBe(true);
+    w.unmount();
+  });
+
   it('al editar a otro usuario el correo es editable y se envía al cambiarlo', async () => {
     const bodies: Record<string, unknown>[] = [];
     mockApi({
