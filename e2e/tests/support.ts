@@ -96,3 +96,92 @@ export async function loginViaUi(page: Page, email: string, password: string): P
 
 export const horizontalOverflow = (page: Page) =>
   page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+
+/** Nombre único para datos de prueba: la base de e2e es compartida y los tests corren en paralelo. */
+export const uniqueName = (prefix: string): string => `${prefix} ${randomUUID().slice(0, 8)}`;
+
+/** Ejecuta `check` en modo claro y luego en modo oscuro (RNF-02). Debe poder repetirse sin efectos. */
+export async function eachTheme(page: Page, check: () => Promise<void>): Promise<void> {
+  // El tema se recuerda entre páginas: si un paso anterior ya lo dejó en oscuro, se parte de claro.
+  if (await page.locator('html').evaluate((el) => el.classList.contains('dark'))) {
+    await page.getByRole('button', { name: 'Cambiar a modo claro' }).click();
+    await expect(page.locator('html')).not.toHaveClass(/\bdark\b/);
+  }
+  await check();
+  await page.getByRole('button', { name: 'Cambiar a modo oscuro' }).click();
+  await expect(page.locator('html')).toHaveClass(/\bdark\b/);
+  await check();
+}
+
+export interface Fixture {
+  manufacturerId: string;
+  categoryId: string;
+  modelId: string;
+  modelName: string;
+  locationId: string;
+  locationName: string;
+}
+
+/** Catálogo mínimo creado por API para que un test pueda crear activos por UI. */
+export async function createCatalogFixture(request: APIRequestContext): Promise<Fixture> {
+  const manufacturer = await apiPost<{ id: string; name: string }>(
+    request,
+    '/api/v1/manufacturers',
+    {
+      name: uniqueName('Fabricante'),
+    },
+  );
+  const category = await apiPost<{ id: string }>(request, '/api/v1/categories', {
+    name: uniqueName('Categoría'),
+  });
+  const modelName = uniqueName('Modelo');
+  const model = await apiPost<{ id: string }>(request, '/api/v1/models', {
+    name: modelName,
+    manufacturerId: manufacturer.id,
+    categoryId: category.id,
+  });
+  const locationName = uniqueName('Sala');
+  const location = await apiPost<{ id: string }>(request, '/api/v1/locations', {
+    name: locationName,
+  });
+  return {
+    manufacturerId: manufacturer.id,
+    categoryId: category.id,
+    modelId: model.id,
+    modelName: `${manufacturer.name} ${modelName}`,
+    locationId: location.id,
+    locationName,
+  };
+}
+
+export async function statusIdByName(request: APIRequestContext, name: string): Promise<string> {
+  const res = await request.get(`/api/v1/status-labels?q=${encodeURIComponent(name)}&pageSize=100`);
+  const data = ((await res.json()) as { data: { id: string; name: string }[] }).data;
+  return data.find((s) => s.name === name)!.id;
+}
+
+export interface CreatedAsset {
+  id: string;
+  assetTag: string;
+  name: string;
+  serial: string;
+}
+
+/** Crea un activo por API (rápido) para los tests que ejercitan otra parte de la UI. */
+export async function createAssetViaApi(
+  request: APIRequestContext,
+  fixture: Fixture,
+  extra: Record<string, unknown> = {},
+): Promise<CreatedAsset> {
+  const name = uniqueName('Activo');
+  const serial = `SN-${randomUUID().slice(0, 8)}`;
+  const asset = await apiPost<{ id: string; assetTag: string }>(request, '/api/v1/assets', {
+    name,
+    serial,
+    modelId: fixture.modelId,
+    statusId: await statusIdByName(request, 'Disponible'),
+    locationId: fixture.locationId,
+    ...extra,
+  });
+  return { id: asset.id, assetTag: asset.assetTag, name, serial };
+}
