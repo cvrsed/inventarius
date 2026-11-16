@@ -1,15 +1,14 @@
 # Configuración de gitleaks. Extiende las reglas por defecto.
+# La acción de CI usa gitleaks 8.24.x: se usa la sintaxis `[allowlist]` (la de `[[allowlists]]` con targetRules es 8.25+).
 title = "inventarius"
 
 [extend]
 useDefault = true
 
 # Las contraseñas de los tests y fixtures son ficticias (CLAUDE.md: nunca secretos reales ahí).
-# Se permite SOLO la regla generic-api-key y SOLO en archivos de prueba; en código de producción sigue activa.
-[[allowlists]]
+# Se permiten SOLO archivos de prueba; el código de producción sigue cubierto por todas las reglas.
+[allowlist]
 description = "Contraseñas ficticias de tests y fixtures e2e"
-condition = "AND"
-targetRules = ["generic-api-key"]
 paths = [
   '''.*\.test\.ts$''',
   '''e2e/tests/.*''',
