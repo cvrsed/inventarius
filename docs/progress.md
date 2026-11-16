@@ -57,17 +57,35 @@
 - [x] CSRF de doble envío, hash del token de sesión en BD, rotación en cada login
 - [x] RF-30/RF-31 auditoría append-only (privilegios de BD) con diff y vista filtrable
 - [x] UI: login, cambio de contraseña, usuarios, roles, auditoría; guards por permiso; menú filtrado
+- [x] Ajustes tras la revisión de Rodrigo (ver «Ajustes de revisión» abajo)
 - [x] Tests: 117 api (45 de integración con Postgres 18), 56 web, 16 shared; 40 e2e (escritorio y 360 px, axe claro/oscuro)
 - [x] Criterios de aceptación: permisos por rol en **todas** las rutas (test que recorre `routeAccess` contra los 4 roles y anónimo),
       test que detecta rutas sin permiso (`assertRouteDeclaresAccess`), login/bloqueo/expiración en e2e
 
 **Pendiente / no verificado**
 
-- Sesiones vencidas solo se purgan al usarse (Q17); no hay job de mantenimiento todavía.
-- Panel abierto de `MultiSelect` con checkboxes internos sin etiqueta (Q21).
+- La lista de contraseñas comunes sigue siendo mínima (~60 entradas): issue #4, por decisión de Rodrigo no se cambia aún (Q12).
+- PrimeVue 5 sin migrar por el cambio de licencia (Q2).
 
 **Cómo probarlo**: `docs/development.md` (incluye `create-admin`). `pnpm lint && pnpm typecheck && pnpm test:coverage`;
 `pnpm --filter @inventarius/api test:int`; e2e con `compose.e2e.yml`. Controles en `docs/security.md`.
+
+## Ajustes de revisión (PR #2, 2026-11-16)
+
+Un commit por punto, todo en `phase/f1-identidad`:
+
+1. **PrimeVue 5**: 5.0.5 es estable (`latest`), pero cambió de licencia: de MIT a «PrimeUI License» con clave obligatoria y pago
+   según tamaño de la organización (Community gratis solo bajo USD 1 M de ingresos, <5 desarrolladores, <10 empleados).
+   No se migró; se mantiene 4.5.5 y la decisión queda en Q2 con revisión el 2026-12-16. **Necesita decisión de Rodrigo.**
+2. **TypeScript 6.0.x**: justificación en `docs/adr/0002-stack.md` (TS 7 sin API programática hasta 7.1).
+3. **Sesión absoluta 24 h** (antes 7 d), con tests de integración con la configuración por defecto.
+4. **Correo**: solo un administrador lo edita y nunca el propio; invalida sesiones y audita antes/después. Tests API y UI.
+5. **Excepciones de vulnerabilidades** detalladas en `docs/security.md`; issue #3 (Caddy, revisión 2026-12-16).
+6. **primeicons** aceptado: en la sección 7.2 del requerimiento y en el ADR 0002.
+7. **Job de pg-boss** que purga sesiones vencidas (absolutas o inactivas) cada hora; el migrador crea la cola. Tests de integración.
+8. **MultiSelect** con el panel abierto pasa axe (pass-through `inert` en los checkboxes decorativos); e2e con el panel abierto.
+9. **Lista de contraseñas comunes**: sin cambios; issue #4.
+10. `docs/requirements.md` actualizado (RF-01, RF-03, 7.2).
 
 ## Resumen de la sesión (2026-11-16)
 
@@ -83,4 +101,5 @@
 - **Bugs reales que encontraron las pruebas** (corregidos): `--ignore-scripts` dejaba un `pnpm` no ejecutable; `up --exit-code-from`
   abortaba con servicios de un solo uso; contraste AA en mensajes de Aura; `aria-expanded` inválido en el input de contraseña de PrimeVue;
   claves i18n con punto que no resolvían; ruta `/api/metrics` visible tras Caddy.
+- **Pendiente de Rodrigo**: decidir sobre PrimeVue 5 y su licencia (Q2); issues #3 (Caddy, 2026-12-16) y #4 (lista de contraseñas).
 - **Siguiente paso sugerido**: revisar y mergear #1, luego #2 (cambiar su base a `main`); empezar F2 (Inventario) solo con instrucción explícita.

@@ -86,9 +86,9 @@ Cada requerimiento tiene ID para trazarlo en issues, commits y tests (`RF-xx`).
 
 ### 4.1 Autenticación y usuarios
 
-- **RF-01** Login con email y contraseña; sesión por cookie segura; logout; expiración por inactividad configurable (por defecto 8 h).
+- **RF-01** Login con email y contraseña; sesión por cookie segura; logout; expiración por inactividad configurable (por defecto 8 h) y expiración absoluta configurable (por defecto 24 h) aunque haya actividad. Un job periódico de pg-boss, cada hora, purga las sesiones vencidas.
 - **RF-02** Primer arranque: un comando CLI (`pnpm --filter api cli create-admin`) crea el primer administrador. No existe registro público.
-- **RF-03** CRUD de usuarios (nombre, email, roles, activo/inactivo). Un usuario inactivo no puede entrar y sus sesiones se invalidan.
+- **RF-03** CRUD de usuarios (nombre, email, roles, activo/inactivo). Un usuario inactivo no puede entrar y sus sesiones se invalidan. Solo un administrador da de alta y edita el correo; nadie edita su propio correo (ni un administrador, lo hace otro). Un cambio de correo invalida las sesiones de esa persona y queda en auditoría con antes/después.
 - **RF-04** Cambio de contraseña propio; reseteo por un administrador (genera contraseña temporal de un uso, obliga a cambiarla al entrar). Sin correo en el MVP.
 - **RF-05** Bloqueo temporal tras intentos fallidos repetidos (por cuenta y por IP).
 
@@ -284,7 +284,7 @@ Regla: se fija la versión exacta en la Fase 0 con el lockfile y se registra en 
 | Contrato API | OpenAPI 3.1 generado desde las rutas; cliente del front tipado generado desde ese OpenAPI | El front no puede desalinearse de la API |
 | Base de datos | PostgreSQL 18 | Recomendación de Carlos |
 | ORM / migraciones | Drizzle ORM + drizzle-kit (migraciones SQL versionadas en el repo) | SQL explícito, tipos, migraciones revisables |
-| Cola de jobs | pg-boss (sobre el mismo Postgres) | Sin Redis: un servicio menos |
+| Cola de jobs | pg-boss (sobre el mismo Postgres); primer uso: purga horaria de sesiones vencidas | Sin Redis: un servicio menos |
 | Cliente ChirpStack | `@chirpstack/chirpstack-api` + `@grpc/grpc-js` | Cliente oficial, gRPC recomendado |
 | Cliente TTN | `fetch` nativo (undici) con capa propia tipada | API REST simple |
 | Cripto | `argon2` (hash de contraseñas, argon2id), `node:crypto` AES-256-GCM | Estándares actuales |
