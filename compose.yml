@@ -1,0 +1,94 @@
+# Entorno de desarrollo: `pnpm install && docker compose up --build`.
+# Las contraseñas por defecto son solo para desarrollo local; con un .env se sobrescriben.
+name: inventarius-dev
+
+x-dev-service: &dev-service
+  build:
+    context: .
+    target: dev
+  environment: &dev-env
+    NODE_ENV: development
+    LOG_LEVEL: ${LOG_LEVEL:-info}
+    DATABASE_URL: postgres://inventarius_app:${APP_DB_PASSWORD:-dev-app-password}@postgres:5432/inventarius
+    MIGRATION_DATABASE_URL: postgres://inventarius_migrator:${MIGRATOR_DB_PASSWORD:-dev-migrator-password}@postgres:5432/inventarius
+    APP_TIMEZONE: ${APP_TIMEZONE:-America/Santiago}
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:18@sha256:2ea8630df176ad090ec92136dee850397c5af8781e4bcf2e4162593691c61bbc
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev-admin-password}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:-dev-app-password}
+      MIGRATOR_DB_PASSWORD: ${MIGRATOR_DB_PASSWORD:-dev-migrator-password}
+    volumes:
+      # PostgreSQL 18 espera el volumen en /var/lib/postgresql (no en /data).
+      - pgdata:/var/lib/postgresql
+      - ./deploy/postgres/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - '127.0.0.1:5432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d inventarius']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    <<: *dev-service
+    command: pnpm --filter @inventarius/api migrate
+    restart: 'no'
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  api:
+    <<: *dev-service
+    command: pnpm --filter @inventarius/api dev
+    environment:
+      <<: *dev-env
+      HOST: 0.0.0.0
+      PORT: '3000'
+    volumes:
+      - ./apps/api/src:/repo/apps/api/src
+      - ./packages/shared/src:/repo/packages/shared/src
+    ports:
+      - '127.0.0.1:3000:3000'
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:3000/api/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  worker:
+    <<: *dev-service
+    command: pnpm --filter @inventarius/api dev:worker
+    volumes:
+      - ./apps/api/src:/repo/apps/api/src
+      - ./packages/shared/src:/repo/packages/shared/src
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  web:
+    <<: *dev-service
+    command: pnpm --filter @inventarius/web dev
+    environment:
+      API_PROXY_TARGET: http://api:3000
+    volumes:
+      - ./apps/web/src:/repo/apps/web/src
+      - ./apps/web/public:/repo/apps/web/public
+      - ./packages/shared/src:/repo/packages/shared/src
+    ports:
+      - '127.0.0.1:5173:5173'
+    depends_on:
+      api: { condition: service_healthy }
+
+volumes:
+  pgdata:

@@ -57,4 +57,17 @@ export const InventariusPreset = definePreset(Aura, {
       },
     },
   },
+  components: {
+    // Aura usa tonos 500/600 para el texto de mensajes en claro (p. ej. verde 3,15:1); axe exige 4,5:1 (RNF-02).
+    message: {
+      colorScheme: {
+        light: {
+          success: { color: '{green.800}' },
+          info: { color: '{blue.800}' },
+          warn: { color: '{yellow.900}' },
+          error: { color: '{red.800}' },
+        },
+      },
+    },
+  },
 });

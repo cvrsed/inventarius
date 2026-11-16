@@ -1,9 +1,20 @@
-import type { FastifyPluginAsync } from 'fastify';
-import fastifyMetrics from 'fastify-metrics';
+import type { FastifyPluginAsync, FastifyPluginCallback } from 'fastify';
+import fastifyMetricsModule from 'fastify-metrics';
+import type { IMetricsPluginRegisterOptions } from 'fastify-metrics';
 import { timingSafeEqual } from 'node:crypto';
 import type { AppConfig } from './config.js';
 import { ForbiddenError } from './errors.js';
 import { isInternalAddress } from './network.js';
+
+type MetricsPlugin = FastifyPluginCallback<Partial<IMetricsPluginRegisterOptions>>;
+
+/**
+ * fastify-metrics es CJS con `exports.default`: en Node ESM el import por defecto es el módulo entero,
+ * mientras que tsx/Vitest ya lo desenvuelven. Se normaliza para que funcione en ambos.
+ */
+const fastifyMetrics: MetricsPlugin =
+  (fastifyMetricsModule as unknown as { default?: MetricsPlugin }).default ??
+  (fastifyMetricsModule as unknown as MetricsPlugin);
 
 function tokenMatches(header: string | undefined, expected: string): boolean {
   const given = Buffer.from(header?.replace(/^Bearer\s+/i, '') ?? '');

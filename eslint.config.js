@@ -36,7 +36,14 @@ export default tseslint.config(
     },
   },
   {
-    files: ['apps/api/**/*.ts', 'packages/**/*.ts', 'e2e/**/*.ts', '*.js', '*.ts'],
+    files: [
+      'apps/api/**/*.ts',
+      'packages/**/*.ts',
+      'e2e/**/*.ts',
+      'scripts/**/*.mjs',
+      '*.js',
+      '*.ts',
+    ],
     languageOptions: { globals: globals.node },
   },
   {
@@ -45,7 +52,7 @@ export default tseslint.config(
   },
   {
     // Los entrypoints de CLI informan por consola; el resto de la app usa el logger.
-    files: ['apps/api/src/migrate.ts'],
+    files: ['apps/api/src/migrate.ts', 'scripts/**/*.mjs'],
     rules: { 'no-console': 'off' },
   },
 );

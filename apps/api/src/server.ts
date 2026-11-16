@@ -10,6 +10,9 @@ const app = await buildApp({
   health: { database: () => pingDatabase(pool), queue: () => pingQueue(pool) },
 });
 
+// Sin este handler, un cierre de conexión inactiva (p. ej. reinicio de Postgres) tira el proceso.
+pool.on('error', (err) => app.log.error({ err }, 'error en una conexión inactiva de la BD'));
+
 app.addHook('onClose', async () => close());
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
