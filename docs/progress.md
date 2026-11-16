@@ -63,7 +63,6 @@
 
 **Pendiente / no verificado**
 
-- Los PR se abrieron sin que CI de F1 haya corrido; F0 tuvo un primer run con fallos (corregidos, ver bitácora) y su segundo run está pendiente de resultado.
 - Sesiones vencidas solo se purgan al usarse (Q17); no hay job de mantenimiento todavía.
 - Panel abierto de `MultiSelect` con checkboxes internos sin etiqueta (Q21).
 
@@ -73,10 +72,11 @@
 ## Resumen de la sesión (2026-11-16)
 
 - **PRs abiertos**: #1 `phase/f0-fundaciones` → `main`; #2 `phase/f1-identidad` → `phase/f0-fundaciones` (apilado).
-- **CI**: F0 corrió una vez; pasaron lint, tests, integración, e2e y seguridad. Fallaron `Build de imágenes y Trivy`
-  (zlib en la imagen api: corregido con `apt-get upgrade`; CVE de `x/net` en Caddy sin imagen nueva: en `.trivyignore`)
-  y se corrigió además que `pnpm test` ejecutaba el paquete e2e. Ese arreglo está subido pero **su resultado en CI no se había visto al escribir esto**.
-  F1 aún no tiene run de CI.
+- **CI**: ambos PR terminan con todos los jobs en verde (lint/typecheck, unitarios en Node 26 y 24, integración con cobertura, e2e
+  Playwright + axe en Docker, auditoría + OSV + gitleaks, build de imágenes y Trivy). Para llegar ahí hubo que corregir en CI cosas
+  que localmente no se veían: `pnpm test` ejecutaba el paquete e2e; zlib desactualizada en la imagen api y `npm` vendorizado
+  (con CVEs) que se quitó del runtime; CVE de `x/net` en Caddy sin imagen corregida (`.trivyignore`, Q22); gitleaks 8.24 con
+  falsos positivos en contraseñas ficticias de tests (allowlist por ruta); axe leyendo colores a mitad de una transición.
 - **Decisiones provisionales que requieren revisión de Rodrigo** (detalle en `docs/open-questions.md`): PrimeVue 4.x en vez de 5 (Q2),
   TypeScript 6 en vez de 7 (Q3), `primeicons` como dependencia nueva (Q9), vulnerabilidades ignoradas (Q11, Q22),
   sesión absoluta de 7 días (Q15), umbrales de bloqueo (Q16), roles semilla no borrables ni renombrables (Q13), correo no editable (Q18).
