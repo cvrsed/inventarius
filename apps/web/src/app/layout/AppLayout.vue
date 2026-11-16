@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from '@/features/auth/useAuthStore';
+import OfflineNotice from '@/shared/ui/OfflineNotice.vue';
 import AppNav from './AppNav.vue';
 import ThemeToggle from './ThemeToggle.vue';
 import UserMenu from './UserMenu.vue';
@@ -18,6 +19,7 @@ const showNav = computed(() => !route.meta.bare && !!auth.user && !auth.user.mus
   <a class="app-skip-link" href="#contenido">{{ t('app.skipToContent') }}</a>
 
   <div class="flex min-h-screen flex-col bg-default text-default">
+    <OfflineNotice />
     <header
       class="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-default bg-default px-4 py-2"
     >

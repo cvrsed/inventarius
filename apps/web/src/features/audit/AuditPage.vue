@@ -40,6 +40,12 @@ const entityOptions = computed(() => [
   { value: '', label: t('audit.all') },
   { value: 'user', label: t('audit.entities.user') },
   { value: 'role', label: t('audit.entities.role') },
+  { value: 'asset', label: t('audit.entities.asset') },
+  { value: 'category', label: t('audit.entities.category') },
+  { value: 'manufacturer', label: t('audit.entities.manufacturer') },
+  { value: 'model', label: t('audit.entities.model') },
+  { value: 'location', label: t('audit.entities.location') },
+  { value: 'status_label', label: t('audit.entities.status_label') },
 ]);
 const FILTERABLE_ACTIONS = [
   'auth.login',
@@ -53,6 +59,12 @@ const FILTERABLE_ACTIONS = [
   'role.create',
   'role.update',
   'role.delete',
+  'asset.create',
+  'asset.update',
+  'asset.checkout',
+  'asset.checkin',
+  'asset.delete',
+  'asset.restore',
 ] as const;
 const actionOptions = computed(() => [
   { value: '', label: t('audit.all') },
