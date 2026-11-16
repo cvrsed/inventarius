@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import USelect from '@nuxt/ui/components/Select.vue';
-import { computed, onBeforeUnmount } from 'vue';
+import { computed } from 'vue';
+import { useInertWhileOpen } from './useInertWhileOpen';
 
 /**
  * Select de Nuxt UI para filtros de página.
  *
  * - reka-ui no admite opciones con valor vacío: `''` («todas») se traduce a un centinela interno.
- * - Mientras el listbox está abierto, reka-ui deja el resto de la página con `aria-hidden` pero con
- *   elementos aún enfocables (axe: aria-hidden-focus). El fondo se marca `inert`, que es lo que ocurre de
- *   hecho: el foco queda atrapado en el listbox (ADR 0004).
+ * - Con el listbox abierto el fondo queda `inert` (ver `useInertWhileOpen`).
  */
 defineOptions({ inheritAttrs: false });
 const props = defineProps<{ items: { label: string; value: string | number }[] }>();
@@ -23,11 +22,7 @@ const shown = computed({
   set: (v: string | number) => (model.value = v === EMPTY ? '' : v),
 });
 
-const appRoot = () => document.getElementById('app');
-function onOpen(open: boolean): void {
-  appRoot()?.toggleAttribute('inert', open);
-}
-onBeforeUnmount(() => appRoot()?.removeAttribute('inert'));
+const onOpen = useInertWhileOpen();
 </script>
 
 <template>
