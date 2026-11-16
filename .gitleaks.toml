@@ -9,8 +9,7 @@ useDefault = true
 [[allowlists]]
 description = "Contraseñas ficticias de tests y fixtures e2e"
 condition = "AND"
-regexTarget = "match"
-rules = ["generic-api-key"]
+targetRules = ["generic-api-key"]
 paths = [
   '''.*\.test\.ts$''',
   '''e2e/tests/.*''',

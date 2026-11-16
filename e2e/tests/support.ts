@@ -9,7 +9,14 @@ export const ADMIN = {
 export const STRONG_PASSWORD = 'violeta-cobre-nube-87';
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 
+/**
+ * axe mide el color renderizado: en mitad de una transición (p. ej. el fundido de un mensaje) lee tonos
+ * intermedios y da falsos positivos de contraste. Se congelan transiciones y animaciones antes de medir.
+ */
 export async function expectNoA11yViolations(page: Page): Promise<void> {
+  await page.addStyleTag({
+    content: '*, *::before, *::after { transition: none !important; animation: none !important; }',
+  });
   const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
   expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
 }
