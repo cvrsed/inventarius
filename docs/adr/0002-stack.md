@@ -34,15 +34,13 @@ pg-boss 12.38.2 · tsx 4.23.15 · vitest 5.1.0 · testcontainers / @testcontaine
 ### Frontend (`apps/web`)
 
 vue 3.5.45 · vite 8.3.8 · @vitejs/plugin-vue 6.0.11 · vue-router 5.5.1 · pinia 4.1.0 · vue-i18n 11.4.20 ·
-@tanstack/vue-query 5.107.1 · **primevue 4.5.5** · @primeuix/themes 2.0.3 · tailwindcss 4.3.5 (+ @tailwindcss/vite) ·
-tailwindcss-primeui 0.6.1 · primeicons 8.0.2 · vue-tsc 3.3.14 · @vue/test-utils 2.6.0 · jsdom 31.0.1.
+@tanstack/vue-query 5.107.1 · **@nuxt/ui 4.12.0** (MIT; incluye reka-ui 2.11.0 y tailwind-variants) · tailwindcss 4.3.5 ·
+@iconify-json/lucide 1.2.155 (ISC) · @iconify/vue 5.0.5 · vue-tsc 3.3.14 · @vue/test-utils 2.6.0 · jsdom 31.0.1.
 
-PrimeVue se queda en 4.x como pide el requerimiento y el ADR 0003, aunque exista la 5.x (Q2).
-`primeicons` es el set de íconos oficial de PrimeVue y quedó **aceptado** como parte del stack (decisión de Rodrigo);
-figura en la lista de la sección 7.2 de `docs/requirements.md`.
-
-PrimeVue 5.0.x es estable en npm, pero su licencia dejó de ser MIT: exige clave y pago según el tamaño de la
-organización. Mientras Rodrigo y la empresa cliente no lo decidan, se mantiene 4.5.5 (MIT). Detalle en Q2.
+La UI pasó de PrimeVue 4.5.5 a Nuxt UI v4 el 2026-11-16 porque PrimeVue 5 exige licencia con clave: ver
+[ADR 0004](0004-ui-nuxt-ui-v4.md). Se fijó la 4.12.0 y no la 4.12.2 (la última) porque esta se publicó el mismo día
+y queda bajo la política de antigüedad mínima de pnpm. `primeicons` ya no se usa: los íconos son Lucide, empaquetados
+en el build. Nuxt UI es una dependencia de la lista 7.2 del requerimiento.
 
 ### TypeScript 7
 
@@ -57,7 +55,7 @@ lefthook 2.2.2 · @playwright/test 1.65.1 · @axe-core/playwright 4.14.0 · @vit
 
 ## Decisiones de construcción
 
-- **`packages/shared` exporta con condiciones**: `source` (TS fuente, usado por tsx, Vite/Vitest y `tsc`) y `default`
+- **`packages/shared` exporta con condiciones**: `inventarius-source` (TS fuente, usado por tsx, Vite/Vitest y `tsc`) y `default`
   (`dist/`, JS compilado, usado por Node en producción). Así no hay que compilar `shared` en el ciclo de desarrollo.
 - **Migraciones**: Drizzle (SQL versionado en `apps/api/drizzle`) más instalación del esquema `pgboss` con el
   usuario migrador. La API y el worker corren con `inventarius_app` (solo DML) y con `migrate: false`.
@@ -66,5 +64,5 @@ lefthook 2.2.2 · @playwright/test 1.65.1 · @axe-core/playwright 4.14.0 · @vit
 
 ## Consecuencias
 
-- Subir una versión mayor (PrimeVue 5, TypeScript 7) es una tarea explícita, con su propio PR.
+- Subir una versión mayor (Nuxt UI 5, TypeScript 7) es una tarea explícita, con su propio PR.
 - pnpm 12 y Node 26 son muy recientes; si un contribuyente usa otra versión, `engine-strict` lo avisa.
