@@ -3,7 +3,7 @@
 ## Fuente de verdad
 - `docs/requirements.md`: requerimiento y diseño del MVP. Si algo no está ahí, no se inventa:
   se anota en `docs/open-questions.md` con la decisión provisional tomada y se sigue.
-- `docs/adr/`: decisiones de arquitectura. La 0003 (UI con PrimeVue styled, sin Volt) ya está tomada.
+- `docs/adr/`: decisiones de arquitectura. La 0004 (UI con Nuxt UI v4, MIT) reemplaza a la 0003 (PrimeVue); ya está tomada.
 - `docs/progress.md`: estado de avance. Se actualiza al cerrar cada tarea relevante y cada fase.
 
 ## Alcance
@@ -32,8 +32,9 @@
 - `process.env` solo en `core/config`, validado con Zod al arrancar.
 - TSDoc en funciones públicas de servicios y adaptadores. Comentarios solo para explicar decisiones no obvias.
   Nada de código comentado.
-- UI: PrimeVue en modo styled, tema propio por design tokens (`definePreset`). No copiar componentes de la librería.
-  Tailwind solo para layout y espaciado.
+- UI: Nuxt UI v4 en modo Vue + Vite, tema propio por design tokens en `apps/web/src/theme` (`theme.ts` y `theme.css`).
+  No copiar componentes de la librería. Tailwind solo para layout y espaciado. Íconos Lucide empaquetados en el build
+  (nunca pedirlos en runtime a otro dominio). Ninguna dependencia de PrimeTek (PrimeVue, Volt): su licencia exige clave.
 - Todo texto de UI por i18n (es-CL). Toda vista revisada en 360 px.
 
 ## Al cerrar una fase

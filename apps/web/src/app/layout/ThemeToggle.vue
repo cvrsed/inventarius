@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import Button from 'primevue/button';
+import UButton from '@nuxt/ui/components/Button.vue';
 import { useI18n } from 'vue-i18n';
 import { useThemeStore } from '@/features/theme/useThemeStore';
 
@@ -8,13 +8,11 @@ const theme = useThemeStore();
 </script>
 
 <template>
-  <Button
-    class="app-touch"
-    :icon="theme.isDark ? 'pi pi-sun' : 'pi pi-moon'"
+  <UButton
+    :icon="theme.isDark ? 'i-lucide-sun' : 'i-lucide-moon'"
     :aria-label="theme.isDark ? t('theme.toLight') : t('theme.toDark')"
-    severity="secondary"
-    text
-    rounded
+    color="neutral"
+    variant="ghost"
     @click="theme.toggle()"
   />
 </template>

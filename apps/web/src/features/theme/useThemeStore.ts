@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
 const STORAGE_KEY = 'inventarius.theme';
-const DARK_CLASS = 'app-dark';
+const DARK_CLASS = 'dark';
 
 function readStored(): 'light' | 'dark' | null {
   try {

@@ -86,9 +86,9 @@ Cada requerimiento tiene ID para trazarlo en issues, commits y tests (`RF-xx`).
 
 ### 4.1 Autenticación y usuarios
 
-- **RF-01** Login con email y contraseña; sesión por cookie segura; logout; expiración por inactividad configurable (por defecto 8 h).
+- **RF-01** Login con email y contraseña; sesión por cookie segura; logout; expiración por inactividad configurable (por defecto 8 h) y expiración absoluta configurable (por defecto 24 h) aunque haya actividad. Un job periódico de pg-boss, cada hora, purga las sesiones vencidas.
 - **RF-02** Primer arranque: un comando CLI (`pnpm --filter api cli create-admin`) crea el primer administrador. No existe registro público.
-- **RF-03** CRUD de usuarios (nombre, email, roles, activo/inactivo). Un usuario inactivo no puede entrar y sus sesiones se invalidan.
+- **RF-03** CRUD de usuarios (nombre, email, roles, activo/inactivo). Un usuario inactivo no puede entrar y sus sesiones se invalidan. Solo un administrador da de alta y edita el correo; nadie edita su propio correo (ni un administrador, lo hace otro); el comando CLI `update-email` lo cambia para cualquier usuario, incluido el único administrador, con actor `cli` en la auditoría. Un cambio de correo invalida las sesiones de esa persona y queda en auditoría con antes/después.
 - **RF-04** Cambio de contraseña propio; reseteo por un administrador (genera contraseña temporal de un uso, obliga a cambiarla al entrar). Sin correo en el MVP.
 - **RF-05** Bloqueo temporal tras intentos fallidos repetidos (por cuenta y por IP).
 
@@ -226,7 +226,7 @@ Los adaptadores se prueban contra dobles (fake gRPC server y mock HTTP) en CI, y
 
 | ID | Área | Requerimiento |
 | --- | --- | --- |
-| RNF-01 | UX/UI | Sistema de diseño único basado en PrimeVue en modo styled (tema Aura personalizado por design tokens; Tailwind v4 solo para layout y espaciado). Tokens de color, tipografía y espaciado centralizados; nada de estilos sueltos por vista. Modo claro y oscuro. |
+| RNF-01 | UX/UI | Sistema de diseño único basado en Nuxt UI v4 (tema propio por design tokens en `apps/web/src/theme`; Tailwind v4 solo para layout y espaciado; íconos Lucide empaquetados en el build). Tokens de color, tipografía y espaciado centralizados; nada de estilos sueltos por vista. Modo claro y oscuro. |
 | RNF-02 | Accesibilidad | WCAG 2.2 nivel AA: contraste, foco visible, navegación por teclado, labels en formularios, objetivos táctiles de al menos 44 px en móvil. Se valida con axe en los tests e2e. |
 | RNF-03 | Responsivo | Mobile-first. Puntos de quiebre Tailwind estándar; probado en 360, 768 y 1280 px. |
 | RNF-04 | Patrones de UX | Estados vacíos, de carga (skeleton) y de error en cada vista. Confirmación solo en acciones destructivas. Feedback de cada acción (toast). Mensajes de error accionables, sin jerga técnica. |
@@ -278,13 +278,13 @@ Regla: se fija la versión exacta en la Fase 0 con el lockfile y se registra en 
 | Gestor de paquetes | pnpm (fijado con `packageManager` + corepack), workspaces | Monorepo, lockfile estricto |
 | Lenguaje | TypeScript estricto en front, back y paquete compartido | Tipos de punta a punta |
 | Frontend | Vue 3 (Composition API, `<script setup>`), Vite, Vue Router, Pinia, vue-i18n, TanStack Query (Vue) | Recomendación de Carlos (Zensi) + caché y estados de carga sin código repetido |
-| UI | PrimeVue 4.x en modo styled, tema Aura personalizado con `definePreset`; Tailwind CSS v4 + `tailwindcss-primeui` solo para layout | Reemplaza a Volt, propuesto por Carlos (ver 7.3) |
+| UI | Nuxt UI v4 (MIT) en modo Vue + Vite, sin Nuxt (`@nuxt/ui/vite`), tema propio por design tokens; Tailwind CSS v4 solo para layout; íconos Lucide (`@iconify-json/lucide`) empaquetados en el build | Reemplaza a Volt, propuesto por Carlos, y a PrimeVue, que desde la v5 exige licencia con clave (ver 7.3 y ADR 0004) |
 | Backend | Fastify 5.x con `fastify-type-provider-zod`, `@fastify/helmet`, `@fastify/rate-limit`, `@fastify/cookie`, `@fastify/csrf-protection`, `@fastify/swagger`, `@fastify/under-pressure` | Recomendación de Carlos; Fastify 6 sigue en alpha, no se usa |
 | Validación | Zod en `packages/shared`, mismo esquema en API y formularios | Una sola fuente de verdad |
 | Contrato API | OpenAPI 3.1 generado desde las rutas; cliente del front tipado generado desde ese OpenAPI | El front no puede desalinearse de la API |
 | Base de datos | PostgreSQL 18 | Recomendación de Carlos |
 | ORM / migraciones | Drizzle ORM + drizzle-kit (migraciones SQL versionadas en el repo) | SQL explícito, tipos, migraciones revisables |
-| Cola de jobs | pg-boss (sobre el mismo Postgres) | Sin Redis: un servicio menos |
+| Cola de jobs | pg-boss (sobre el mismo Postgres); primer uso: purga horaria de sesiones vencidas | Sin Redis: un servicio menos |
 | Cliente ChirpStack | `@chirpstack/chirpstack-api` + `@grpc/grpc-js` | Cliente oficial, gRPC recomendado |
 | Cliente TTN | `fetch` nativo (undici) con capa propia tipada | API REST simple |
 | Cripto | `argon2` (hash de contraseñas, argon2id), `node:crypto` AES-256-GCM | Estándares actuales |
@@ -293,25 +293,24 @@ Regla: se fija la versión exacta en la Fase 0 con el lockfile y se registra en 
 | Contenedores | Docker + Compose, Caddy como proxy y servidor estático | Paridad dev/prod |
 | Calidad | ESLint, Prettier, commitlint, lefthook (git hooks), Renovate |  |
 
-### 7.3 Decisión de UI: PrimeVue styled en lugar de Volt
+### 7.3 Decisión de UI: Nuxt UI v4 (reemplaza a Volt y a PrimeVue)
 
-Se registra como `docs/adr/0003-ui-primevue-styled.md`.
+Se registra como `docs/adr/0004-ui-nuxt-ui-v4.md`, que reemplaza a `docs/adr/0003-ui-primevue-styled.md`.
 
-**Contexto.** Carlos (Zensi) propuso Vue + Volt. Volt no es una librería que se instale: cada componente es un wrapper sobre PrimeVue sin estilos, con clases Tailwind, que se copia al repositorio con su CLI y desde ahí pasa a ser código propio.
+**Contexto.** Carlos (Zensi) propuso Vue + Volt; Volt copia los componentes al repositorio, por lo que pasan a ser código propio. La primera respuesta fue PrimeVue en modo styled (ADR 0003). Desde la versión 5, PrimeVue y todo PrimeTek (incluido Volt) exigen una licencia con clave: la versión gratuita solo cubre organizaciones chicas y se renueva cada año. Eso choca con RNF-08 (portabilidad a otras organizaciones).
 
-**Decisión.** Usar PrimeVue en modo styled, instalado por npm, con el tema Aura personalizado por design tokens. Tailwind v4 se mantiene para layout y espaciado. Se conservan Vue y la base de componentes PrimeVue de la propuesta original; solo cambia cómo se consumen.
+**Decisión.** Usar Nuxt UI v4 (MIT) en modo Vue + Vite, sin Nuxt, instalado por npm, con el tema propio por design tokens en `apps/web/src/theme`. Tailwind v4 se mantiene para layout y espaciado. Los íconos son Lucide, empaquetados en el build: nunca se piden en runtime a otro dominio, para mantener una CSP estricta.
 
 **Por qué.**
 
-1. **Actualizaciones.** Con Volt, cada corrección de PrimeTek (bugs, accesibilidad, seguridad) hay que aplicarla a mano sobre la copia de cada componente. Con el paquete npm, la actualización llega por Renovate, queda trabada en el lockfile y pasa por CI. Esto es exactamente lo que piden RNF-09 y RNF-10.
-2. **Código que mantenemos.** Volt agrega al repo decenas de componentes de terceros que pasan a ser responsabilidad del proyecto. Con PrimeVue por npm, el proyecto mantiene solo su código y un preset de tema.
-3. **Sistema de diseño.** Los design tokens de PrimeVue centralizan color, tipografía, espaciado y modo oscuro en un solo archivo. Cumple RNF-01 sin tocar el interior de los componentes.
-4. **Trabajo con Claude Code.** Sin componentes copiados no hay tentación de "arreglar" la librería en el repo: menos deriva y diffs más limpios de revisar.
-5. **Traspaso.** Si la app pasa a otra infraestructura u otro equipo, recibe dependencias declaradas y versionadas, no un fork de una librería.
+1. **Licencia.** MIT en Nuxt UI y en sus bases (`reka-ui`, Tailwind): cualquier organización puede instalar Inventarius sin condiciones de un tercero.
+2. **Actualizaciones.** Paquete npm: las correcciones llegan por Renovate, quedan trabadas en el lockfile y pasan por CI (RNF-09, RNF-10). Sin componentes copiados.
+3. **Sistema de diseño.** Los tokens centralizan color, tipografía, radios y modo oscuro en un solo lugar (RNF-01).
+4. **Accesibilidad.** Base `reka-ui`; los e2e con axe cubren claro/oscuro, escritorio y 360 px, con diálogos y selects abiertos (RNF-02).
 
-**Costos aceptados.** Menos control fino del markup que con Volt, y el aspecto tiende al de PrimeVue si no se trabaja el preset. El tema styled agrega algo de CSS en runtime. Para casos puntuales se usa la API pass-through (`pt`) sin copiar componentes.
+**Costos aceptados.** La tabla es menos completa que el `DataTable` de PrimeVue: paginación y filtros del lado servidor se arman sobre `UTable`/TanStack. Más superficie de dependencias.
 
-**Reversibilidad.** Alta. Volt usa los mismos componentes PrimeVue por debajo, así que si algún día se necesita control total sobre uno, se puede migrar ese componente a Volt sin rehacer la app.
+**Reversibilidad.** Media: cambiar de librería afecta plantillas y tema, no la lógica ni la API.
 
 ## 8. Modelo de datos
 
@@ -429,11 +428,11 @@ inventarius/
 │   │   │   ├── server.ts    # entrypoint HTTP
 │   │   │   └── worker.ts    # entrypoint worker
 │   │   └── drizzle/         # migraciones SQL versionadas
-│   └── web/                 # Vue + PrimeVue
+│   └── web/                 # Vue + Nuxt UI
 │       └── src/
 │           ├── app/         # router, layout, guards, i18n
 │           ├── features/    # una carpeta por funcionalidad (assets, lns, users...)
-│           ├── theme/       # preset PrimeVue (design tokens) y pass-through
+│           ├── theme/       # design tokens de Nuxt UI (theme.ts, theme.css)
 │           ├── shared/      # cliente API generado, composables, utilidades
 │           └── styles/      # tokens y Tailwind
 ├── packages/
@@ -575,7 +574,7 @@ Cinco fases. Cada una termina en un PR revisado y un tag de pre-release (`v0.1.0
 
 | Fase | Contenido | Criterio de aceptación |
 | --- | --- | --- |
-| F0 Fundaciones | Monorepo pnpm, TS estricto, lint/format, hooks, `compose.yml` de desarrollo, Fastify con config validada, logger, health, métricas, Drizzle con primera migración, esqueleto Vue + PrimeVue (tema propio) + Tailwind + i18n + layout responsivo, Vitest y Playwright funcionando, CI completo, ADRs 0001-0003, `CLAUDE.md` | `pnpm i && docker compose up` levanta todo; CI verde; `/api/health/ready` responde; una página vacía con layout pasa axe en móvil y escritorio |
+| F0 Fundaciones | Monorepo pnpm, TS estricto, lint/format, hooks, `compose.yml` de desarrollo, Fastify con config validada, logger, health, métricas, Drizzle con primera migración, esqueleto Vue + Nuxt UI (tema propio) + Tailwind + i18n + layout responsivo, Vitest y Playwright funcionando, CI completo, ADRs 0001-0004, `CLAUDE.md` | `pnpm i && docker compose up` levanta todo; CI verde; `/api/health/ready` responde; una página vacía con layout pasa axe en móvil y escritorio |
 | F1 Identidad | RF-01 a RF-05, roles y permisos sembrados, decorador de permisos, sesiones, CSRF, rate limit, auditoría (RF-30, RF-31), gestión de usuarios y roles en UI | Tests de permisos por rol en todas las rutas; test que detecta rutas sin permiso; login, bloqueo y expiración probados en e2e |
 | F2 Inventario | Catálogo RF-10 a RF-14, activos RF-20 a RF-26, historial, vistas móviles RF-40 a RF-42 | CRUD completo e2e en escritorio y móvil; listado con 10.000 activos sembrados dentro del objetivo de rendimiento |
 | F3 LoRaWAN | Extensión LoRaWAN del activo, cifrado de claves, perfiles LNS RF-50 a RF-52, adaptadores ChirpStack y TTN, cola pg-boss y worker, RF-60 a RF-65 | Registro y baja OK contra ChirpStack de prueba en Docker; contra TTN con mock en CI y con una aplicación de prueba real en el job manual; compensación probada simulando fallo en cada paso |
@@ -650,7 +649,8 @@ Además, `.claude/settings.json` del repo restringe comandos: permite `pnpm`, `d
 | --- | --- |
 | Cargar AppKeys reales de dispositivos de clientes de Zensi en un servidor personal | Hasta acordarlo con Zensi, usar solo dispositivos y aplicaciones de prueba |
 | Diferencias de API entre versiones de ChirpStack (campos de claves en 1.0.x vs 1.1) | Prueba de integración contra la versión exacta que se use; versión del LNS anotada en el perfil |
-| Una actualización de PrimeVue rompe personalizaciones del tema | Personalizar solo por design tokens y pass-through, nunca copiando componentes; actualizaciones por Renovate con e2e y axe en CI |
+| Una actualización de Nuxt UI rompe personalizaciones del tema | Personalizar solo por design tokens, nunca copiando componentes; actualizaciones por Renovate con e2e y axe en CI |
+| La librería de UI cambia a una licencia con clave o de pago (ya ocurrió con PrimeVue 5) | Solo dependencias MIT/ISC/Apache en la UI; verificar la licencia al subir versiones mayores; la UI usa componentes `U*` en pocos lugares y la lógica no depende de ella (ADR 0004, reversibilidad) |
 | Claude Code se sale del alcance o acumula deuda | Fases cortas, PR por fase, DoD, revisión humana y snapshots de la VM |
 | Homelab sin redundancia (un solo host, corte de luz o falla de disco) | Aceptado en el MVP; respaldos diarios fuera de la VM y portabilidad probada |
 | Pérdida de `APP_ENCRYPTION_KEY` | Copia en gestor de contraseñas; procedimiento de rotación documentado |

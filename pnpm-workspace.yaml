@@ -11,6 +11,8 @@ allowBuilds:
   protobufjs: false
   ssh2: false
   vue-demi: false
+  # argon2 trae binarios precompilados (prebuilds/); no hace falta compilar en la instalación.
+  argon2: false
 
 # RNF-09: versiones exactas siempre.
 savePrefix: ''

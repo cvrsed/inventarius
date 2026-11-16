@@ -8,5 +8,11 @@ export function createAppI18n() {
     locale: 'es-CL',
     fallbackLocale: 'es-CL',
     messages: { 'es-CL': messages },
+    // Las fechas se guardan en UTC y se muestran en la zona horaria de la operación (RNF-05).
+    datetimeFormats: {
+      'es-CL': {
+        long: { dateStyle: 'short', timeStyle: 'medium', timeZone: 'America/Santiago' },
+      },
+    },
   });
 }

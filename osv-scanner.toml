@@ -15,3 +15,8 @@ reason = "glob transitivo de herramientas de dev; la CLI de glob con -c no se us
 id = "GHSA-g3hv-75wg-m249"
 ignoreUntil = 2027-02-16
 reason = "minimatch transitivo de herramientas de dev; sin entrada no confiable"
+
+[[IgnoredVulns]]
+id = "GHSA-g7r4-m6w7-qqqr"
+ignoreUntil = 2027-02-16
+reason = "esbuild 0.27.7 transitivo de @nuxt/ui > @nuxt/fonts > fontless; solo el servidor de desarrollo en Windows, y el plugin de fuentes no se usa"
