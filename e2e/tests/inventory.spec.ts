@@ -21,6 +21,8 @@ async function pick(page: Page, scope: ReturnType<Page['locator']>, label: RegEx
   await scope.getByRole('button', { name: label }).click();
   await page.getByPlaceholder(/Buscar…/).fill(option.slice(0, 12));
   await page.getByRole('option', { name: option }).click();
+  // Hasta que el panel anterior se cierre sigue en el DOM con su propio buscador: se espera antes de seguir.
+  await expect(page.getByRole('listbox')).toBeHidden();
 }
 
 /** La tabla (escritorio) y las tarjetas (móvil) existen a la vez; solo una se ve. */
