@@ -278,7 +278,7 @@ Regla: se fija la versión exacta en la Fase 0 con el lockfile y se registra en 
 | Gestor de paquetes | pnpm (fijado con `packageManager` + corepack), workspaces | Monorepo, lockfile estricto |
 | Lenguaje | TypeScript estricto en front, back y paquete compartido | Tipos de punta a punta |
 | Frontend | Vue 3 (Composition API, `<script setup>`), Vite, Vue Router, Pinia, vue-i18n, TanStack Query (Vue) | Recomendación de Carlos (Zensi) + caché y estados de carga sin código repetido |
-| UI | PrimeVue 4.x en modo styled, tema Aura personalizado con `definePreset`; Tailwind CSS v4 + `tailwindcss-primeui` solo para layout | Reemplaza a Volt, propuesto por Carlos (ver 7.3) |
+| UI | PrimeVue 4.x en modo styled, tema Aura personalizado con `definePreset`; Tailwind CSS v4 + `tailwindcss-primeui` solo para layout; `primeicons` como set de íconos | Reemplaza a Volt, propuesto por Carlos (ver 7.3) |
 | Backend | Fastify 5.x con `fastify-type-provider-zod`, `@fastify/helmet`, `@fastify/rate-limit`, `@fastify/cookie`, `@fastify/csrf-protection`, `@fastify/swagger`, `@fastify/under-pressure` | Recomendación de Carlos; Fastify 6 sigue en alpha, no se usa |
 | Validación | Zod en `packages/shared`, mismo esquema en API y formularios | Una sola fuente de verdad |
 | Contrato API | OpenAPI 3.1 generado desde las rutas; cliente del front tipado generado desde ese OpenAPI | El front no puede desalinearse de la API |
