@@ -17,7 +17,7 @@ const envSchema = z.object({
     .number()
     .int()
     .positive()
-    .default(7 * 24 * 3600),
+    .default(24 * 3600),
   SESSION_COOKIE_SECURE: z.enum(['true', 'false']).optional(),
   LOGIN_MAX_FAILURES_PER_ACCOUNT: z.coerce.number().int().positive().default(5),
   LOGIN_MAX_FAILURES_PER_IP: z.coerce.number().int().positive().default(20),

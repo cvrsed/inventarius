@@ -65,7 +65,7 @@ Con Docker de desarrollo: `docker compose run --rm -it api pnpm --filter @invent
 
 ## Variables de sesión y bloqueo (todas opcionales)
 
-`SESSION_IDLE_TIMEOUT_SECONDS` (8 h), `SESSION_ABSOLUTE_TIMEOUT_SECONDS` (7 d), `SESSION_COOKIE_SECURE`
+`SESSION_IDLE_TIMEOUT_SECONDS` (8 h), `SESSION_ABSOLUTE_TIMEOUT_SECONDS` (24 h), `SESSION_COOKIE_SECURE`
 (por defecto `true` solo en producción; con `true` la cookie usa el prefijo `__Host-` y exige HTTPS),
 `LOGIN_MAX_FAILURES_PER_ACCOUNT` (5), `LOGIN_MAX_FAILURES_PER_IP` (20), `LOGIN_LOCK_BASE_SECONDS` (60),
 `LOGIN_LOCK_MAX_SECONDS` (1800), `LOGIN_RATE_LIMIT_PER_MINUTE` (20), `RATE_LIMIT_MAX_PER_MINUTE` (600).

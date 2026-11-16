@@ -13,7 +13,7 @@ Referencia: sección 10 del requerimiento. Este documento crece por fase; aquí 
 
 - Token aleatorio de 256 bits en cookie `HttpOnly`, `SameSite=Strict`, `Secure` y prefijo `__Host-` (producción).
 - En la BD solo se guarda el SHA-256 del token. Cada login crea una sesión nueva (rotación).
-- Expiración inactiva (8 h por defecto) y absoluta (7 d). Se invalidan al desactivar al usuario, al resetear o cambiar
+- Expiración inactiva (8 h por defecto) y absoluta (24 h). Se invalidan al desactivar al usuario, al resetear o cambiar
   su contraseña.
 
 ## CSRF, fuerza bruta y límites

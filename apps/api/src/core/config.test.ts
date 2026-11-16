@@ -36,7 +36,7 @@ describe('loadConfig', () => {
   it('trae valores seguros de sesión y bloqueo por defecto', () => {
     const c = loadConfig(valid);
     expect(c.session.idleTimeoutSeconds).toBe(8 * 3600);
-    expect(c.session.absoluteTimeoutSeconds).toBe(7 * 24 * 3600);
+    expect(c.session.absoluteTimeoutSeconds).toBe(24 * 3600);
     expect(c.session.cookieSecure).toBe(false);
     expect(c.login.maxFailuresPerAccount).toBe(5);
     expect(c.login.maxFailuresPerIp).toBe(20);

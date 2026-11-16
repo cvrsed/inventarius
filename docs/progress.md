@@ -79,7 +79,7 @@
   falsos positivos en contraseñas ficticias de tests (allowlist por ruta); axe leyendo colores a mitad de una transición.
 - **Decisiones provisionales que requieren revisión de Rodrigo** (detalle en `docs/open-questions.md`): PrimeVue 4.x en vez de 5 (Q2),
   TypeScript 6 en vez de 7 (Q3), `primeicons` como dependencia nueva (Q9), vulnerabilidades ignoradas (Q11, Q22),
-  sesión absoluta de 7 días (Q15), umbrales de bloqueo (Q16), roles semilla no borrables ni renombrables (Q13), correo no editable (Q18).
+  sesión absoluta de 24 h (Q15, decidida por Rodrigo), umbrales de bloqueo (Q16), roles semilla no borrables ni renombrables (Q13), correo no editable (Q18).
 - **Bugs reales que encontraron las pruebas** (corregidos): `--ignore-scripts` dejaba un `pnpm` no ejecutable; `up --exit-code-from`
   abortaba con servicios de un solo uso; contraste AA en mensajes de Aura; `aria-expanded` inválido en el input de contraseña de PrimeVue;
   claves i18n con punto que no resolvían; ruta `/api/metrics` visible tras Caddy.
