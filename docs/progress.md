@@ -214,5 +214,8 @@ Catálogo → Activos → Nuevo activo → Asignar/Devolver → Dar de baja/Rest
   (Q26), no cambiar estado ni dar de baja un activo asignado (Q27), formato del CSV (Q30), sin service worker (Q31).
 - **Pendiente de Rodrigo**: agregar `ASSET_TAG_PREFIX=INV` a `.env.example` (la sesión no puede leer ni editar ese archivo, Q32);
   instalar la app en un celular real (Q31); repetir la medición de rendimiento contra el despliegue real (Q33).
-- **CI**: el PR corre por primera vez los jobs de esta rama; el estado se anota en el PR.
+- **CI**: el PR #5 termina con todos los jobs en verde (lint/typecheck, unitarios en Node 26 y 24, integración con cobertura, e2e
+  Playwright + axe en Docker, auditoría + OSV + gitleaks, build de imágenes y Trivy). Dos cosas que solo se vieron en CI y se
+  corrigieron: el umbral de cobertura (80 %) del paquete compartido con los esquemas nuevos, y un selector de e2e que dependía
+  de que el panel anterior ya estuviera cerrado (se verificó con tres repeticiones del spec).
 - **Siguiente paso sugerido**: revisar y mergear el PR de F2; empezar F3 (LoRaWAN) solo con instrucción explícita.
