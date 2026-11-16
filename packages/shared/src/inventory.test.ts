@@ -6,7 +6,20 @@ import {
   createAssetSchema,
   updateAssetSchema,
 } from './assets.js';
-import { createLocationSchema, createModelSchema, updateStatusLabelSchema } from './catalog.js';
+import {
+  catalogListQuerySchema,
+  createCategorySchema,
+  createLocationSchema,
+  createModelSchema,
+  updateCategorySchema,
+  updateLocationSchema,
+  updateManufacturerSchema,
+  updateModelSchema,
+  updateStatusLabelSchema,
+} from './catalog.js';
+import { assetListQuerySchema } from './assets.js';
+import { pageOf } from './identity.js';
+import { z } from 'zod';
 
 const id = '018f0000-0000-7000-8000-000000000001';
 const id2 = '018f0000-0000-7000-8000-000000000002';
@@ -81,5 +94,56 @@ describe('esquemas del catálogo (RF-10 a RF-13)', () => {
   it('estado: el tipo debe ser uno de los cuatro', () => {
     expect(updateStatusLabelSchema.safeParse({ kind: 'deployable' }).success).toBe(true);
     expect(updateStatusLabelSchema.safeParse({ kind: 'otro' }).success).toBe(false);
+  });
+
+  it('las ediciones exigen al menos un campo', () => {
+    for (const schema of [
+      updateCategorySchema,
+      updateManufacturerSchema,
+      updateModelSchema,
+      updateLocationSchema,
+      updateStatusLabelSchema,
+    ]) {
+      expect(schema.safeParse({}).success).toBe(false);
+    }
+    expect(updateCategorySchema.safeParse({ active: false }).success).toBe(true);
+  });
+
+  it('un texto opcional vacío se guarda como null y la categoría parte sin extensión', () => {
+    expect(updateLocationSchema.parse({ address: '   ' })).toEqual({ address: null });
+    expect(updateLocationSchema.parse({ address: ' Calle 1 ' })).toEqual({ address: 'Calle 1' });
+    expect(updateAssetSchema.parse({ serial: ' SN-1 ' })).toEqual({ serial: 'SN-1' });
+    expect(createCategorySchema.parse({ name: 'X' }).extension).toBe('none');
+  });
+
+  it('el filtro active de los listados llega como booleano', () => {
+    expect(catalogListQuerySchema.parse({ active: 'true' }).active).toBe(true);
+    expect(catalogListQuerySchema.parse({ active: 'false' }).active).toBe(false);
+    expect(catalogListQuerySchema.parse({}).active).toBeUndefined();
+    expect(catalogListQuerySchema.safeParse({ active: 'quizá' }).success).toBe(false);
+  });
+});
+
+describe('consulta del listado de activos', () => {
+  it('acepta un orden válido y rechaza uno desconocido', () => {
+    expect(assetListQuerySchema.safeParse({ sort: '-purchaseDate' }).success).toBe(true);
+    expect(assetListQuerySchema.safeParse({ sort: 'otraCosa' }).success).toBe(false);
+  });
+
+  it('pagina con tamaño máximo de 100 (RNF-06)', () => {
+    expect(assetListQuerySchema.parse({}).pageSize).toBe(25);
+    expect(assetListQuerySchema.safeParse({ pageSize: 101 }).success).toBe(false);
+  });
+});
+
+describe('pageOf', () => {
+  it('envuelve un esquema en { data, meta }', () => {
+    const schema = pageOf(z.object({ id: z.string() }));
+    expect(
+      schema.safeParse({ data: [{ id: 'a' }], meta: { page: 1, pageSize: 25, total: 1 } }).success,
+    ).toBe(true);
+    expect(
+      schema.safeParse({ data: [{ id: 1 }], meta: { page: 1, pageSize: 25, total: 1 } }).success,
+    ).toBe(false);
   });
 });
