@@ -36,6 +36,20 @@
       "when": 1794844872392,
       "tag": "0004_audit_actor_label",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794859886509,
+      "tag": "0005_inventory",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794859892849,
+      "tag": "0006_seed_inventory",
+      "breakpoints": true
     }
   ]
 }

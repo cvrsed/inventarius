@@ -120,6 +120,7 @@ export const messages = {
     'asset:write': 'Crear y editar activos',
     'asset:checkout': 'Asignar y devolver activos',
     'asset:delete': 'Dar de baja activos',
+    'asset:restore': 'Restaurar activos dados de baja',
     'catalog:write': 'Editar el catálogo',
     'lorawan:read': 'Ver datos LoRaWAN',
     'lorawan:register': 'Registrar en el LNS',

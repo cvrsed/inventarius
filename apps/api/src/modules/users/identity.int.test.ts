@@ -1,3 +1,4 @@
+import { PERMISSIONS } from '@inventarius/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   STRONG_PASSWORD,
@@ -449,7 +450,7 @@ describe('roles y permisos (sección 3)', () => {
 
   it('lista el catálogo fijo de permisos', async () => {
     const res = await admin.get('/api/v1/permissions');
-    expect(res.json()).toHaveLength(12);
+    expect(res.json()).toHaveLength(PERMISSIONS.length);
   });
 });
 
