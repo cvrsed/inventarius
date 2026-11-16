@@ -6,7 +6,7 @@ import UButton from '@nuxt/ui/components/Button.vue';
 import UIcon from '@nuxt/ui/components/Icon.vue';
 import UInput from '@nuxt/ui/components/Input.vue';
 import UTable from '@nuxt/ui/components/Table.vue';
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '@/features/auth/useAuthStore';
 import { useListQuery } from '@/shared/list/useListQuery';
@@ -24,9 +24,13 @@ const { data, isPending, isFetching, isError, refetch } = useAssetsList(state);
 
 const search = ref(query.value.q);
 let timer: ReturnType<typeof setTimeout> | undefined;
+onBeforeUnmount(() => clearTimeout(timer));
 watch(search, (value) => {
   clearTimeout(timer);
-  timer = setTimeout(() => void update({ q: value.trim() }), 300);
+  // Sin cambio real no se toca la URL: así un «atrás» del navegador no se convierte en una búsqueda nueva.
+  timer = setTimeout(() => {
+    if (value.trim() !== query.value.q) void update({ q: value.trim() });
+  }, 300);
 });
 watch(
   () => query.value.q,

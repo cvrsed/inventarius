@@ -43,7 +43,15 @@ const labels = {
 const assignee = useAssigneeById(toRef(() => props.state.assignedUserId));
 
 const selected = (key: RefKey): RemoteOption | null => labels[key].data.value ?? null;
-const onRef = (key: RefKey, v: RemoteOption | null) => emit('change', { [key]: v?.id ?? '' });
+/**
+ * Solo avisa si el filtro realmente cambió: al cargar una URL compartida el selector puede emitir su valor
+ * inicial, y eso no debe mandar al usuario a la página 1.
+ */
+function change(key: RefKey | 'assignedUserId', v: RemoteOption | null): void {
+  const next = v?.id ?? '';
+  if (next !== props.state[key]) emit('change', { [key]: next });
+}
+const onRef = (key: RefKey, v: RemoteOption | null) => change(key, v);
 
 const hasFilters = computed(
   () =>
@@ -83,9 +91,7 @@ const deletedItems = computed(() =>
         :fetcher="fetchAssignees"
         :placeholder="t('common.all')"
         clearable
-        @update:model-value="
-          (v: RemoteOption | null) => emit('change', { assignedUserId: v?.id ?? '' })
-        "
+        @update:model-value="(v: RemoteOption | null) => change('assignedUserId', v)"
       />
     </UFormField>
     <UFormField :label="t('assets.filterDeleted')" name="filter-deleted">

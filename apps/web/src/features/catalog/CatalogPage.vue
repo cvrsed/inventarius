@@ -5,7 +5,7 @@ import UButton from '@nuxt/ui/components/Button.vue';
 import UInput from '@nuxt/ui/components/Input.vue';
 import UTable from '@nuxt/ui/components/Table.vue';
 import { useToast } from '@nuxt/ui/composables/useToast';
-import { computed, ref, toRef, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, toRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 import { errorMessage } from '@/features/auth/errors';
@@ -36,9 +36,12 @@ const search = ref(query.value.q);
 watch(section, () => (search.value = ''));
 watch(search, (value) => {
   clearTimeout(timer);
-  timer = setTimeout(() => void update({ q: value.trim() }), 300);
+  timer = setTimeout(() => {
+    if (value.trim() !== query.value.q) void update({ q: value.trim() });
+  }, 300);
 });
 let timer: ReturnType<typeof setTimeout> | undefined;
+onBeforeUnmount(() => clearTimeout(timer));
 
 const { data, isPending, isFetching, isError, refetch } = useCatalogList(section, query);
 const { remove, update: patch } = useCatalogMutations(toRef(() => section.value));
