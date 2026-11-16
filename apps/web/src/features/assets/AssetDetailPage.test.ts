@@ -3,8 +3,9 @@ import type { createPinia } from 'pinia';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Permission } from '@inventarius/shared';
 import { router } from '@/app/router';
+import { useConfirm } from '@/shared/ui/useConfirm';
 import { useAuthStore } from '@/features/auth/useAuthStore';
-import { mockApi, pagePlugins } from '@/test-utils';
+import { jsonResponse, mockApi, pagePlugins } from '@/test-utils';
 import AssetDetailPage from './AssetDetailPage.vue';
 
 /** Los componentes montados se desmontan: comparten router y no deben seguir reaccionando a otros tests. */
@@ -44,8 +45,13 @@ const baseAsset = {
   updatedAt: '2026-11-16T12:00:00.000Z',
 };
 
-async function mountAsset(asset: Record<string, unknown>, permissions: Permission[]) {
-  mockApi({
+async function mountAsset(
+  asset: Record<string, unknown>,
+  permissions: Permission[],
+  extra: Parameters<typeof mockApi>[0] = {},
+) {
+  const fetchMock = mockApi({
+    ...extra,
     [`GET /api/v1/assets/${ID}`]: () => ({ ...baseAsset, ...asset }),
     [`GET /api/v1/assets/${ID}/history`]: () => ({
       data: [
@@ -80,7 +86,8 @@ async function mountAsset(asset: Record<string, unknown>, permissions: Permissio
   const wrapper = mount(AssetDetailPage, { global });
   mounted.push(wrapper);
   await flushPromises();
-  return wrapper;
+  Object.assign(wrapper, { fetchMock });
+  return wrapper as typeof wrapper & { fetchMock: typeof fetchMock };
 }
 
 const buttons = (w: Awaited<ReturnType<typeof mountAsset>>) =>
@@ -168,5 +175,40 @@ describe('AssetDetailPage (RF-41)', () => {
     expect(admin).not.toContain('Editar');
     const operator = buttons(await mountAsset(gone, ['asset:read', 'asset:write', 'asset:delete']));
     expect(operator).not.toContain('Restaurar');
+  });
+
+  it('restaurar pide confirmación y llama a la API', async () => {
+    const gone = { deleted: true, deleteReason: 'Robo', deletedAt: '2026-11-16T12:00:00.000Z' };
+    const w = await mountAsset(gone, ['asset:read', 'asset:restore'], {
+      [`POST /api/v1/assets/${ID}/restore`]: () => ({ ...baseAsset }),
+    });
+    await w
+      .findAll('button')
+      .find((b) => b.text() === 'Restaurar')!
+      .trigger('click');
+    const { state, close } = useConfirm();
+    expect(state.open).toBe(true);
+    await state.options!.accept();
+    close();
+    expect(w.fetchMock.mock.calls.some((c) => String(c[0]).endsWith('/restore'))).toBe(true);
+  });
+
+  it('asignar abre el diálogo de asignación', async () => {
+    const w = await mountAsset({}, ['asset:read', 'asset:checkout']);
+    await w
+      .findAll('button')
+      .find((b) => b.text() === 'Asignar')!
+      .trigger('click');
+    await flushPromises();
+    expect(document.body.textContent).toContain('Entrégalo a una persona');
+  });
+
+  it('un activo con error de carga ofrece reintentar', async () => {
+    mockApi({ [`GET /api/v1/assets/${ID}`]: () => jsonResponse({}, 500) });
+    await router.push(`/activos/${ID}`);
+    const w = mount(AssetDetailPage, { global: pagePlugins() });
+    mounted.push(w);
+    await flushPromises();
+    expect(w.text()).toContain('Reintentar');
   });
 });

@@ -199,7 +199,6 @@ const filtered = computed(
         <RouterLink
           :to="{ name: 'asset', params: { id: a.id } }"
           class="flex min-h-11 flex-col gap-1 rounded-lg border border-default bg-default p-3 no-underline hover:bg-elevated"
-          :aria-label="t('assets.cardLabel', { tag: a.assetTag })"
         >
           <span class="flex items-center justify-between gap-2">
             <span class="font-semibold text-highlighted">{{ a.assetTag }}</span>

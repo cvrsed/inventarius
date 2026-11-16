@@ -237,7 +237,6 @@ export const messages = {
       createdAt: 'Creación',
     },
     sortLabel: 'Ordenar',
-    cardLabel: 'Activo {tag}',
     deletedBadge: 'Dado de baja',
     unassigned: 'Sin asignar',
     noLocation: 'Sin ubicación',

@@ -2,8 +2,9 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Permission } from '@inventarius/shared';
 import { router } from '@/app/router';
+import { useConfirm } from '@/shared/ui/useConfirm';
 import { useAuthStore } from '@/features/auth/useAuthStore';
-import { mockApi, pagePlugins } from '@/test-utils';
+import { jsonResponse, mockApi, pagePlugins } from '@/test-utils';
 import CatalogPage from './CatalogPage.vue';
 
 /** Los componentes montados se desmontan: comparten router y no deben seguir reaccionando a otros tests. */
@@ -13,8 +14,14 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-async function mountSection(section: string, data: unknown[], permissions: Permission[]) {
+async function mountSection(
+  section: string,
+  data: unknown[],
+  permissions: Permission[],
+  extra: Parameters<typeof mockApi>[0] = {},
+) {
   const fetchMock = mockApi({
+    ...extra,
     [`GET /api/v1/${section === 'statuses' ? 'status-labels' : section}`]: () => ({
       data,
       meta: { page: 1, pageSize: 25, total: data.length },
@@ -102,5 +109,64 @@ describe('CatalogPage (RF-10 a RF-14)', () => {
     await flushPromises();
     const urls = fetchMock.mock.calls.map((c) => String(c[0]));
     expect(urls.some((u) => u.includes('active=false') && u.includes('q=acme'))).toBe(true);
+  });
+
+  it('desactivar y activar mandan PATCH con la versión', async () => {
+    const item = status({});
+    const { wrapper, fetchMock } = await mountSection(
+      'statuses',
+      [item],
+      ['asset:read', 'catalog:write'],
+      {
+        [`PATCH /api/v1/status-labels/${item.id}`]: () => ({ ...item, active: false }),
+      },
+    );
+    await wrapper.get('button[aria-label="Desactivar Disponible"]').trigger('click');
+    await flushPromises();
+    const call = fetchMock.mock.calls.find((c) => c[1]?.method === 'PATCH')!;
+    expect(JSON.parse(String(call[1]!.body))).toEqual({ active: false });
+    expect((call[1]!.headers as Record<string, string>)['if-match']).toBe(`"${item.updatedAt}"`);
+  });
+
+  it('eliminar pide confirmación y luego llama a DELETE', async () => {
+    const item = status({});
+    const { wrapper, fetchMock } = await mountSection(
+      'statuses',
+      [item],
+      ['asset:read', 'catalog:write'],
+      {
+        [`DELETE /api/v1/status-labels/${item.id}`]: () => jsonResponse(null, 204),
+      },
+    );
+    await wrapper.get('button[aria-label="Eliminar Disponible"]').trigger('click');
+    const { state, close } = useConfirm();
+    expect(state.open).toBe(true);
+    expect(state.options?.danger).toBe(true);
+    expect(state.options?.message).toContain('Disponible');
+    await state.options!.accept();
+    close();
+    expect(fetchMock.mock.calls.some((c) => c[1]?.method === 'DELETE')).toBe(true);
+  });
+
+  it('el botón de alta abre el formulario de la sección', async () => {
+    const { wrapper } = await mountSection('categories', [], ['asset:read', 'catalog:write']);
+    await wrapper.get('button').trigger('click');
+    const alta = wrapper.findAll('button').find((b) => b.text() === 'Nueva categoría')!;
+    await alta.trigger('click');
+    await flushPromises();
+    expect(document.body.textContent).toContain('Tipo de extensión');
+  });
+
+  it('escribir en la búsqueda actualiza la URL tras una pausa', async () => {
+    vi.useFakeTimers();
+    try {
+      const { wrapper } = await mountSection('categories', [], ['asset:read']);
+      await wrapper.get('input[type="search"]').setValue('sensores');
+      await vi.advanceTimersByTimeAsync(400);
+      await flushPromises();
+      expect(router.currentRoute.value.query['q']).toBe('sensores');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

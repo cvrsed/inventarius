@@ -18,6 +18,8 @@ const DUMMY_HASH_PASSWORD = 'contraseña-señuelo-para-igualar-tiempos';
 const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
 /** Se actualiza `last_seen_at` como máximo cada tantos ms para no escribir en cada petición. */
 const TOUCH_INTERVAL_MS = 30_000;
+/** Fracción de la inactividad máxima que puede pasar entre un refresco y el siguiente. */
+const TOUCH_FRACTION_OF_IDLE = 4;
 
 export interface SessionStart {
   token: string;
@@ -43,7 +45,16 @@ export class AuthService {
     private readonly throttle: LoginThrottle,
     private readonly cfg: AppConfig['session'],
     private readonly clock: Clock,
-  ) {}
+  ) {
+    // Con una inactividad corta (8 h en producción, 15 s en e2e) el refresco no puede ser más lento que
+    // ella: si lo fuera, la sesión moriría por «inactiva» aunque el usuario esté trabajando.
+    this.touchIntervalMs = Math.min(
+      TOUCH_INTERVAL_MS,
+      (cfg.idleTimeoutSeconds * 1000) / TOUCH_FRACTION_OF_IDLE,
+    );
+  }
+
+  private readonly touchIntervalMs: number;
 
   private async sessionUser(userId: string, exec: Executor = this.db): Promise<SessionUser | null> {
     const user = await this.users.findById(userId, exec);
@@ -142,7 +153,7 @@ export class AuthService {
       await this.repo.deleteSession(this.db, id);
       return null;
     }
-    if (now.getTime() - session.lastSeenAt.getTime() > TOUCH_INTERVAL_MS) {
+    if (now.getTime() - session.lastSeenAt.getTime() > this.touchIntervalMs) {
       await this.repo.touchSession(this.db, id, now);
     }
     return { sessionId: id, user };

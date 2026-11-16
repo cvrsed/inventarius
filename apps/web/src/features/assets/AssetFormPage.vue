@@ -49,7 +49,7 @@ const API_FIELDS: Record<string, string> = {
 };
 
 const set = <K extends keyof AssetForm>(key: K, value: AssetForm[K]) => (form.value[key] = value);
-const text = (key: keyof AssetForm) => (v: string | number) => set(key, String(v) as never);
+const setText = (key: keyof AssetForm, v: string | number) => set(key, String(v) as never);
 
 function validate(): boolean {
   const e: Record<string, string> = {};
@@ -137,7 +137,7 @@ async function submit(): Promise<void> {
             :model-value="form.name"
             :maxlength="200"
             class="w-full"
-            @update:model-value="text('name')"
+            @update:model-value="(v: string | number) => setText('name', v)"
           />
         </UFormField>
         <UFormField
@@ -151,7 +151,7 @@ async function submit(): Promise<void> {
             :model-value="form.assetTag"
             :maxlength="40"
             class="w-full"
-            @update:model-value="text('assetTag')"
+            @update:model-value="(v: string | number) => setText('assetTag', v)"
           />
         </UFormField>
         <UFormField
@@ -179,7 +179,7 @@ async function submit(): Promise<void> {
             :model-value="form.serial"
             :maxlength="120"
             class="w-full"
-            @update:model-value="text('serial')"
+            @update:model-value="(v: string | number) => setText('serial', v)"
           />
         </UFormField>
       </fieldset>
@@ -234,7 +234,7 @@ async function submit(): Promise<void> {
             type="date"
             :model-value="form.purchaseDate"
             class="w-full"
-            @update:model-value="text('purchaseDate')"
+            @update:model-value="(v: string | number) => setText('purchaseDate', v)"
           />
         </UFormField>
         <UFormField
@@ -247,7 +247,7 @@ async function submit(): Promise<void> {
             inputmode="decimal"
             :model-value="form.purchaseCost"
             class="w-full"
-            @update:model-value="text('purchaseCost')"
+            @update:model-value="(v: string | number) => setText('purchaseCost', v)"
           />
         </UFormField>
         <UFormField :label="t('assets.fields.supplier')" name="a-supplier">
@@ -256,7 +256,7 @@ async function submit(): Promise<void> {
             :model-value="form.supplier"
             :maxlength="120"
             class="w-full"
-            @update:model-value="text('supplier')"
+            @update:model-value="(v: string | number) => setText('supplier', v)"
           />
         </UFormField>
         <UFormField
@@ -269,7 +269,7 @@ async function submit(): Promise<void> {
             inputmode="numeric"
             :model-value="form.warrantyMonths"
             class="w-full"
-            @update:model-value="text('warrantyMonths')"
+            @update:model-value="(v: string | number) => setText('warrantyMonths', v)"
           />
         </UFormField>
       </fieldset>
@@ -281,7 +281,7 @@ async function submit(): Promise<void> {
           :rows="3"
           :maxlength="2000"
           class="w-full"
-          @update:model-value="text('notes')"
+          @update:model-value="(v: string | number) => setText('notes', v)"
         />
       </UFormField>
 

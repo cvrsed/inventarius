@@ -52,7 +52,7 @@ describe('AssetsPage (RF-22, RF-40)', () => {
     expect(wrapper.text()).toContain('Sensor 2');
     expect(wrapper.text()).toContain('Olga');
     expect(wrapper.text()).toContain('2 resultados');
-    const cards = wrapper.findAll('ul a[aria-label^="Activo INV-"]');
+    const cards = wrapper.findAll('ul a[href^="/activos/"]');
     expect(cards).toHaveLength(2);
     expect(cards[0]!.attributes('href')).toBe('/activos/018f0000-0000-7000-8000-000000000001');
   });
