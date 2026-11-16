@@ -18,7 +18,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). D
 - API Fastify: configuración validada con Zod, logs JSON con censura de secretos, errores RFC 9457,
   `/api/health/live`, `/api/health/ready`, `/api/metrics`, `under-pressure` y OpenAPI fuera de producción (RNF-13).
 - Drizzle con primera migración (`citext`) e instalación de pg-boss con usuario migrador; usuario de app solo DML.
-- Frontend Vue + PrimeVue (Aura personalizado por tokens) + Tailwind v4 + i18n es-CL, modo claro/oscuro y layout
+- Frontend Vue + Nuxt UI v4 (tema propio por tokens; antes PrimeVue, ADR 0004) + Tailwind v4 + i18n es-CL, modo claro/oscuro y layout
   responsivo desde 360 px (RNF-01, RNF-03, RNF-05, RF-40).
 - Vitest (shared, api, web), integración con Postgres 18 real (Testcontainers) y Playwright + axe en Docker.
 - `compose.yml` de desarrollo, `compose.e2e.yml`, Dockerfile multi-etapa con imágenes por digest.

@@ -24,7 +24,7 @@
 - [x] API: config validada, logger con censura, errores tipados -> RFC 9457, health live/ready, métricas, under-pressure, OpenAPI
 - [x] Drizzle + migración inicial (`citext`), pg-boss instalado por el migrador, roles migrador/app
 - [x] Worker (entrypoint pg-boss mínimo, sin handlers hasta F3)
-- [x] Web: Vue + PrimeVue styled con preset propio + Tailwind v4 + i18n es-CL + layout responsivo + modo oscuro
+- [x] Web: Vue + PrimeVue styled con preset propio (reemplazado por Nuxt UI v4, ver «Cambio de librería de UI») + Tailwind v4 + i18n es-CL + layout responsivo + modo oscuro
 - [x] Vitest (shared 3, api 37 + 8 de integración con Postgres 18 real, web 15), cobertura sobre umbrales
 - [x] Playwright + axe en Docker (imagen oficial 1.65.1): 18 tests en escritorio y móvil (360 px), claro y oscuro
 - [x] `compose.yml` (dev), `compose.e2e.yml`, Dockerfile multi-etapa, `.env.example`
@@ -65,7 +65,6 @@
 **Pendiente / no verificado**
 
 - La lista de contraseñas comunes sigue siendo mínima (~60 entradas): issue #4, por decisión de Rodrigo no se cambia aún (Q12).
-- PrimeVue 5 sin migrar por el cambio de licencia (Q2).
 
 **Cómo probarlo**: `docs/development.md` (incluye `create-admin`). `pnpm lint && pnpm typecheck && pnpm test:coverage`;
 `pnpm --filter @inventarius/api test:int`; e2e con `compose.e2e.yml`. Controles en `docs/security.md`.
@@ -74,18 +73,40 @@
 
 Un commit por punto, todo en `phase/f1-identidad`:
 
-1. **PrimeVue 5**: 5.0.5 es estable (`latest`), pero cambió de licencia: de MIT a «PrimeUI License» con clave obligatoria y pago
-   según tamaño de la organización (Community gratis solo bajo USD 1 M de ingresos, <5 desarrolladores, <10 empleados).
-   No se migró; se mantiene 4.5.5 y la decisión queda en Q2 con revisión el 2026-12-16. **Necesita decisión de Rodrigo.**
+1. **PrimeVue 5**: 5.0.5 es estable (`latest`), pero cambió de licencia (clave obligatoria, pago según tamaño de la
+   organización). No se migró a la 5; Rodrigo decidió después reemplazar PrimeVue por Nuxt UI v4 (ver abajo).
 2. **TypeScript 6.0.x**: justificación en `docs/adr/0002-stack.md` (TS 7 sin API programática hasta 7.1).
 3. **Sesión absoluta 24 h** (antes 7 d), con tests de integración con la configuración por defecto.
 4. **Correo**: solo un administrador lo edita y nunca el propio; invalida sesiones y audita antes/después. Tests API y UI.
 5. **Excepciones de vulnerabilidades** detalladas en `docs/security.md`; issue #3 (Caddy, revisión 2026-12-16).
-6. **primeicons** aceptado: en la sección 7.2 del requerimiento y en el ADR 0002.
+6. **primeicons** aceptado: en la sección 7.2 del requerimiento y en el ADR 0002 (retirado después con PrimeVue).
 7. **Job de pg-boss** que purga sesiones vencidas (absolutas o inactivas) cada hora; el migrador crea la cola. Tests de integración.
-8. **MultiSelect** con el panel abierto pasa axe (pass-through `inert` en los checkboxes decorativos); e2e con el panel abierto.
+8. **MultiSelect** con el panel abierto pasa axe; e2e con el panel abierto (ahora sobre el selector de Nuxt UI).
 9. **Lista de contraseñas comunes**: sin cambios; issue #4.
 10. `docs/requirements.md` actualizado (RF-01, RF-03, 7.2).
+
+## Cambio de librería de UI y CLI de correo (PR #2, 2026-11-16)
+
+Segunda tanda de ajustes de Rodrigo, un commit por punto en `phase/f1-identidad`:
+
+1. **PrimeVue → Nuxt UI v4 (MIT)**, modo Vue + Vite sin Nuxt. Se eliminaron `primevue`, `@primeuix/*`, `primeicons` y
+   `tailwindcss-primeui` (ninguna dependencia de PrimeTek en `package.json` ni en el lockfile). Versión exacta 4.12.0
+   (4.12.1/4.12.2 son del mismo día y quedan bajo la política de antigüedad mínima de pnpm).
+   - Tema por design tokens en `apps/web/src/theme/` (`theme.ts`, `theme.css`): paleta teal/zinc, radios, tipografía, contraste AA, oscuro.
+   - Migradas: layout, login, cambio de contraseña, usuarios, roles (diálogos y confirmaciones), auditoría (filas expandibles,
+     filtros y paginación del lado servidor), inicio y estado, 403/404.
+   - Íconos Lucide empaquetados; Iconify sin proveedores; un e2e verifica que ninguna petición sale del origen.
+   - Locale `es` de Nuxt UI más vue-i18n es-CL. Pruebas: 64 web, 126 api, 16 shared y 42 e2e (escritorio y 360 px) con axe
+     en claro y oscuro, incluidos diálogo de confirmación, selector de roles y select de página ABIERTOS.
+2. **ADR 0004** «UI con Nuxt UI v4»; el 0003 queda «Reemplazado por 0004».
+3. **CLAUDE.md, requerimiento (RNF-01, 7.2, 7.3, estructura, riesgos) y ADR 0002** actualizados.
+4. **`cli update-email`**: cambia el correo de cualquier usuario, también del único administrador; valida, exige unicidad,
+   cierra sesiones y audita con antes/después y actor `cli` (nueva columna `audit_log.actor_label`, migración 0004).
+   Documentado en `docs/operations.md`. Probado también contra el stack e2e real.
+5. **Q2 cerrada**; Q9 y Q21 cerradas.
+
+**Decisiones técnicas a revisar** (en el ADR 0004): `exactOptionalPropertyTypes` desactivado solo en `apps/web`;
+condición de exports renombrada a `inventarius-source`; selects de página con `inert` en el fondo (`AppSelect`).
 
 ## Resumen de la sesión (2026-11-16)
 
@@ -95,11 +116,11 @@ Un commit por punto, todo en `phase/f1-identidad`:
   que localmente no se veían: `pnpm test` ejecutaba el paquete e2e; zlib desactualizada en la imagen api y `npm` vendorizado
   (con CVEs) que se quitó del runtime; CVE de `x/net` en Caddy sin imagen corregida (`.trivyignore`, Q22); gitleaks 8.24 con
   falsos positivos en contraseñas ficticias de tests (allowlist por ruta); axe leyendo colores a mitad de una transición.
-- **Decisiones provisionales que requieren revisión de Rodrigo** (detalle en `docs/open-questions.md`): PrimeVue 4.x en vez de 5 (Q2),
-  TypeScript 6 en vez de 7 (Q3), `primeicons` como dependencia nueva (Q9), vulnerabilidades ignoradas (Q11, Q22),
+- **Decisiones provisionales que requieren revisión de Rodrigo** (detalle en `docs/open-questions.md`): UI con Nuxt UI en vez de PrimeVue (Q2, decidida por Rodrigo),
+  TypeScript 6 en vez de 7 (Q3), vulnerabilidades ignoradas (Q11, Q22),
   sesión absoluta de 24 h (Q15, decidida por Rodrigo), umbrales de bloqueo (Q16), roles semilla no borrables ni renombrables (Q13), correo editable solo por un administrador que no sea el propio usuario (Q18, decidida por Rodrigo).
 - **Bugs reales que encontraron las pruebas** (corregidos): `--ignore-scripts` dejaba un `pnpm` no ejecutable; `up --exit-code-from`
   abortaba con servicios de un solo uso; contraste AA en mensajes de Aura; `aria-expanded` inválido en el input de contraseña de PrimeVue;
   claves i18n con punto que no resolvían; ruta `/api/metrics` visible tras Caddy.
-- **Pendiente de Rodrigo**: decidir sobre PrimeVue 5 y su licencia (Q2); issues #3 (Caddy, 2026-12-16) y #4 (lista de contraseñas).
+- **Pendiente de Rodrigo**: issues #3 (Caddy, 2026-12-16) y #4 (lista de contraseñas).
 - **Siguiente paso sugerido**: revisar y mergear #1, luego #2 (cambiar su base a `main`); empezar F2 (Inventario) solo con instrucción explícita.

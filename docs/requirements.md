@@ -88,7 +88,7 @@ Cada requerimiento tiene ID para trazarlo en issues, commits y tests (`RF-xx`).
 
 - **RF-01** Login con email y contraseña; sesión por cookie segura; logout; expiración por inactividad configurable (por defecto 8 h) y expiración absoluta configurable (por defecto 24 h) aunque haya actividad. Un job periódico de pg-boss, cada hora, purga las sesiones vencidas.
 - **RF-02** Primer arranque: un comando CLI (`pnpm --filter api cli create-admin`) crea el primer administrador. No existe registro público.
-- **RF-03** CRUD de usuarios (nombre, email, roles, activo/inactivo). Un usuario inactivo no puede entrar y sus sesiones se invalidan. Solo un administrador da de alta y edita el correo; nadie edita su propio correo (ni un administrador, lo hace otro). Un cambio de correo invalida las sesiones de esa persona y queda en auditoría con antes/después.
+- **RF-03** CRUD de usuarios (nombre, email, roles, activo/inactivo). Un usuario inactivo no puede entrar y sus sesiones se invalidan. Solo un administrador da de alta y edita el correo; nadie edita su propio correo (ni un administrador, lo hace otro); el comando CLI `update-email` lo cambia para cualquier usuario, incluido el único administrador, con actor `cli` en la auditoría. Un cambio de correo invalida las sesiones de esa persona y queda en auditoría con antes/después.
 - **RF-04** Cambio de contraseña propio; reseteo por un administrador (genera contraseña temporal de un uso, obliga a cambiarla al entrar). Sin correo en el MVP.
 - **RF-05** Bloqueo temporal tras intentos fallidos repetidos (por cuenta y por IP).
 
