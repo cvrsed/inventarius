@@ -1,0 +1,19 @@
+# Secretos
+.env
+.env.*
+!.env.example
+
+# Dependencias y builds
+node_modules/
+dist/
+coverage/
+.vite/
+playwright-report/
+test-results/
+
+# Claude Code (local, no compartido)
+.claude/settings.local.json
+
+# Sistema
+.DS_Store
+*.log
