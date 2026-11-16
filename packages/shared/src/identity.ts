@@ -54,6 +54,8 @@ export const createUserRequestSchema = z.object({
 });
 export const updateUserRequestSchema = z
   .object({
+    /** Solo un administrador lo edita, y nunca el suyo propio (RF-03). */
+    email: emailSchema,
     name: z.string().trim().min(1).max(120),
     active: z.boolean(),
     roleIds: z.array(z.uuid()).min(1),

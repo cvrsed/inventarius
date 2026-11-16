@@ -179,6 +179,96 @@ describe('usuarios (RF-03)', () => {
   });
 });
 
+describe('correo electrónico (RF-03)', () => {
+  const makeUser = async (email: string, role = 'Lector') => {
+    const created = await admin.post('/api/v1/users', {
+      email,
+      name: 'Correo',
+      roleIds: [await roleId(role)],
+      password: STRONG_PASSWORD,
+    });
+    await env.db.migratorPool.query(
+      'UPDATE users SET must_change_password = false WHERE email = $1',
+      [email],
+    );
+    return created;
+  };
+
+  it('un administrador cambia el correo: invalida sus sesiones, entra con el nuevo y queda antes/después en auditoría', async () => {
+    const created = await makeUser('viejo@ejemplo.cl');
+    const user = env.client();
+    await user.login('viejo@ejemplo.cl');
+    expect((await user.get('/api/v1/auth/me')).statusCode).toBe(200);
+
+    const res = await admin.patch(
+      `/api/v1/users/${created.json().id}`,
+      { email: 'Nuevo.Correo@Ejemplo.cl' },
+      { 'if-match': etag(created) },
+    );
+    expect(res.statusCode).toBe(200);
+    expect(res.json().email).toBe('nuevo.correo@ejemplo.cl');
+
+    expect((await user.get('/api/v1/auth/me')).statusCode).toBe(401);
+    expect((await env.client().login('viejo@ejemplo.cl')).statusCode).toBe(401);
+    expect((await env.client().login('nuevo.correo@ejemplo.cl')).statusCode).toBe(200);
+
+    const audit = await admin.get(
+      `/api/v1/audit?entity=user&action=user.update&actorId=${adminId}`,
+    );
+    const entry = audit
+      .json()
+      .data.find((e: { entityId: string }) => e.entityId === created.json().id);
+    expect(entry.diff.before.email).toBe('viejo@ejemplo.cl');
+    expect(entry.diff.after.email).toBe('nuevo.correo@ejemplo.cl');
+  });
+
+  it('no invalida sesiones si el correo no cambia, y rechaza uno ya usado (409)', async () => {
+    const created = await makeUser('igual@ejemplo.cl');
+    await makeUser('ocupado@ejemplo.cl');
+    const user = env.client();
+    await user.login('igual@ejemplo.cl');
+    const same = await admin.patch(
+      `/api/v1/users/${created.json().id}`,
+      { email: 'IGUAL@ejemplo.cl', name: 'Mismo correo' },
+      { 'if-match': etag(created) },
+    );
+    expect(same.statusCode).toBe(200);
+    expect((await user.get('/api/v1/auth/me')).statusCode).toBe(200);
+
+    const dup = await admin.patch(
+      `/api/v1/users/${created.json().id}`,
+      { email: 'ocupado@ejemplo.cl' },
+      { 'if-match': etag(same) },
+    );
+    expect(dup.statusCode).toBe(409);
+    expect((await user.get('/api/v1/auth/me')).statusCode).toBe(200);
+  });
+
+  it('nadie edita su propio correo, ni siquiera un administrador', async () => {
+    const me = await admin.get(`/api/v1/users/${adminId}`);
+    const res = await admin.patch(
+      `/api/v1/users/${adminId}`,
+      { email: 'otro@ejemplo.cl' },
+      { 'if-match': etag(me) },
+    );
+    expect(res.statusCode).toBe(403);
+    expect((await admin.get(`/api/v1/users/${adminId}`)).json().email).toBe('root@ejemplo.cl');
+  });
+
+  it('un usuario sin user:manage no puede cambiar ningún correo, ni el suyo', async () => {
+    const created = await makeUser('operador@ejemplo.cl', 'Operador');
+    const op = env.client();
+    await op.login('operador@ejemplo.cl');
+    const res = await op.patch(
+      `/api/v1/users/${created.json().id}`,
+      { email: 'robado@ejemplo.cl' },
+      { 'if-match': etag(created) },
+    );
+    expect(res.statusCode).toBe(403);
+    expect((await op.get('/api/v1/auth/me')).json().email).toBe('operador@ejemplo.cl');
+  });
+});
+
 describe('roles y permisos (sección 3)', () => {
   it('crea un rol, edita su matriz con If-Match y lo borra si no tiene usuarios', async () => {
     const created = await admin.post('/api/v1/roles', {

@@ -1,6 +1,11 @@
 import type { UserDto } from '@inventarius/shared';
 import type { Executor } from '../../core/db/executor.js';
-import { ConflictError, NotFoundError, PreconditionFailedError } from '../../core/errors.js';
+import {
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+  PreconditionFailedError,
+} from '../../core/errors.js';
 import type { Actor, ActorDirectory, AuditService } from '../audit/service.js';
 import {
   assertPasswordPolicy,
@@ -135,6 +140,31 @@ export class UsersService implements ActorDirectory {
     actor: Actor,
     id: string,
     patch: {
+      email?: string | undefined;
+      name?: string | undefined;
+      active?: boolean | undefined;
+      roleIds?: string[] | undefined;
+    },
+    expectedVersion: string,
+  ): Promise<UserDto> {
+    if (patch.email !== undefined && actor.actorId === id) {
+      throw new ForbiddenError(
+        'Nadie puede editar su propio correo; pídeselo a otro administrador',
+      );
+    }
+    try {
+      return await this.applyUpdate(actor, id, patch, expectedVersion);
+    } catch (e) {
+      if (isUniqueViolation(e)) throw new ConflictError('Ya existe un usuario con ese correo');
+      throw e;
+    }
+  }
+
+  private applyUpdate(
+    actor: Actor,
+    id: string,
+    patch: {
+      email?: string | undefined;
       name?: string | undefined;
       active?: boolean | undefined;
       roleIds?: string[] | undefined;
@@ -145,6 +175,7 @@ export class UsersService implements ActorDirectory {
       const current = await this.repo.getById(tx, id);
       if (!current) throw new NotFoundError('Usuario no encontrado');
       if (version(current) !== expectedVersion) throw new PreconditionFailedError();
+      const emailChanged = patch.email !== undefined && patch.email !== current.email;
 
       const beforeRoles = (await this.rbac.rolesForUsers([id], tx)).get(id) ?? [];
       const adminRoleId = await this.rbac.adminRoleId(tx);
@@ -157,8 +188,9 @@ export class UsersService implements ActorDirectory {
       }
 
       let row = current;
-      if (patch.name !== undefined || patch.active !== undefined) {
+      if (emailChanged || patch.name !== undefined || patch.active !== undefined) {
         row = await this.repo.update(tx, id, {
+          ...(emailChanged ? { email: patch.email! } : {}),
           ...(patch.name !== undefined ? { name: patch.name } : {}),
           ...(patch.active !== undefined ? { active: patch.active } : {}),
         });
@@ -169,6 +201,8 @@ export class UsersService implements ActorDirectory {
       }
       // RF-03: un usuario inactivo pierde sus sesiones al instante.
       if (patch.active === false && current.active) await this.sessions.revokeAllForUser(tx, id);
+      // Cambiar el correo cambia la identidad de login: las sesiones abiertas dejan de valer.
+      if (emailChanged) await this.sessions.revokeAllForUser(tx, id);
 
       const afterRoles = (await this.rbac.rolesForUsers([id], tx)).get(id) ?? [];
       await this.audit.record(tx, {
@@ -178,11 +212,17 @@ export class UsersService implements ActorDirectory {
         entityId: id,
         diff: {
           before: {
+            email: current.email,
             name: current.name,
             active: current.active,
             roles: beforeRoles.map((r) => r.name),
           },
-          after: { name: row.name, active: row.active, roles: afterRoles.map((r) => r.name) },
+          after: {
+            email: row.email,
+            name: row.name,
+            active: row.active,
+            roles: afterRoles.map((r) => r.name),
+          },
         },
       });
       return this.toDto(row, afterRoles);

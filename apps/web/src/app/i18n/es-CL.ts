@@ -73,6 +73,7 @@ export const messages = {
     search: 'Buscar por nombre o correo',
     name: 'Nombre',
     email: 'Correo',
+    ownEmailHint: 'No puedes cambiar tu propio correo; pídeselo a otro administrador.',
     roles: 'Roles',
     status: 'Estado',
     active: 'Activo',

@@ -10,6 +10,7 @@ import { useToast } from 'primevue/usetoast';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { errorMessage } from '@/features/auth/errors';
+import { useAuthStore } from '@/features/auth/useAuthStore';
 import { ApiError } from '@/shared/api/http';
 import PasswordField from '@/shared/ui/PasswordField.vue';
 import { useRolesQuery, useUserMutations } from './api';
@@ -21,6 +22,11 @@ const { t } = useI18n();
 const toast = useToast();
 const roles = useRolesQuery();
 const { create, update } = useUserMutations();
+const auth = useAuthStore();
+/** Nadie edita su propio correo; lo cambia otro administrador (RF-03). */
+const emailLocked = computed(
+  () => !props.creating && props.user !== null && auth.user?.id === props.user.id,
+);
 
 const form = ref({ name: '', email: '', password: '', active: true, roleIds: [] as string[] });
 const fieldErrors = ref<Record<string, string>>({});
@@ -47,8 +53,10 @@ watch(
 function validate(): boolean {
   const e: Record<string, string> = {};
   if (!form.value.name.trim()) e['name'] = t('common.required');
+  if ((props.creating || !emailLocked.value) && !/^\S+@\S+\.\S+$/.test(form.value.email.trim())) {
+    e['email'] = t('login.invalidEmail');
+  }
   if (props.creating) {
-    if (!/^\S+@\S+\.\S+$/.test(form.value.email.trim())) e['email'] = t('login.invalidEmail');
     if (form.value.password.length < 12) e['password'] = t('changePassword.tooShort');
   }
   if (!form.value.roleIds.length) e['roleIds'] = t('common.required');
@@ -72,6 +80,9 @@ async function submit(): Promise<void> {
       await update.mutateAsync({
         user: props.user,
         patch: {
+          ...(!emailLocked.value && form.value.email.trim() !== props.user.email
+            ? { email: form.value.email.trim() }
+            : {}),
           name: form.value.name.trim(),
           active: form.value.active,
           roleIds: form.value.roleIds,
@@ -132,10 +143,12 @@ async function submit(): Promise<void> {
           v-model="form.email"
           type="email"
           autocomplete="off"
-          :disabled="!creating"
+          :disabled="emailLocked"
+          :aria-describedby="emailLocked ? 'u-email-hint' : undefined"
           :invalid="!!fieldErrors['email']"
           fluid
         />
+        <small v-if="emailLocked" id="u-email-hint">{{ t('users.ownEmailHint') }}</small>
         <small v-if="fieldErrors['email']" class="field-error" role="alert">{{
           fieldErrors['email']
         }}</small>

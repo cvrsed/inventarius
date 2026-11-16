@@ -1,5 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { useAuthStore } from '@/features/auth/useAuthStore';
 import { jsonResponse, mockApi, pagePlugins } from '@/test-utils';
 import UserFormDialog from './UserFormDialog.vue';
 
@@ -42,10 +43,21 @@ const type = (selector: string, value: string) => {
   el.dispatchEvent(new Event('input'));
 };
 
-function open(props: { user: typeof user | null; creating: boolean }) {
+function open(props: { user: typeof user | null; creating: boolean }, currentUserId?: string) {
+  const global = pagePlugins();
+  if (currentUserId) {
+    useAuthStore().user = {
+      id: currentUserId,
+      email: 'yo@ejemplo.cl',
+      name: 'Yo',
+      mustChangePassword: false,
+      roles: ['Administrador'],
+      permissions: ['user:manage'],
+    };
+  }
   return mount(UserFormDialog, {
     props: { ...props, visible: true },
-    global: pagePlugins(),
+    global,
     attachTo: document.body,
   });
 }
@@ -64,7 +76,34 @@ describe('UserFormDialog', () => {
     w.unmount();
   });
 
-  it('al editar envía PATCH con If-Match igual al updatedAt y el correo queda de solo lectura', async () => {
+  it('al editar a otro usuario el correo es editable y se envía al cambiarlo', async () => {
+    const bodies: Record<string, unknown>[] = [];
+    mockApi({
+      'GET /api/v1/roles': () => [role],
+      'PATCH /api/v1/users/018f0000-0000-7000-8000-000000000001': (init) => {
+        bodies.push(JSON.parse(String(init?.body)));
+        return user;
+      },
+    });
+    const w = open({ user, creating: false }, '018f0000-0000-7000-8000-0000000000ff');
+    await flushPromises();
+    expect((document.body.querySelector('#u-email') as HTMLInputElement).disabled).toBe(false);
+    type('#u-email', 'ana.nueva@ejemplo.cl');
+    await submit();
+    expect(bodies[0]).toMatchObject({ email: 'ana.nueva@ejemplo.cl' });
+    w.unmount();
+  });
+
+  it('al editar su propio usuario el correo queda de solo lectura con una explicación', async () => {
+    mockApi({ 'GET /api/v1/roles': () => [role] });
+    const w = open({ user, creating: false }, user.id);
+    await flushPromises();
+    expect((document.body.querySelector('#u-email') as HTMLInputElement).disabled).toBe(true);
+    expect(document.body.textContent).toContain('No puedes cambiar tu propio correo');
+    w.unmount();
+  });
+
+  it('al editar envía PATCH con If-Match igual al updatedAt y sin tocar el correo', async () => {
     let headers: Record<string, string> = {};
     let body: unknown;
     mockApi({
@@ -77,11 +116,11 @@ describe('UserFormDialog', () => {
     });
     const w = open({ user, creating: false });
     await flushPromises();
-    expect((document.body.querySelector('#u-email') as HTMLInputElement).disabled).toBe(true);
     type('#u-name', 'Ana María');
     await submit();
     expect(headers['if-match']).toBe(`"${user.updatedAt}"`);
     expect(body).toMatchObject({ name: 'Ana María', active: true, roleIds: [roleId] });
+    expect(body).not.toHaveProperty('email');
     w.unmount();
   });
 

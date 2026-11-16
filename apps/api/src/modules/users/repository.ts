@@ -72,7 +72,7 @@ export class UsersRepository {
   async update(
     exec: Executor,
     id: string,
-    v: { name?: string; active?: boolean },
+    v: { email?: string; name?: string; active?: boolean },
   ): Promise<UserRow> {
     const rows = await exec
       .update(users)

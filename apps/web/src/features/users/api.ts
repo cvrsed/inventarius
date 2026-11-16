@@ -50,6 +50,7 @@ export interface CreateUserInput {
 }
 
 export interface UpdateUserInput {
+  email?: string;
   name?: string;
   active?: boolean;
   roleIds?: string[];
