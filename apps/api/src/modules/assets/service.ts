@@ -352,7 +352,12 @@ export class AssetsService {
     return this.audit.list({ entity: ENTITY, entityId: id }, page);
   }
 
-  assignees(q: string | undefined) {
+  /** Personas asignables por nombre, o una en concreto por id (para mostrar el filtro de la URL). */
+  async assignees(q: string | undefined, id?: string): Promise<{ id: string; name: string }[]> {
+    if (id) {
+      const person = await this.people.find(this.db, id);
+      return person ? [{ id: person.id, name: person.name }] : [];
+    }
     return this.people.search(q, 25);
   }
 

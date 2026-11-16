@@ -428,6 +428,8 @@ describe('asignación (RF-23)', () => {
     const res = await tech.get(`${base}/assignees?q=olga`);
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual([{ id: operatorId, name: 'Olga Operadora' }]);
+    const byId = await tech.get(`${base}/assignees?id=${operatorId}`);
+    expect(byId.json()).toEqual([{ id: operatorId, name: 'Olga Operadora' }]);
     expect((await reader.get(`${base}/assignees`)).statusCode).toBe(403);
   });
 });

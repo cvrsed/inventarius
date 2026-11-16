@@ -175,10 +175,13 @@ export const assetsRoutes: FastifyPluginAsyncZod<{ assets: AssetsService }> = as
       ...requirePermission('asset:checkout'),
       schema: {
         tags,
-        querystring: z.object({ q: z.string().trim().max(100).optional() }),
+        querystring: z.object({
+          q: z.string().trim().max(100).optional(),
+          id: z.uuid().optional(),
+        }),
         response: { 200: z.array(assigneeSchema) },
       },
     },
-    async (req) => assets.assignees(req.query.q),
+    async (req) => assets.assignees(req.query.q, req.query.id),
   );
 };

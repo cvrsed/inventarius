@@ -12,6 +12,18 @@ export interface NavigationItem {
 export const navigationItems: readonly NavigationItem[] = [
   { routeName: 'home', labelKey: 'nav.home', icon: 'i-lucide-house' },
   {
+    routeName: 'assets',
+    labelKey: 'nav.assets',
+    icon: 'i-lucide-package',
+    permissions: ['asset:read'],
+  },
+  {
+    routeName: 'catalog',
+    labelKey: 'nav.catalog',
+    icon: 'i-lucide-library',
+    permissions: ['asset:read'],
+  },
+  {
     routeName: 'users',
     labelKey: 'nav.users',
     icon: 'i-lucide-users',

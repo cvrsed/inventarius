@@ -17,6 +17,36 @@ export const router = createRouter({
       meta: { allowPendingPassword: true },
     },
     {
+      path: '/activos',
+      name: 'assets',
+      component: () => import('@/features/assets/AssetsPage.vue'),
+      meta: { permissions: ['asset:read'] },
+    },
+    {
+      path: '/activos/nuevo',
+      name: 'asset-new',
+      component: () => import('@/features/assets/AssetFormPage.vue'),
+      meta: { permissions: ['asset:write'] },
+    },
+    {
+      path: '/activos/:id',
+      name: 'asset',
+      component: () => import('@/features/assets/AssetDetailPage.vue'),
+      meta: { permissions: ['asset:read'] },
+    },
+    {
+      path: '/activos/:id/editar',
+      name: 'asset-edit',
+      component: () => import('@/features/assets/AssetFormPage.vue'),
+      meta: { permissions: ['asset:write'] },
+    },
+    {
+      path: '/catalogo/:section?',
+      name: 'catalog',
+      component: () => import('@/features/catalog/CatalogPage.vue'),
+      meta: { permissions: ['asset:read'] },
+    },
+    {
       path: '/usuarios',
       name: 'users',
       component: () => import('@/features/users/UsersPage.vue'),
