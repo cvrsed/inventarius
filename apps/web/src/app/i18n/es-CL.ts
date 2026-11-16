@@ -139,6 +139,7 @@ export const messages = {
     detail: 'Detalle',
     before: 'Antes',
     after: 'Después',
+    cli: 'CLI (operación)',
     system: 'Sistema',
     filterEntity: 'Entidad',
     filterAction: 'Acción',

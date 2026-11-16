@@ -65,6 +65,9 @@ const entityLabel = (e: string) => (te(`audit.entities.${e}`) ? t(`audit.entitie
 function setFilter(patch: Partial<AuditQuery>): void {
   query.value = { ...query.value, ...patch, page: 1 };
 }
+/** Usuario; si no hubo (`cli`) la operación por línea de comandos; si no, el sistema. */
+const who = (e: AuditEntryDto): string =>
+  e.actorName ?? (e.actorLabel === 'cli' ? t('audit.cli') : t('audit.system'));
 const pretty = (value: unknown) => JSON.stringify(value, null, 2);
 </script>
 
@@ -153,7 +156,7 @@ const pretty = (value: unknown) => JSON.stringify(value, null, 2);
         />
       </template>
       <template #when-cell="{ row }">{{ d(new Date(row.original.at), 'long') }}</template>
-      <template #who-cell="{ row }">{{ row.original.actorName ?? t('audit.system') }}</template>
+      <template #who-cell="{ row }">{{ who(row.original) }}</template>
       <template #action-cell="{ row }">{{ actionLabel(row.original.action) }}</template>
       <template #entity-cell="{ row }">{{ entityLabel(row.original.entity) }}</template>
       <template #expanded="{ row }">

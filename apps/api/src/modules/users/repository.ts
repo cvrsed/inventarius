@@ -32,6 +32,10 @@ export class UsersRepository {
     return (await exec.select(publicColumns).from(users).where(eq(users.id, id)).limit(1))[0];
   }
 
+  async getByEmail(exec: Executor, email: string): Promise<UserRow | undefined> {
+    return (await exec.select(publicColumns).from(users).where(eq(users.email, email)).limit(1))[0];
+  }
+
   async getWithSecretById(exec: Executor, id: string): Promise<UserWithSecret | undefined> {
     return (await exec.select().from(users).where(eq(users.id, id)).limit(1))[0];
   }

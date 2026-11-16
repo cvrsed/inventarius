@@ -40,3 +40,15 @@ export async function createAdminInput(
   }
   return { email: email.data, name, password };
 }
+
+/** Resuelve el correo actual y el nuevo de `update-email`; ambos son obligatorios y se normalizan. */
+export function updateEmailInput(args: string[]): { currentEmail: string; newEmail: string } {
+  const parse = (name: 'email-actual' | 'email-nuevo'): string => {
+    const raw = flag(args, name);
+    if (!raw) throw new Error(`Falta --${name}`);
+    const email = emailSchema.safeParse(raw);
+    if (!email.success) throw new Error(`El correo indicado en --${name} no es válido: ${raw}`);
+    return email.data;
+  };
+  return { currentEmail: parse('email-actual'), newEmail: parse('email-nuevo') };
+}

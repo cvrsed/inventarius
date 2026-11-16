@@ -10,6 +10,7 @@ const entry = (n: number, over: Record<string, unknown> = {}) => ({
   at: '2026-11-16T15:00:00.000Z',
   actorId: '018f0000-0000-7000-8000-000000000001',
   actorName: 'Ana',
+  actorLabel: null,
   action: 'user.update',
   entity: 'user',
   entityId: '018f0000-0000-7000-8000-000000000002',
@@ -25,8 +26,9 @@ describe('AuditPage', () => {
         data: [
           entry(1),
           entry(2, { actorId: null, actorName: null, action: 'auth.login_failed', diff: null }),
+          entry(3, { actorId: null, actorName: null, actorLabel: 'cli', action: 'user.update' }),
         ],
-        meta: { page: 1, pageSize: 25, total: 2 },
+        meta: { page: 1, pageSize: 25, total: 3 },
       }),
     });
     const w = mount(AuditPage, { global: pagePlugins() });
@@ -34,6 +36,7 @@ describe('AuditPage', () => {
     expect(w.text()).toContain('Usuario modificado');
     expect(w.text()).toContain('Intento de acceso fallido');
     expect(w.text()).toContain('Sistema');
+    expect(w.text()).toContain('CLI (operación)');
     expect(w.text()).toContain('Ana');
   });
 

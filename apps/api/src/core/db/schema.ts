@@ -123,6 +123,8 @@ export const auditLog = pgTable(
   {
     id: bigint('id', { mode: 'bigint' }).primaryKey().generatedAlwaysAsIdentity(),
     actorId: uuid('actor_id').references(() => users.id),
+    /** Quién actuó cuando no hay un usuario: `cli` para la operación por línea de comandos. */
+    actorLabel: text('actor_label'),
     action: text('action').notNull(),
     entity: text('entity').notNull(),
     entityId: uuid('entity_id'),

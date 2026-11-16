@@ -9,6 +9,8 @@ export interface Actor {
 }
 
 export interface AuditEntryInput extends Actor {
+  /** Quién actuó cuando no hay usuario (`cli`). Se ignora si hay `actorId`. */
+  actorLabel?: string | null;
   action: string;
   entity: string;
   entityId?: string | null;
@@ -36,6 +38,7 @@ export class AuditService {
   async record(exec: Executor, entry: AuditEntryInput): Promise<void> {
     await this.repo.insert(exec, {
       actorId: entry.actorId,
+      actorLabel: entry.actorId ? null : (entry.actorLabel ?? null),
       action: entry.action,
       entity: entry.entity,
       entityId: entry.entityId ?? null,
@@ -62,6 +65,7 @@ export class AuditService {
         at: r.at.toISOString(),
         actorId: r.actorId,
         actorName: r.actorId ? (names.get(r.actorId) ?? null) : null,
+        actorLabel: r.actorLabel,
         action: r.action,
         entity: r.entity,
         entityId: r.entityId,

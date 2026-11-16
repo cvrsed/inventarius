@@ -5,6 +5,7 @@ import { auditLog } from '../../core/db/schema.js';
 export interface AuditRow {
   id: bigint;
   actorId: string | null;
+  actorLabel: string | null;
   action: string;
   entity: string;
   entityId: string | null;

@@ -96,6 +96,8 @@ export const auditEntrySchema = z.object({
   at: z.iso.datetime(),
   actorId: z.uuid().nullable(),
   actorName: z.string().nullable(),
+  /** `cli` cuando el cambio vino de la línea de comandos y no de un usuario. */
+  actorLabel: z.string().nullable(),
   action: z.string(),
   entity: z.string(),
   entityId: z.string().nullable(),

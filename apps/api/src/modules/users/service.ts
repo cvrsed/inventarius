@@ -1,10 +1,11 @@
-import type { UserDto } from '@inventarius/shared';
+import { emailSchema, type UserDto } from '@inventarius/shared';
 import type { Executor } from '../../core/db/executor.js';
 import {
   ConflictError,
   ForbiddenError,
   NotFoundError,
   PreconditionFailedError,
+  ValidationError,
 } from '../../core/errors.js';
 import type { Actor, ActorDirectory, AuditService } from '../audit/service.js';
 import {
@@ -122,6 +123,7 @@ export class UsersService implements ActorDirectory {
         await this.rbac.assignRoles(tx, user.id, [adminRoleId]);
         await this.audit.record(tx, {
           actorId: null,
+          actorLabel: 'cli',
           ip,
           action: 'user.create_initial_admin',
           entity: 'user',
@@ -227,6 +229,39 @@ export class UsersService implements ActorDirectory {
       });
       return this.toDto(row, afterRoles);
     });
+  }
+
+  /**
+   * Cambia el correo de un usuario desde la CLI (operación). Mismas reglas que por la API: validación, unicidad,
+   * sesiones cerradas y auditoría con antes/después, con actor `cli`. A diferencia de la API no hay «no editar el
+   * propio correo»: es el camino para recuperar el acceso de un administrador, incluso del único.
+   */
+  async changeEmailByCli(currentEmail: string, newEmail: string): Promise<UserDto> {
+    const parsed = emailSchema.safeParse(newEmail);
+    if (!parsed.success) throw new ValidationError('El correo nuevo no es válido');
+    const next = parsed.data;
+    try {
+      return await this.db.transaction(async (tx) => {
+        const current = await this.repo.getByEmail(tx, currentEmail.trim().toLowerCase());
+        if (!current) throw new NotFoundError('No existe un usuario con ese correo');
+        if (current.email === next) throw new ValidationError('El correo nuevo es igual al actual');
+        const row = await this.repo.update(tx, current.id, { email: next });
+        await this.sessions.revokeAllForUser(tx, current.id);
+        await this.audit.record(tx, {
+          actorId: null,
+          actorLabel: 'cli',
+          ip: null,
+          action: 'user.update',
+          entity: 'user',
+          entityId: current.id,
+          diff: { before: { email: current.email }, after: { email: row.email } },
+        });
+        return this.toDto(row, (await this.rbac.rolesForUsers([row.id], tx)).get(row.id) ?? []);
+      });
+    } catch (e) {
+      if (isUniqueViolation(e)) throw new ConflictError('Ya existe un usuario con ese correo');
+      throw e;
+    }
   }
 
   /** RF-04: contraseña temporal de un uso; obliga a cambiarla al entrar y cierra sus sesiones. */

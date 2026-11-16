@@ -269,6 +269,80 @@ describe('correo electrónico (RF-03)', () => {
   });
 });
 
+describe('cambio de correo por CLI (operación)', () => {
+  const emailOf = async (id: string) =>
+    (await env.db.migratorPool.query('SELECT email FROM users WHERE id = $1', [id])).rows[0]
+      .email as string;
+
+  it('sirve para el correo de un administrador, incluso el único: cierra sus sesiones y audita con actor cli', async () => {
+    const solo = await env.createUser({ email: 'unico@ejemplo.cl', role: 'Administrador' });
+    const session = env.client('10.7.0.1');
+    await session.login('unico@ejemplo.cl');
+    expect((await session.get('/api/v1/auth/me')).statusCode).toBe(200);
+
+    const out = await env.services.users.changeEmailByCli(
+      'UNICO@ejemplo.cl',
+      'Nuevo.Unico@Ejemplo.cl',
+    );
+    expect(out.email).toBe('nuevo.unico@ejemplo.cl');
+    expect(await emailOf(solo)).toBe('nuevo.unico@ejemplo.cl');
+
+    expect((await session.get('/api/v1/auth/me')).statusCode).toBe(401);
+    expect((await env.client('10.7.0.2').login('unico@ejemplo.cl')).statusCode).toBe(401);
+    expect((await env.client('10.7.0.3').login('nuevo.unico@ejemplo.cl')).statusCode).toBe(200);
+
+    const rows = (
+      await env.db.migratorPool.query(
+        "SELECT actor_id, actor_label, diff FROM audit_log WHERE action = 'user.update' AND entity_id = $1 ORDER BY id DESC LIMIT 1",
+        [solo],
+      )
+    ).rows;
+    expect(rows[0].actor_id).toBeNull();
+    expect(rows[0].actor_label).toBe('cli');
+    expect(rows[0].diff.before.email).toBe('unico@ejemplo.cl');
+    expect(rows[0].diff.after.email).toBe('nuevo.unico@ejemplo.cl');
+  });
+
+  it('la API muestra el actor cli en la auditoría', async () => {
+    const res = await admin.get('/api/v1/audit?entity=user&action=user.update');
+    const entry = res
+      .json()
+      .data.find((e: { actorLabel: string | null }) => e.actorLabel === 'cli');
+    expect(entry).toMatchObject({ actorId: null, actorName: null, actorLabel: 'cli' });
+  });
+
+  it('valida: correo inválido, igual al actual, ya usado y usuario inexistente', async () => {
+    await env.createUser({ email: 'a-cli@ejemplo.cl', role: 'Lector' });
+    await env.createUser({ email: 'b-cli@ejemplo.cl', role: 'Lector' });
+    const run = (from: string, to: string) => env.services.users.changeEmailByCli(from, to);
+    await expect(run('a-cli@ejemplo.cl', 'no-es-correo')).rejects.toMatchObject({ status: 422 });
+    await expect(run('a-cli@ejemplo.cl', 'A-CLI@ejemplo.cl')).rejects.toMatchObject({
+      status: 422,
+    });
+    await expect(run('a-cli@ejemplo.cl', 'b-cli@ejemplo.cl')).rejects.toMatchObject({
+      status: 409,
+    });
+    await expect(run('fantasma@ejemplo.cl', 'otro@ejemplo.cl')).rejects.toMatchObject({
+      status: 404,
+    });
+    const untouched = await env.db.migratorPool.query(
+      "SELECT count(*)::int AS n FROM users WHERE email IN ('a-cli@ejemplo.cl','b-cli@ejemplo.cl')",
+    );
+    expect(untouched.rows[0].n).toBe(2);
+  });
+
+  it('un cambio fallido no deja rastro de auditoría', async () => {
+    const before = (await env.db.migratorPool.query('SELECT count(*)::int AS n FROM audit_log'))
+      .rows[0].n;
+    await expect(
+      env.services.users.changeEmailByCli('a-cli@ejemplo.cl', 'b-cli@ejemplo.cl'),
+    ).rejects.toMatchObject({ status: 409 });
+    const after = (await env.db.migratorPool.query('SELECT count(*)::int AS n FROM audit_log'))
+      .rows[0].n;
+    expect(after).toBe(before);
+  });
+});
+
 describe('roles y permisos (sección 3)', () => {
   it('crea un rol, edita su matriz con If-Match y lo borra si no tiene usuarios', async () => {
     const created = await admin.post('/api/v1/roles', {
