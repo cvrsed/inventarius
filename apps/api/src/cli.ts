@@ -20,9 +20,10 @@ async function ask(question: string, hidden = false): Promise<string> {
 
 /**
  * CLI de operación. Comando actual:
- *   create-admin --email <correo> --name <nombre> [--password-env VAR]
+ *   create-admin --email <correo> --name <nombre> [--password-env VAR] [--if-missing]
  * La contraseña nunca va por argumentos (quedaría en el historial del shell): se lee de una variable
  * de entorno indicada con --password-env o se pide de forma interactiva.
+ * Con --if-missing, un correo ya existente no es error (útil para automatizar despliegues).
  */
 async function main(): Promise<number> {
   const [command, ...rest] = process.argv.slice(2);
@@ -45,6 +46,10 @@ async function main(): Promise<number> {
     console.info(`Administrador creado: ${created.email}`);
     return 0;
   } catch (e) {
+    if (e instanceof ConflictError && rest.includes('--if-missing')) {
+      console.info(`El usuario ${input.email} ya existe; no se hace nada.`);
+      return 0;
+    }
     if (e instanceof ConflictError || e instanceof DomainError) {
       const detail = e.fieldErrors ? ` (${Object.values(e.fieldErrors).flat().join('; ')})` : '';
       console.error(`${e.message}${detail}`);

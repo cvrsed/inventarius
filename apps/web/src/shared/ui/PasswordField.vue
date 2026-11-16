@@ -8,6 +8,9 @@ defineProps<{
   error?: string | undefined;
 }>();
 const model = defineModel<string>({ required: true });
+
+// PrimeVue pone aria-expanded/aria-haspopup en el <input type=password>, atributos inválidos ahí (axe: aria-allowed-attr).
+const inputPt = { pcInputText: { root: { 'aria-expanded': null, 'aria-haspopup': null } } };
 </script>
 
 <template>
@@ -22,6 +25,7 @@ const model = defineModel<string>({ required: true });
       :aria-describedby="error ? `${id}-error` : undefined"
       toggle-mask
       fluid
+      :pt="inputPt"
     />
     <small v-if="error" :id="`${id}-error`" class="field-error" role="alert">{{ error }}</small>
   </div>

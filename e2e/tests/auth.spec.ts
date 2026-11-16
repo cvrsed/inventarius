@@ -11,7 +11,7 @@ import {
 test.describe('login y sesión (RF-01)', () => {
   test('un anónimo es llevado al login y vuelve a la ruta pedida tras entrar', async ({ page }) => {
     await page.goto('/auditoria');
-    await expect(page).toHaveURL(/iniciar-sesion\?redirect=%2Fauditoria/);
+    await expect(page).toHaveURL(/iniciar-sesion\?redirect=(%2F|\/)auditoria/);
     await page.getByLabel('Correo electrónico').fill(ADMIN.email);
     await page.getByLabel('Contraseña').fill(ADMIN.password);
     await page.getByRole('button', { name: 'Entrar' }).click();

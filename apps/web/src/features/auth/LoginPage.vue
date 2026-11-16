@@ -3,10 +3,10 @@ import Button from 'primevue/button';
 import Card from 'primevue/card';
 import InputText from 'primevue/inputtext';
 import Message from 'primevue/message';
-import Password from 'primevue/password';
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
+import PasswordField from '@/shared/ui/PasswordField.vue';
 import { ApiError } from '@/shared/api/http';
 import { errorMessage } from './errors';
 import { useAuthStore } from './useAuthStore';
@@ -71,17 +71,12 @@ async function submit(): Promise<void> {
               fluid
             />
           </div>
-          <div class="flex flex-col gap-1">
-            <label for="login-password">{{ t('login.password') }}</label>
-            <Password
-              v-model="password"
-              input-id="login-password"
-              autocomplete="current-password"
-              :feedback="false"
-              toggle-mask
-              fluid
-            />
-          </div>
+          <PasswordField
+            id="login-password"
+            v-model="password"
+            :label="t('login.password')"
+            autocomplete="current-password"
+          />
           <Button
             type="submit"
             class="app-touch"

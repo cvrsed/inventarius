@@ -59,6 +59,7 @@ services:
         'Admin E2E',
         '--password-env',
         'E2E_ADMIN_PASSWORD',
+        '--if-missing',
       ]
     environment:
       <<: *app-env

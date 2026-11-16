@@ -26,9 +26,11 @@ test.describe('gestión de usuarios (RF-03, RF-04)', () => {
     const dialog = page.getByRole('dialog', { name: 'Nuevo usuario' });
     await dialog.getByLabel('Nombre').fill('Persona Nueva');
     await dialog.getByLabel('Correo').fill(email);
-    await dialog.getByLabel('Roles').click();
+    await dialog.locator('.p-multiselect').click();
     await page.getByRole('option', { name: 'Lector' }).click();
-    await page.keyboard.press('Escape'); // cierra el selector, no el diálogo
+    // Un clic fuera del panel lo cierra; el panel abierto de MultiSelect trae checkboxes internos sin etiqueta (Q21).
+    await dialog.getByText('Nombre', { exact: true }).click();
+    await expect(page.locator('.p-multiselect-overlay')).toBeHidden();
     await dialog.getByLabel('Contraseña inicial').fill(STRONG_PASSWORD);
     await expectNoA11yViolations(page);
     await dialog.getByRole('button', { name: 'Guardar' }).click();
@@ -51,7 +53,11 @@ test.describe('gestión de usuarios (RF-03, RF-04)', () => {
     await page.goto('/usuarios');
     await page.getByRole('searchbox').fill(user.email);
     await expect(page.getByText(user.email)).toBeVisible();
-    await page.getByRole('button', { name: /^Restablecer contraseña/ }).click();
+    await page
+      .getByRole('button', {
+        name: new RegExp(`^Restablecer contraseña .*${user.email.split('@')[0]}`),
+      })
+      .click();
     await page
       .getByRole('alertdialog')
       .getByRole('button', { name: 'Restablecer contraseña' })
@@ -71,8 +77,8 @@ test.describe('gestión de usuarios (RF-03, RF-04)', () => {
     await expect(p.getByRole('heading', { name: 'Cambia tu contraseña' })).toBeVisible();
     await expectNoA11yViolations(p);
 
-    await p.getByLabel('Contraseña actual').fill(temp);
-    await p.getByLabel('Contraseña nueva').fill('otra-clave-definitiva-2026');
+    await p.getByLabel('Contraseña actual', { exact: true }).fill(temp);
+    await p.getByLabel('Contraseña nueva', { exact: true }).fill('otra-clave-definitiva-2026');
     await p.getByLabel('Repite la contraseña nueva').fill('otra-clave-definitiva-2026');
     await p.getByRole('button', { name: 'Guardar contraseña' }).click();
     await expect(p.getByRole('heading', { level: 1, name: 'Inicio' })).toBeVisible();

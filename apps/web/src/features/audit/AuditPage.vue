@@ -57,9 +57,11 @@ const pretty = (value: unknown) => JSON.stringify(value, null, 2);
 
     <form class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5" @submit.prevent>
       <div class="flex flex-col gap-1">
-        <label for="f-entity">{{ t('audit.filterEntity') }}</label>
+        <label id="f-entity-label">{{ t('audit.filterEntity') }}</label>
         <Select
           input-id="f-entity"
+          aria-labelledby="f-entity-label"
+          :placeholder="t('audit.all')"
           :model-value="query.entity"
           :options="entityOptions"
           option-label="label"
@@ -69,9 +71,11 @@ const pretty = (value: unknown) => JSON.stringify(value, null, 2);
         />
       </div>
       <div class="flex flex-col gap-1">
-        <label for="f-action">{{ t('audit.filterAction') }}</label>
+        <label id="f-action-label">{{ t('audit.filterAction') }}</label>
         <Select
           input-id="f-action"
+          aria-labelledby="f-action-label"
+          :placeholder="t('audit.all')"
           :model-value="query.action"
           :options="actionOptions"
           option-label="label"
