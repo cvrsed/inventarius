@@ -51,17 +51,28 @@ La versión de la imagen de Playwright debe ser igual a la del paquete (`node sc
 
 ## Primer administrador (RF-02)
 
-No hay registro público. Tras migrar, crea el primer administrador con el CLI:
+No hay registro público. Tras migrar, crea el primer administrador con el CLI. Con el entorno de desarrollo en Docker
+(`docker compose up`), **ejecútalo dentro del contenedor de la API**: ahí ya están `DATABASE_URL` y el resto de las
+variables, y no hace falta un `.env` en la VM.
 
 ```bash
-# Pregunta la contraseña sin eco (recomendado)
-pnpm --filter @inventarius/api cli create-admin --email tu@correo.cl --name "Tu Nombre"
-# O la toma de una variable de entorno (nunca como argumento: quedaría en el historial del shell)
-ADMIN_PASSWORD='…' pnpm --filter @inventarius/api cli create-admin --email tu@correo.cl --name "Tu Nombre" --password-env ADMIN_PASSWORD
+# Pregunta la contraseña sin eco (recomendado; necesita terminal interactiva)
+docker compose exec api pnpm --filter @inventarius/api cli create-admin --email tu@correo.cl --name "Tu Nombre"
 ```
 
-Con `--if-missing` repetirlo no es error (útil en despliegues automatizados).
-Con Docker de desarrollo: `docker compose run --rm -it api pnpm --filter @inventarius/api cli create-admin --email … --name …`.
+La contraseña nunca va como argumento (quedaría en el historial del shell). Si no hay terminal interactiva, pásala por
+una variable de entorno del contenedor y nómbrala con `--password-env`:
+
+```bash
+ADMIN_PASSWORD='…' docker compose exec -e ADMIN_PASSWORD api \
+  pnpm --filter @inventarius/api cli create-admin --email tu@correo.cl --name "Tu Nombre" --password-env ADMIN_PASSWORD
+```
+
+Con `--if-missing` repetirlo no es error (útil en despliegues automatizados). Después entra en http://localhost:5173.
+
+Fuera de Docker (`pnpm dev` en la VM) el CLI sí necesita un `.env` con `DATABASE_URL` y `MIGRATION_DATABASE_URL`
+(copia `.env.example`); por eso en desarrollo se recomienda el contenedor. Otras operaciones del CLI (cambiar el correo
+de un usuario) están en `docs/operations.md`.
 
 ## Variables de sesión y bloqueo (todas opcionales)
 
