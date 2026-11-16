@@ -12,7 +12,7 @@ function mockPrefersDark(matches: boolean): void {
 beforeEach(() => {
   setActivePinia(createPinia());
   localStorage.clear();
-  document.documentElement.classList.remove('app-dark');
+  document.documentElement.classList.remove('dark');
 });
 
 describe('useThemeStore', () => {
@@ -21,7 +21,7 @@ describe('useThemeStore', () => {
     const store = useThemeStore();
     store.init();
     expect(store.isDark).toBe(true);
-    expect(document.documentElement.classList.contains('app-dark')).toBe(true);
+    expect(document.documentElement.classList.contains('dark')).toBe(true);
   });
 
   it('respeta el valor guardado por sobre el sistema', () => {
@@ -30,7 +30,7 @@ describe('useThemeStore', () => {
     const store = useThemeStore();
     store.init();
     expect(store.isDark).toBe(false);
-    expect(document.documentElement.classList.contains('app-dark')).toBe(false);
+    expect(document.documentElement.classList.contains('dark')).toBe(false);
   });
 
   it('toggle cambia la clase y persiste', () => {
@@ -39,7 +39,7 @@ describe('useThemeStore', () => {
     store.init();
     store.toggle();
     expect(store.isDark).toBe(true);
-    expect(document.documentElement.classList.contains('app-dark')).toBe(true);
+    expect(document.documentElement.classList.contains('dark')).toBe(true);
     expect(localStorage.getItem('inventarius.theme')).toBe('dark');
   });
 

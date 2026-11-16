@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import ConfirmDialog from 'primevue/confirmdialog';
-import Toast from 'primevue/toast';
+import UApp from '@nuxt/ui/components/App.vue';
+import { es } from '@nuxt/ui/locale';
 import AppLayout from '@/app/layout/AppLayout.vue';
+import ConfirmDialog from '@/shared/ui/ConfirmDialog.vue';
 </script>
 
 <template>
-  <AppLayout />
-  <Toast position="bottom-center" />
-  <ConfirmDialog />
+  <UApp :locale="es" :toaster="{ position: 'bottom-center' }">
+    <AppLayout />
+    <ConfirmDialog />
+  </UApp>
 </template>

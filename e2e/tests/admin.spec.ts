@@ -26,19 +26,19 @@ test.describe('gestión de usuarios (RF-03, RF-04)', () => {
     const dialog = page.getByRole('dialog', { name: 'Nuevo usuario' });
     await dialog.getByLabel('Nombre').fill('Persona Nueva');
     await dialog.getByLabel('Correo').fill(email);
-    await dialog.locator('.p-multiselect').click();
-    await expect(page.locator('.p-multiselect-overlay')).toBeVisible();
-    // axe con el panel de roles ABIERTO: los checkboxes de cada opción deben tener nombre accesible (RNF-02).
+    await dialog.getByRole('button', { name: 'Roles' }).click();
+    await expect(page.getByRole('listbox')).toBeVisible();
+    // axe con el panel de roles ABIERTO (RNF-02).
     await expectNoA11yViolations(page);
     await page.getByRole('option', { name: 'Lector' }).click();
-    // Un clic fuera del panel lo cierra.
-    await dialog.getByText('Nombre', { exact: true }).click();
-    await expect(page.locator('.p-multiselect-overlay')).toBeHidden();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('listbox')).toBeHidden();
+    await expect(dialog).toBeVisible();
     await dialog.getByLabel('Contraseña inicial').fill(STRONG_PASSWORD);
     await expectNoA11yViolations(page);
     await dialog.getByRole('button', { name: 'Guardar' }).click();
 
-    await expect(page.getByText('Usuario creado')).toBeVisible();
+    await expect(page.getByText('Usuario creado', { exact: true })).toBeVisible();
     await page.getByRole('searchbox').fill(email);
     await expect(page.getByText(email)).toBeVisible();
   });
@@ -61,10 +61,10 @@ test.describe('gestión de usuarios (RF-03, RF-04)', () => {
         name: new RegExp(`^Restablecer contraseña .*${user.email.split('@')[0]}`),
       })
       .click();
-    await page
-      .getByRole('alertdialog')
-      .getByRole('button', { name: 'Restablecer contraseña' })
-      .click();
+    const confirm = page.getByRole('dialog', { name: 'Restablecer contraseña' });
+    await expect(confirm).toBeVisible();
+    await expectNoA11yViolations(page); // diálogo de confirmación ABIERTO
+    await confirm.getByRole('button', { name: 'Restablecer contraseña' }).click();
 
     const temp = await page
       .getByRole('dialog', { name: 'Contraseña temporal' })
@@ -130,10 +130,10 @@ test.describe('roles (RF: matriz de permisos)', () => {
     await page.getByRole('button', { name: 'Nuevo rol' }).click();
     const dialog = page.getByRole('dialog', { name: 'Nuevo rol' });
     await dialog.getByLabel('Nombre').fill(name);
-    await dialog.getByLabel('Ver auditoría').check();
+    await dialog.getByRole('checkbox', { name: 'Ver auditoría' }).check();
     await expectNoA11yViolations(page);
     await dialog.getByRole('button', { name: 'Guardar' }).click();
-    await expect(page.getByText('Rol creado')).toBeVisible();
+    await expect(page.getByText('Rol creado', { exact: true })).toBeVisible();
     await expect(page.getByText(name)).toBeVisible();
   });
 });
@@ -142,13 +142,16 @@ test.describe('auditoría (RF-31)', () => {
   test('lista las acciones, se filtra por acción y pasa axe', async ({ page }) => {
     await page.goto('/auditoria');
     await expect(page.getByRole('heading', { level: 1, name: 'Auditoría' })).toBeVisible();
-    await expect(page.getByText('Inicio de sesión').first()).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'Inicio de sesión' }).first()).toBeVisible();
     await expectNoA11yViolations(page);
     expect(await horizontalOverflow(page)).toBe(false);
 
-    await page.getByLabel('Acción').click();
+    await page.getByRole('combobox', { name: 'Acción' }).click();
+    await expect(page.getByRole('listbox')).toBeVisible();
+    await expectNoA11yViolations(page); // select de página ABIERTO
     await page.getByRole('option', { name: 'Inicio de sesión', exact: true }).click();
-    await expect(page.getByText('Inicio de sesión').first()).toBeVisible();
-    await expect(page.getByText('Usuario creado')).toHaveCount(0);
+    await expect(page.locator('#app')).not.toHaveAttribute('inert', '');
+    await expect(page.getByRole('cell', { name: 'Inicio de sesión' }).first()).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'Usuario creado' })).toHaveCount(0);
   });
 });

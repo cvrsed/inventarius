@@ -13,7 +13,7 @@ test.describe('login y sesión (RF-01)', () => {
     await page.goto('/auditoria');
     await expect(page).toHaveURL(/iniciar-sesion\?redirect=(%2F|\/)auditoria/);
     await page.getByLabel('Correo electrónico').fill(ADMIN.email);
-    await page.getByLabel('Contraseña').fill(ADMIN.password);
+    await page.getByLabel('Contraseña', { exact: true }).fill(ADMIN.password);
     await page.getByRole('button', { name: 'Entrar' }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'Auditoría' })).toBeVisible();
   });

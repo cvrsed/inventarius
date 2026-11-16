@@ -1,13 +1,27 @@
-import tailwindcss from '@tailwindcss/vite';
+import ui from '@nuxt/ui/vite';
 import vue from '@vitejs/plugin-vue';
 import { fileURLToPath } from 'node:url';
 import { defaultClientConditions } from 'vite';
 import { defineConfig } from 'vitest/config';
+import { APP_ICONS, uiDefaultVariants, uiTheme } from './src/theme/theme';
 
 export default defineConfig({
-  plugins: [vue(), tailwindcss()],
+  plugins: [
+    vue(),
+    ui({
+      ui: uiTheme,
+      theme: { defaultVariants: uiDefaultVariants },
+      // Los componentes se importan de forma explícita: sin auto-import ni archivos .d.ts generados.
+      components: false,
+      autoImport: false,
+      dts: false,
+      // El modo claro/oscuro lo maneja `useThemeStore` (clase `dark` en <html>, preferencia en localStorage).
+      colorMode: false,
+      icon: { clientBundle: { icons: [...APP_ICONS], scan: false } },
+    }),
+  ],
   resolve: {
-    conditions: ['source', ...defaultClientConditions],
+    conditions: ['inventarius-source', ...defaultClientConditions],
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
   server: {

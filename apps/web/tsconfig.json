@@ -4,6 +4,8 @@
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "types": ["vite/client"],
     "jsx": "preserve",
+    // Los tipos de Nuxt UI declaran props opcionales sin `| undefined`: con la opción activa rechazan `:prop="valor | undefined"`.
+    "exactOptionalPropertyTypes": false,
     "paths": { "@/*": ["./src/*"] }
   },
   "include": ["src/**/*.ts", "src/**/*.vue", "vite.config.ts"]

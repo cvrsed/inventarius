@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import Button from 'primevue/button';
-import Card from 'primevue/card';
-import Message from 'primevue/message';
-import { useToast } from 'primevue/usetoast';
+import UAlert from '@nuxt/ui/components/Alert.vue';
+import UButton from '@nuxt/ui/components/Button.vue';
+import UCard from '@nuxt/ui/components/Card.vue';
+import { useToast } from '@nuxt/ui/composables/useToast';
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
@@ -35,7 +35,7 @@ async function submit(): Promise<void> {
   submitting.value = true;
   try {
     await auth.changePassword(current.value, next.value);
-    toast.add({ severity: 'success', summary: t('changePassword.done'), life: 4000 });
+    toast.add({ title: t('changePassword.done'), color: 'success', duration: 4000 });
     await router.replace({ name: 'home' });
   } catch (e) {
     if (e instanceof ApiError && e.status === 422) {
@@ -51,48 +51,39 @@ async function submit(): Promise<void> {
 
 <template>
   <div class="flex min-h-[60vh] items-center justify-center">
-    <Card class="w-full max-w-md">
-      <template #title>
-        <h1 class="m-0 text-xl">{{ t('changePassword.title') }}</h1>
+    <UCard class="w-full max-w-md">
+      <template #header>
+        <h1 class="m-0 text-xl font-semibold text-highlighted">{{ t('changePassword.title') }}</h1>
+        <p v-if="auth.user?.mustChangePassword" class="m-0 mt-1 text-sm text-muted">
+          {{ t('changePassword.forced') }}
+        </p>
       </template>
-      <template v-if="auth.user?.mustChangePassword" #subtitle>{{
-        t('changePassword.forced')
-      }}</template>
-      <template #content>
-        <form class="flex flex-col gap-4" novalidate @submit.prevent="submit">
-          <Message v-if="error" severity="error" :closable="false" role="alert">{{
-            error
-          }}</Message>
-          <PasswordField
-            id="cp-current"
-            v-model="current"
-            :label="t('changePassword.current')"
-            :error="fieldErrors['currentPassword']"
-            autocomplete="current-password"
-          />
-          <PasswordField
-            id="cp-new"
-            v-model="next"
-            :label="t('changePassword.new')"
-            :error="fieldErrors['newPassword']"
-            autocomplete="new-password"
-          />
-          <PasswordField
-            id="cp-confirm"
-            v-model="confirm"
-            :label="t('changePassword.confirm')"
-            :error="fieldErrors['confirm']"
-            autocomplete="new-password"
-          />
-          <p class="app-muted m-0 text-sm">{{ t('changePassword.hint') }}</p>
-          <Button
-            type="submit"
-            class="app-touch"
-            :label="t('changePassword.submit')"
-            :loading="submitting"
-          />
-        </form>
-      </template>
-    </Card>
+      <form class="flex flex-col gap-4" novalidate @submit.prevent="submit">
+        <UAlert v-if="error" color="error" variant="subtle" role="alert" :description="error" />
+        <PasswordField
+          id="cp-current"
+          v-model="current"
+          :label="t('changePassword.current')"
+          :error="fieldErrors['currentPassword']"
+          autocomplete="current-password"
+        />
+        <PasswordField
+          id="cp-new"
+          v-model="next"
+          :label="t('changePassword.new')"
+          :error="fieldErrors['newPassword']"
+          autocomplete="new-password"
+        />
+        <PasswordField
+          id="cp-confirm"
+          v-model="confirm"
+          :label="t('changePassword.confirm')"
+          :error="fieldErrors['confirm']"
+          autocomplete="new-password"
+        />
+        <p class="m-0 text-sm text-muted">{{ t('changePassword.hint') }}</p>
+        <UButton type="submit" block :label="t('changePassword.submit')" :loading="submitting" />
+      </form>
+    </UCard>
   </div>
 </template>

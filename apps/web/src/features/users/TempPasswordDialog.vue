@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import Button from 'primevue/button';
-import Dialog from 'primevue/dialog';
-import InputText from 'primevue/inputtext';
+import UButton from '@nuxt/ui/components/Button.vue';
+import UInput from '@nuxt/ui/components/Input.vue';
+import UModal from '@nuxt/ui/components/Modal.vue';
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
@@ -22,33 +22,32 @@ async function copy(value: string): Promise<void> {
 </script>
 
 <template>
-  <Dialog
-    v-model:visible="visible"
-    modal
-    :header="t('users.resetTitle')"
-    :style="{ width: '28rem' }"
-    :breakpoints="{ '640px': '94vw' }"
-  >
-    <p class="mt-0">{{ t('users.resetBody') }}</p>
-    <div class="flex items-center gap-2">
-      <InputText
-        :model-value="password"
-        readonly
-        :aria-label="t('users.resetTitle')"
-        class="font-mono"
-        fluid
-      />
-      <Button
-        class="app-touch"
-        icon="pi pi-copy"
-        :aria-label="t('users.copy')"
-        severity="secondary"
-        @click="copy(password)"
-      />
-    </div>
-    <p v-if="copied" class="app-muted mb-0 text-sm" role="status">{{ t('users.copied') }}</p>
-    <template #footer>
-      <Button class="app-touch" :label="t('common.close')" @click="visible = false" />
+  <UModal v-model:open="visible" :title="t('users.resetTitle')" :description="t('users.resetBody')">
+    <template #body>
+      <div class="flex items-center gap-2">
+        <UInput
+          :model-value="password"
+          readonly
+          :aria-label="t('users.resetTitle')"
+          class="w-full"
+          :ui="{ base: 'font-mono' }"
+        />
+        <UButton
+          icon="i-lucide-copy"
+          :aria-label="t('users.copy')"
+          color="neutral"
+          variant="subtle"
+          @click="copy(password)"
+        />
+      </div>
+      <p v-if="copied" class="mb-0 mt-2 text-sm text-muted" role="status">
+        {{ t('users.copied') }}
+      </p>
     </template>
-  </Dialog>
+    <template #footer>
+      <div class="flex w-full justify-end">
+        <UButton :label="t('common.close')" @click="visible = false" />
+      </div>
+    </template>
+  </UModal>
 </template>

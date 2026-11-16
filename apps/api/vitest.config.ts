@@ -1,8 +1,8 @@
 import { defineConfig } from 'vitest/config';
 
 const common = {
-  resolve: { conditions: ['source'] },
-  ssr: { resolve: { conditions: ['source'] } },
+  resolve: { conditions: ['inventarius-source'] },
+  ssr: { resolve: { conditions: ['inventarius-source'] } },
 };
 
 export default defineConfig({

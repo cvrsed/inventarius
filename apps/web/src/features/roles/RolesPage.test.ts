@@ -55,7 +55,10 @@ describe('RolesPage', () => {
     });
     const w = mount(RolesPage, { global: pagePlugins(), attachTo: document.body });
     await flushPromises();
-    await w.get('button.p-button').trigger('click');
+    await w
+      .findAll('button')
+      .find((b) => b.text() === 'Nuevo rol')!
+      .trigger('click');
     await flushPromises();
     const form = document.body.querySelector('#role-form') as HTMLFormElement;
     form.dispatchEvent(new Event('submit', { cancelable: true }));
@@ -66,7 +69,7 @@ describe('RolesPage', () => {
     const name = document.body.querySelector('#r-name') as HTMLInputElement;
     name.value = 'Nuevo';
     name.dispatchEvent(new Event('input'));
-    (document.body.querySelector('#perm-audit\\:read') as HTMLInputElement).click();
+    (document.body.querySelectorAll('[role="checkbox"]')[2] as HTMLElement).click();
     await flushPromises();
     form.dispatchEvent(new Event('submit', { cancelable: true }));
     await flushPromises();

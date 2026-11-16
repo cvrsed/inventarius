@@ -1,8 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils';
-import ConfirmationService from 'primevue/confirmationservice';
-import ToastService from 'primevue/toastservice';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { globalPlugins } from '@/test-utils';
+import { pagePlugins } from '@/test-utils';
 import UsersPage from './UsersPage.vue';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -19,10 +17,7 @@ const user = (n: number) => ({
 });
 
 function mountPage() {
-  const g = globalPlugins();
-  return mount(UsersPage, {
-    global: { ...g, plugins: [...(g.plugins ?? []), ToastService, ConfirmationService] },
-  });
+  return mount(UsersPage, { global: pagePlugins() });
 }
 
 describe('UsersPage', () => {

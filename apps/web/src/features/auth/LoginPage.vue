@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import Button from 'primevue/button';
-import Card from 'primevue/card';
-import InputText from 'primevue/inputtext';
-import Message from 'primevue/message';
+import UAlert from '@nuxt/ui/components/Alert.vue';
+import UButton from '@nuxt/ui/components/Button.vue';
+import UCard from '@nuxt/ui/components/Card.vue';
+import UFormField from '@nuxt/ui/components/FormField.vue';
+import UInput from '@nuxt/ui/components/Input.vue';
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
@@ -48,44 +49,32 @@ async function submit(): Promise<void> {
 
 <template>
   <div class="flex min-h-[70vh] items-center justify-center">
-    <Card class="w-full max-w-md">
-      <template #title>
-        <h1 class="m-0 text-xl">{{ t('login.title') }}</h1>
+    <UCard class="w-full max-w-md">
+      <template #header>
+        <h1 class="m-0 text-xl font-semibold text-highlighted">{{ t('login.title') }}</h1>
+        <p class="m-0 mt-1 text-sm text-muted">{{ t('login.subtitle') }}</p>
       </template>
-      <template #subtitle>{{ t('login.subtitle') }}</template>
-      <template #content>
-        <form class="flex flex-col gap-4" novalidate @submit.prevent="submit">
-          <Message v-if="error" severity="error" :closable="false" role="alert">{{
-            error
-          }}</Message>
-          <div class="flex flex-col gap-1">
-            <label for="login-email">{{ t('login.email') }}</label>
-            <InputText
-              id="login-email"
-              v-model="email"
-              type="email"
-              autocomplete="username"
-              inputmode="email"
-              :invalid="!!emailError"
-              :aria-describedby="emailError ? 'login-email-error' : undefined"
-              fluid
-            />
-          </div>
-          <PasswordField
-            id="login-password"
-            v-model="password"
-            :label="t('login.password')"
-            autocomplete="current-password"
+      <form class="flex flex-col gap-4" novalidate @submit.prevent="submit">
+        <UAlert v-if="error" color="error" variant="subtle" role="alert" :description="error" />
+        <UFormField :label="t('login.email')" name="login-email" :error="emailError || undefined">
+          <UInput
+            id="login-email"
+            v-model="email"
+            type="email"
+            autocomplete="username"
+            inputmode="email"
+            class="w-full"
           />
-          <Button
-            type="submit"
-            class="app-touch"
-            :label="t('login.submit')"
-            :loading="submitting"
-          />
-          <p class="app-muted m-0 text-sm">{{ t('login.next') }}</p>
-        </form>
-      </template>
-    </Card>
+        </UFormField>
+        <PasswordField
+          id="login-password"
+          v-model="password"
+          :label="t('login.password')"
+          autocomplete="current-password"
+        />
+        <UButton type="submit" block :label="t('login.submit')" :loading="submitting" />
+        <p class="m-0 text-sm text-muted">{{ t('login.next') }}</p>
+      </form>
+    </UCard>
   </div>
 </template>

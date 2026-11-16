@@ -1,24 +1,17 @@
-/* Estilos del armazón (colores por tokens de PrimeVue; el layout lo resuelve Tailwind en las plantillas). */
+/* Estilos del armazón: colores por tokens de Nuxt UI (`--ui-*`); el layout lo resuelve Tailwind en las plantillas. */
 .app-skip-link {
   position: absolute;
   inset-inline-start: 0.5rem;
   inset-block-start: -4rem;
   z-index: 100;
   padding: 0.75rem 1rem;
-  border-radius: var(--p-content-border-radius);
-  background: var(--p-primary-color);
-  color: var(--p-primary-contrast-color);
+  border-radius: var(--ui-radius);
+  background: var(--ui-primary);
+  color: var(--ui-bg);
 }
 
 .app-skip-link:focus {
   inset-block-start: 0.5rem;
-}
-
-.app-header,
-.app-sidebar,
-.app-bottom-nav {
-  background: var(--p-content-background);
-  border-color: var(--p-content-border-color);
 }
 
 .app-nav-link {
@@ -26,39 +19,26 @@
   align-items: center;
   min-height: var(--app-touch-target);
   min-width: var(--app-touch-target);
-  border-radius: var(--p-content-border-radius);
-  color: var(--p-text-color);
+  border-radius: var(--ui-radius);
+  color: var(--ui-text);
   text-decoration: none;
 }
 
 .app-nav-link:hover {
-  background: var(--p-content-hover-background);
+  background: var(--ui-bg-elevated);
 }
 
 .app-nav-link:focus-visible {
-  outline: 2px solid var(--p-focus-ring-color);
+  outline: 2px solid var(--ui-primary);
   outline-offset: 2px;
 }
 
 .app-nav-link[aria-current='page'] {
-  background: var(--p-highlight-background);
-  color: var(--p-highlight-color);
+  background: var(--ui-bg-accented);
+  color: var(--ui-text-highlighted);
   font-weight: 600;
-}
-
-.app-muted {
-  color: var(--p-text-muted-color);
-}
-
-.app-touch {
-  min-width: var(--app-touch-target);
-  min-height: var(--app-touch-target);
 }
 
 .app-bottom-nav {
   padding-block-end: env(safe-area-inset-bottom, 0px);
-}
-
-.field-error {
-  color: var(--p-form-field-invalid-placeholder-color, var(--p-red-700));
 }

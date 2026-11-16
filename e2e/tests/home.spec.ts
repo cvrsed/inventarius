@@ -18,7 +18,7 @@ test.describe('página de inicio (con sesión)', () => {
     await expect(page.getByText('Todo funciona con normalidad')).toBeVisible();
     await expectNoA11yViolations(page);
     await page.getByRole('button', { name: 'Cambiar a modo oscuro' }).click();
-    await expect(page.locator('html')).toHaveClass(/app-dark/);
+    await expect(page.locator('html')).toHaveClass(/\bdark\b/);
     await expectNoA11yViolations(page);
   });
 
@@ -57,6 +57,29 @@ test.describe('página de inicio (con sesión)', () => {
     await page.goto('/no-existe');
     await expect(page.getByRole('heading', { name: 'Página no encontrada' })).toBeVisible();
     await expectNoA11yViolations(page);
+  });
+});
+
+test.describe('íconos y recursos (RNF-08)', () => {
+  test('los íconos van en el build: ninguna petición sale del origen de la app', async ({
+    page,
+    baseURL,
+  }) => {
+    const external: string[] = [];
+    page.on('request', (req) => {
+      const url = req.url();
+      if (!url.startsWith('data:') && !url.startsWith('blob:') && !url.startsWith(baseURL!))
+        external.push(url);
+    });
+    await loginViaApi(page.request, ADMIN.email, ADMIN.password);
+    for (const path of ['/', '/usuarios', '/roles', '/auditoria']) {
+      await page.goto(path);
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      // Los íconos se dibujan como SVG en línea, no como imágenes remotas.
+      await expect(page.locator('svg.iconify:visible').first()).toBeVisible();
+    }
+    await page.getByRole('button', { name: 'Cambiar a modo oscuro' }).click();
+    expect(external, `Peticiones a otros orígenes: ${external.join(', ')}`).toEqual([]);
   });
 });
 

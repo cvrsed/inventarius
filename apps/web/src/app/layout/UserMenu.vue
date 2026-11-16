@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import Button from 'primevue/button';
+import UButton from '@nuxt/ui/components/Button.vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/features/auth/useAuthStore';
@@ -16,25 +16,21 @@ async function logout(): Promise<void> {
 
 <template>
   <div v-if="auth.user" class="flex items-center gap-1">
-    <span class="app-muted hidden max-w-40 truncate text-sm sm:inline" :title="auth.user.email">{{
+    <span class="hidden max-w-40 truncate text-sm text-muted sm:inline" :title="auth.user.email">{{
       auth.user.name
     }}</span>
-    <Button
-      class="app-touch"
-      icon="pi pi-key"
+    <UButton
+      icon="i-lucide-key-round"
       :aria-label="t('session.changePassword')"
-      severity="secondary"
-      text
-      rounded
+      color="neutral"
+      variant="ghost"
       @click="router.push({ name: 'change-password' })"
     />
-    <Button
-      class="app-touch"
-      icon="pi pi-sign-out"
+    <UButton
+      icon="i-lucide-log-out"
       :aria-label="t('session.logout')"
-      severity="secondary"
-      text
-      rounded
+      color="neutral"
+      variant="ghost"
       @click="logout"
     />
   </div>

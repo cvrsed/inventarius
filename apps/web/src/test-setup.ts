@@ -1,4 +1,4 @@
-// jsdom no implementa matchMedia (PrimeVue lo usa para los breakpoints de DataTable).
+// jsdom no implementa matchMedia (Nuxt UI/reka-ui lo consultan para adaptar los componentes).
 if (typeof window.matchMedia !== 'function') {
   window.matchMedia = ((query: string) => ({
     matches: false,
@@ -18,4 +18,15 @@ if (typeof window.ResizeObserver !== 'function') {
     unobserve(): void {}
     disconnect(): void {}
   } as unknown as typeof ResizeObserver;
+}
+
+// reka-ui (base de Nuxt UI) usa estas APIs del DOM, que jsdom no trae.
+const elementProto = Element.prototype as unknown as Record<string, unknown>;
+for (const name of [
+  'scrollIntoView',
+  'hasPointerCapture',
+  'setPointerCapture',
+  'releasePointerCapture',
+]) {
+  if (typeof elementProto[name] !== 'function') elementProto[name] = () => false;
 }

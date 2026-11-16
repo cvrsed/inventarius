@@ -76,15 +76,17 @@ describe('UserFormDialog', () => {
     w.unmount();
   });
 
-  it('los checkboxes decorativos del panel de roles quedan fuera del foco y de la accesibilidad (RNF-02)', async () => {
+  it('el selector de roles abre un listbox con una opción accesible por rol (RNF-02)', async () => {
     mockApi({ 'GET /api/v1/roles': () => [role] });
     const w = open({ user: null, creating: true });
     await flushPromises();
-    (document.body.querySelector('.p-multiselect') as HTMLElement).click();
+    const trigger = document.body.querySelector('#u-roles') as HTMLElement;
+    trigger.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }));
+    trigger.click();
     await flushPromises();
-    const boxes = document.body.querySelectorAll('.p-multiselect-option .p-checkbox');
-    expect(boxes.length).toBeGreaterThan(0);
-    for (const box of boxes) expect(box.hasAttribute('inert')).toBe(true);
+    const options = document.body.querySelectorAll('[role="option"]');
+    expect(options.length).toBe(1);
+    expect(options[0]!.textContent).toContain('Lector');
     w.unmount();
   });
 

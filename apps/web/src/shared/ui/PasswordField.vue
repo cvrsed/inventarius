@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import Password from 'primevue/password';
+import UButton from '@nuxt/ui/components/Button.vue';
+import UFormField from '@nuxt/ui/components/FormField.vue';
+import UInput from '@nuxt/ui/components/Input.vue';
+import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 defineProps<{
   id: string;
@@ -9,24 +13,31 @@ defineProps<{
 }>();
 const model = defineModel<string>({ required: true });
 
-// PrimeVue pone aria-expanded/aria-haspopup en el <input type=password>, atributos inválidos ahí (axe: aria-allowed-attr).
-const inputPt = { pcInputText: { root: { 'aria-expanded': null, 'aria-haspopup': null } } };
+const { t } = useI18n();
+const shown = ref(false);
 </script>
 
 <template>
-  <div class="flex flex-col gap-1">
-    <label :for="id">{{ label }}</label>
-    <Password
+  <UFormField :label="label" :name="id" :error="error || undefined" :ui="{ error: 'text-error' }">
+    <UInput
+      :id="id"
       v-model="model"
-      :input-id="id"
+      :type="shown ? 'text' : 'password'"
       :autocomplete="autocomplete"
-      :feedback="false"
-      :invalid="!!error"
-      :aria-describedby="error ? `${id}-error` : undefined"
-      toggle-mask
-      fluid
-      :pt="inputPt"
-    />
-    <small v-if="error" :id="`${id}-error`" class="field-error" role="alert">{{ error }}</small>
-  </div>
+      class="w-full"
+    >
+      <template #trailing>
+        <UButton
+          type="button"
+          color="neutral"
+          variant="link"
+          size="sm"
+          :icon="shown ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+          :aria-label="shown ? t('common.hidePassword') : t('common.showPassword')"
+          :aria-pressed="shown"
+          @click="shown = !shown"
+        />
+      </template>
+    </UInput>
+  </UFormField>
 </template>

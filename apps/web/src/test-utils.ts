@@ -1,7 +1,5 @@
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
-import PrimeVue from 'primevue/config';
-import ConfirmationService from 'primevue/confirmationservice';
-import ToastService from 'primevue/toastservice';
+import ui from '@nuxt/ui/vue-plugin';
 import { vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import type { GlobalMountOptions } from '@vue/test-utils';
@@ -15,13 +13,7 @@ export function globalPlugins(): GlobalMountOptions {
   // Activo para que `useXStore()` en el test vea la misma instancia que el componente montado.
   setActivePinia(pinia);
   return {
-    plugins: [
-      pinia,
-      router,
-      createAppI18n(),
-      [VueQueryPlugin, { queryClient }],
-      [PrimeVue, { theme: 'none' }],
-    ],
+    plugins: [pinia, router, createAppI18n(), [VueQueryPlugin, { queryClient }], ui],
   };
 }
 
@@ -57,8 +49,7 @@ export function jsonResponse(
   });
 }
 
-/** Plugins globales más los servicios de PrimeVue que usan las pantallas con diálogos. */
+/** Plugins globales para pantallas con diálogos y avisos: los monta `UApp`, que aporta toasts y overlays. */
 export function pagePlugins(): GlobalMountOptions {
-  const g = globalPlugins();
-  return { ...g, plugins: [...(g.plugins ?? []), ToastService, ConfirmationService] };
+  return globalPlugins();
 }
