@@ -50,19 +50,39 @@ const SORTS = [
   'purchaseDate',
   'createdAt',
 ] as const;
-const sortItems = computed(() =>
-  SORTS.flatMap((key) => [
-    { value: key, label: `${t(`assets.sortKeys.${key}`)} ↑` },
-    { value: `-${key}`, label: `${t(`assets.sortKeys.${key}`)} ↓` },
-  ]),
+const sortFieldItems = computed(() =>
+  SORTS.map((key) => ({ value: key, label: t(`assets.sortKeys.${key}`) })),
 );
+/** `sort` de la URL: `name` (asc) o `-name` (desc). */
+const sortField = computed(() => query.value.sort.replace(/^-/, ''));
+const sortDesc = computed(() => query.value.sort.startsWith('-'));
+const setSort = (field: string, desc: boolean) => update({ sort: `${desc ? '-' : ''}${field}` });
+/** Estado de orden de la tabla (el orden lo hace el servidor; la tabla solo lo muestra). */
+const sorting = computed({
+  get: () => [{ id: sortField.value, desc: sortDesc.value }],
+  set: (v: { id: string; desc: boolean }[]) => {
+    const next = v[0];
+    if (next) void setSort(next.id, next.desc);
+  },
+});
+/** Un clic en el encabezado ordena ascendente; otro clic en el mismo, descendente. */
+const toggleColumnSort = (field: string) =>
+  setSort(field, sortField.value === field ? !sortDesc.value : false);
+const SORTABLE_COLUMNS = ['assetTag', 'name', 'model', 'status', 'location'] as const;
+const columnSortIcon = (field: string) =>
+  sortField.value !== field
+    ? 'i-lucide-arrow-up-down'
+    : sortDesc.value
+      ? 'i-lucide-arrow-down'
+      : 'i-lucide-arrow-up';
 
 const columns = computed(() => [
-  { id: 'assetTag', header: t('assets.columns.assetTag') },
-  { id: 'name', header: t('assets.columns.name') },
-  { id: 'model', header: t('assets.columns.model') },
-  { id: 'status', header: t('assets.columns.status') },
-  { id: 'location', header: t('assets.columns.location') },
+  // `accessorKey` (no `id`) hace la columna ordenable para la tabla: así publica `aria-sort`.
+  ...SORTABLE_COLUMNS.map((id) => ({
+    accessorKey: id,
+    header: t(`assets.columns.${id}`),
+    enableSorting: true,
+  })),
   { id: 'assignedTo', header: t('assets.columns.assignedTo') },
 ]);
 const assignedName = (a: {
@@ -122,13 +142,23 @@ if (hasPanelFilters) showFilters.value = true;
         :aria-label="t('assets.search')"
         class="w-full"
       />
-      <AppSelect
-        :model-value="query.sort"
-        :items="sortItems"
-        :aria-label="t('assets.sortLabel')"
-        class="w-full"
-        @update:model-value="(v: string | number) => update({ sort: String(v) })"
-      />
+      <!-- En escritorio se ordena con los encabezados de la tabla; en móvil, campo + dirección. -->
+      <div class="flex gap-2 md:hidden">
+        <AppSelect
+          :model-value="sortField"
+          :items="sortFieldItems"
+          :aria-label="t('assets.sortBy')"
+          class="min-w-0 flex-1"
+          @update:model-value="(v: string | number) => setSort(String(v), sortDesc)"
+        />
+        <UButton
+          :icon="sortDesc ? 'i-lucide-arrow-down-wide-narrow' : 'i-lucide-arrow-up-narrow-wide'"
+          :aria-label="sortDesc ? t('assets.sortDescending') : t('assets.sortAscending')"
+          color="neutral"
+          variant="outline"
+          @click="setSort(sortField, !sortDesc)"
+        />
+      </div>
       <UButton
         class="md:hidden"
         icon="i-lucide-list-filter"
@@ -164,6 +194,8 @@ if (hasPanelFilters) showFilters.value = true;
 
     <div class="hidden md:block">
       <UTable
+        v-model:sorting="sorting"
+        :sorting-options="{ manualSorting: true }"
         :data="data?.data ?? []"
         :columns="columns"
         :loading="isPending || isFetching"
@@ -171,6 +203,17 @@ if (hasPanelFilters) showFilters.value = true;
         class="rounded-lg border border-default"
       >
         <template #empty>{{ filtered ? t('common.emptyFiltered') : t('assets.empty') }}</template>
+        <template v-for="id in SORTABLE_COLUMNS" :key="id" #[`${id}-header`]>
+          <button
+            type="button"
+            class="inline-flex min-h-8 items-center gap-1 rounded-md font-semibold hover:text-highlighted focus-visible:outline-2 focus-visible:outline-primary"
+            :data-sort-column="id"
+            @click="toggleColumnSort(id)"
+          >
+            {{ t(`assets.columns.${id}`) }}
+            <UIcon :name="columnSortIcon(id)" class="size-4" aria-hidden="true" />
+          </button>
+        </template>
         <template #assetTag-cell="{ row }">
           <RouterLink
             :to="{ name: 'asset', params: { id: row.original.id } }"

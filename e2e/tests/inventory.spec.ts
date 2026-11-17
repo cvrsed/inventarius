@@ -592,16 +592,38 @@ test.describe('listado de activos (RF-22, RF-26, RF-40)', () => {
     await expect(page.getByRole('button', { name: 'Limpiar filtros' })).toBeEnabled();
   });
 
-  test('orden, tamaño de página y paginación del lado servidor', async ({ page }) => {
+  test('orden por encabezados (escritorio) o campo + dirección (móvil) [P27]', async ({
+    page,
+  }, info) => {
     const fixture = await createCatalogFixture(page.request);
     for (let i = 0; i < 3; i += 1) await createAssetViaApi(page.request, fixture);
     await page.goto(`/activos?modelId=${fixture.modelId}&pageSize=10&sort=-name`);
     await expect(page.getByText('3 resultados')).toBeVisible();
-    await page.getByRole('combobox', { name: 'Ordenar' }).click();
-    await expect(page.getByRole('listbox')).toBeVisible();
-    await expectNoA11yViolations(page); // select de orden ABIERTO
-    await page.getByRole('option', { name: 'Nombre ↑' }).click();
-    await expect(page).toHaveURL(/sort=name/);
+    await expect(page.getByRole('combobox', { name: 'Ordenar' })).toHaveCount(0); // sin el select largo ↑/↓
+
+    if (info.project.name === 'mobile') {
+      await page.getByRole('combobox', { name: 'Ordenar por' }).click();
+      await expect(page.getByRole('listbox')).toBeVisible();
+      await expectNoA11yViolations(page); // select de campo ABIERTO
+      await page.getByRole('option', { name: 'Modelo', exact: true }).click();
+      await expect(page).toHaveURL(/sort=-model/);
+      await page.getByRole('button', { name: /^Orden descendente/ }).click();
+      await expect(page).toHaveURL(/sort=model(&|$)/);
+      await expect(page.getByRole('button', { name: /^Orden ascendente/ })).toBeVisible();
+    } else {
+      const th = (name: string) => page.getByRole('columnheader', { name });
+      await expect(th('Nombre')).toHaveAttribute('aria-sort', 'descending');
+      await page.getByRole('button', { name: 'Nombre' }).click();
+      await expect(page).toHaveURL(/sort=name(&|$)/);
+      await expect(th('Nombre')).toHaveAttribute('aria-sort', 'ascending');
+      await page.getByRole('button', { name: 'Modelo' }).click();
+      await expect(th('Modelo')).toHaveAttribute('aria-sort', 'ascending');
+      await expect(th('Nombre')).toHaveAttribute('aria-sort', 'none');
+      await page.getByRole('button', { name: 'Modelo' }).click();
+      await expect(page).toHaveURL(/sort=-model/);
+      await expect(th('Modelo')).toHaveAttribute('aria-sort', 'descending');
+    }
+    await eachTheme(page, () => expectNoA11yViolations(page));
     await page.goto(`/activos?modelId=${fixture.modelId}&pageSize=10&page=9`);
     await expect(page.getByText('3 resultados')).toBeVisible();
   });

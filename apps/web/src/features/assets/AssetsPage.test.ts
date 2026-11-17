@@ -127,4 +127,49 @@ describe('AssetsPage (RF-22, RF-40)', () => {
     const { wrapper } = await mountAt('/activos?deleted=include', [asset(1, { deleted: true })]);
     expect(wrapper.text()).toContain('Dado de baja');
   });
+
+  describe('orden del listado [P27]', () => {
+    const header = (w: { find: (s: string) => { element: Element } }, id: string) =>
+      (w.find(`[data-sort-column="${id}"]`) as unknown as { element: HTMLElement }).element;
+
+    it('en escritorio los encabezados ordenan, con aria-sort y flecha, y no hay select con ↑/↓', async () => {
+      const { wrapper } = await mountAt('/activos?sort=name', [asset(1)]);
+      const ths = wrapper.findAll('th');
+      const byName = (n: string) => ths.find((th) => th.text().includes(n))!;
+      expect(byName('Nombre').attributes('aria-sort')).toBe('ascending');
+      expect(byName('Etiqueta').attributes('aria-sort')).toBe('none');
+      expect(byName('Asignado a').attributes('aria-sort')).toBeUndefined();
+      expect(
+        wrapper.find('[data-sort-column="name"] svg, [data-sort-column="name"] span').exists(),
+      ).toBe(true);
+      expect(wrapper.text()).not.toMatch(/[↑↓]/);
+      expect(header(wrapper, 'name').tagName).toBe('BUTTON');
+    });
+
+    it('un clic ordena ascendente y otro clic en la misma columna, descendente', async () => {
+      const { wrapper } = await mountAt('/activos', [asset(1)]);
+      header(wrapper, 'model').click();
+      await flushPromises();
+      expect(router.currentRoute.value.query['sort']).toBe('model');
+      header(wrapper, 'model').click();
+      await flushPromises();
+      expect(router.currentRoute.value.query['sort']).toBe('-model');
+      expect(
+        wrapper
+          .findAll('th')
+          .find((th) => th.text().includes('Modelo'))!
+          .attributes('aria-sort'),
+      ).toBe('descending');
+    });
+
+    it('en móvil hay «Ordenar por» (campo) y un botón de dirección separado', async () => {
+      const { wrapper } = await mountAt('/activos?sort=-name', [asset(1)]);
+      expect(wrapper.find('[aria-label="Ordenar por"]').exists()).toBe(true);
+      const dir = wrapper.get('button[aria-label^="Orden descendente"]');
+      await dir.trigger('click');
+      await flushPromises();
+      expect(router.currentRoute.value.query['sort']).toBe('name');
+      expect(wrapper.find('button[aria-label^="Orden ascendente"]').exists()).toBe(true);
+    });
+  });
 });
