@@ -113,6 +113,16 @@ describe('AssetFormPage (RF-20)', () => {
     expect(w.text()).toContain('Ya existe un activo con esa etiqueta');
   });
 
+  it('la sección se llama «Ubicación» al editar y «Estado y ubicación» solo al crear [P28]', async () => {
+    const edit = await mountAt(`/activos/${ID}/editar`, {});
+    const legends = (w: { findAll: (s: string) => { text: () => string }[] }) =>
+      w.findAll('legend').map((l) => l.text());
+    expect(legends(edit.w)).toContain('Ubicación');
+    expect(legends(edit.w)).not.toContain('Estado y ubicación');
+    const create = await mountAt('/activos/nuevo', {});
+    expect(legends(create.w)).toContain('Estado y ubicación');
+  });
+
   it('la edición no tiene el campo Estado; solo el alta lo pide', async () => {
     const { w } = await mountAt(`/activos/${ID}/editar`, {});
     expect(w.find('#a-status').exists()).toBe(false);

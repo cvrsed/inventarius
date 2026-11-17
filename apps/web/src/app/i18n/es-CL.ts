@@ -323,7 +323,8 @@ export const messages = {
     },
     sections: {
       identity: 'Identificación',
-      location: 'Estado y ubicación',
+      location: 'Ubicación',
+      statusAndLocation: 'Estado y ubicación',
       purchase: 'Compra y garantía',
       notes: 'Notas',
       details: 'Detalle',

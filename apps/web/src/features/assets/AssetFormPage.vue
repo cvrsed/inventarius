@@ -202,7 +202,9 @@ async function submit(): Promise<void> {
       </fieldset>
 
       <fieldset class="m-0 flex min-w-0 flex-col gap-4 rounded-lg border border-default p-4">
-        <legend class="px-1 font-semibold">{{ t('assets.sections.location') }}</legend>
+        <legend class="px-1 font-semibold">
+          {{ editing ? t('assets.sections.location') : t('assets.sections.statusAndLocation') }}
+        </legend>
         <!-- El estado solo se elige al crear; después se cambia con «Cambiar estado» (queda en el historial). -->
         <UFormField
           v-if="!editing"

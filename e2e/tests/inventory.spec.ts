@@ -229,6 +229,7 @@ test.describe('activos: CRUD completo (RF-20 a RF-25)', () => {
   }) => {
     const fixture = await createCatalogFixture(page.request);
     await page.goto('/activos/nuevo');
+    await expect(page.getByRole('group', { name: 'Estado y ubicación' })).toBeVisible();
     await eachTheme(page, () => expectNoA11yViolations(page));
     expect(await horizontalOverflow(page)).toBe(false);
 
@@ -369,6 +370,7 @@ test.describe('activos: CRUD completo (RF-20 a RF-25)', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Editar activo' })).toBeVisible();
     // El estado ya no se edita aquí: solo con «Cambiar estado» [P23].
     await expect(page.getByRole('button', { name: /^Estado/ })).toHaveCount(0);
+    await expect(page.getByRole('group', { name: 'Ubicación', exact: true })).toBeVisible();
     const renamed = `${asset.name} v2`;
     await page.getByLabel('Nombre').first().fill(renamed);
     await page.getByRole('button', { name: 'Guardar' }).click();
