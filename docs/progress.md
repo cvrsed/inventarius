@@ -57,14 +57,14 @@
 - [x] CSRF de doble envío, hash del token de sesión en BD, rotación en cada login
 - [x] RF-30/RF-31 auditoría append-only (privilegios de BD) con diff y vista filtrable
 - [x] UI: login, cambio de contraseña, usuarios, roles, auditoría; guards por permiso; menú filtrado
-- [x] Ajustes tras la revisión de Rodrigo (ver «Ajustes de revisión» abajo)
+- [x] Ajustes tras la revisión del responsable del proyecto (ver «Ajustes de revisión» abajo)
 - [x] Tests: 117 api (45 de integración con Postgres 18), 56 web, 16 shared; 40 e2e (escritorio y 360 px, axe claro/oscuro)
 - [x] Criterios de aceptación: permisos por rol en **todas** las rutas (test que recorre `routeAccess` contra los 4 roles y anónimo),
       test que detecta rutas sin permiso (`assertRouteDeclaresAccess`), login/bloqueo/expiración en e2e
 
 **Pendiente / no verificado**
 
-- La lista de contraseñas comunes sigue siendo mínima (~60 entradas): issue #4, por decisión de Rodrigo no se cambia aún (Q12).
+- La lista de contraseñas comunes sigue siendo mínima (~60 entradas): issue #4, por decisión del responsable del proyecto no se cambia aún (Q12).
 
 **Cómo probarlo**: `docs/development.md` (incluye `create-admin`). `pnpm lint && pnpm typecheck && pnpm test:coverage`;
 `pnpm --filter @inventarius/api test:int`; e2e con `compose.e2e.yml`. Controles en `docs/security.md`.
@@ -74,7 +74,7 @@
 Un commit por punto, todo en `phase/f1-identidad`:
 
 1. **PrimeVue 5**: 5.0.5 es estable (`latest`), pero cambió de licencia (clave obligatoria, pago según tamaño de la
-   organización). No se migró a la 5; Rodrigo decidió después reemplazar PrimeVue por Nuxt UI v4 (ver abajo).
+   organización). No se migró a la 5; el responsable del proyecto decidió después reemplazar PrimeVue por Nuxt UI v4 (ver abajo).
 2. **TypeScript 6.0.x**: justificación en `docs/adr/0002-stack.md` (TS 7 sin API programática hasta 7.1).
 3. **Sesión absoluta 24 h** (antes 7 d), con tests de integración con la configuración por defecto.
 4. **Correo**: solo un administrador lo edita y nunca el propio; invalida sesiones y audita antes/después. Tests API y UI.
@@ -87,7 +87,7 @@ Un commit por punto, todo en `phase/f1-identidad`:
 
 ## Cambio de librería de UI y CLI de correo (PR #2, 2026-11-16)
 
-Segunda tanda de ajustes de Rodrigo, un commit por punto en `phase/f1-identidad`:
+Segunda tanda de ajustes del responsable del proyecto, un commit por punto en `phase/f1-identidad`:
 
 1. **PrimeVue → Nuxt UI v4 (MIT)**, modo Vue + Vite sin Nuxt. Se eliminaron `primevue`, `@primeuix/*`, `primeicons` y
    `tailwindcss-primeui` (ninguna dependencia de PrimeTek en `package.json` ni en el lockfile). Versión exacta 4.12.0
@@ -116,13 +116,13 @@ condición de exports renombrada a `inventarius-source`; selects de página con 
   que localmente no se veían: `pnpm test` ejecutaba el paquete e2e; zlib desactualizada en la imagen api y `npm` vendorizado
   (con CVEs) que se quitó del runtime; CVE de `x/net` en Caddy sin imagen corregida (`.trivyignore`, Q22); gitleaks 8.24 con
   falsos positivos en contraseñas ficticias de tests (allowlist por ruta); axe leyendo colores a mitad de una transición.
-- **Decisiones provisionales que requieren revisión de Rodrigo** (detalle en `docs/open-questions.md`): UI con Nuxt UI en vez de PrimeVue (Q2, decidida por Rodrigo),
+- **Decisiones provisionales que requieren revisión del responsable del proyecto** (detalle en `docs/open-questions.md`): UI con Nuxt UI en vez de PrimeVue (Q2, decidida por el responsable del proyecto),
   TypeScript 6 en vez de 7 (Q3), vulnerabilidades ignoradas (Q11, Q22),
-  sesión absoluta de 24 h (Q15, decidida por Rodrigo), umbrales de bloqueo (Q16), roles semilla no borrables ni renombrables (Q13), correo editable solo por un administrador que no sea el propio usuario (Q18, decidida por Rodrigo).
+  sesión absoluta de 24 h (Q15, decidida por el responsable del proyecto), umbrales de bloqueo (Q16), roles semilla no borrables ni renombrables (Q13), correo editable solo por un administrador que no sea el propio usuario (Q18, decidida por el responsable del proyecto).
 - **Bugs reales que encontraron las pruebas** (corregidos): `--ignore-scripts` dejaba un `pnpm` no ejecutable; `up --exit-code-from`
   abortaba con servicios de un solo uso; contraste AA en mensajes de Aura; `aria-expanded` inválido en el input de contraseña de PrimeVue;
   claves i18n con punto que no resolvían; ruta `/api/metrics` visible tras Caddy.
-- **Pendiente de Rodrigo**: issues #3 (Caddy, 2026-12-16) y #4 (lista de contraseñas).
+- **Pendiente del responsable del proyecto**: issues #3 (Caddy, 2026-12-16) y #4 (lista de contraseñas).
 - **Siguiente paso sugerido**: revisar y mergear #1, luego #2 (cambiar su base a `main`); empezar F2 (Inventario) solo con instrucción explícita.
 
 ## F2 — Inventario (rama `phase/f2-inventario`, desde `main`)
@@ -209,10 +209,10 @@ Catálogo → Activos → Nuevo activo → Asignar/Devolver → Dar de baja/Rest
 - **Alcance entregado**: catálogo (RF-10 a RF-14), activos con historial (RF-20, RF-22 a RF-26), vistas móviles (RF-40 a RF-42),
   rendimiento con 10.000 activos (peor p95 ≈ 71 ms frente a 300 ms), e2e de CRUD completo en escritorio y 360 px con axe en claro
   y oscuro, y runners fijados a `ubuntu-24.04`. RF-21 y los filtros de LNS quedan para F3 (Q25).
-- **Decisiones provisionales que requieren revisión de Rodrigo** (detalle en `docs/open-questions.md`): permiso nuevo
+- **Decisiones provisionales que requieren revisión del responsable del proyecto** (detalle en `docs/open-questions.md`): permiso nuevo
   `asset:restore` (Q23), filtros planos en la query en vez de `filter[campo]` (Q24), estados semilla y «Asignado» de sistema
   (Q26), no cambiar estado ni dar de baja un activo asignado (Q27), formato del CSV (Q30), sin service worker (Q31).
-- **Pendiente de Rodrigo**: agregar `ASSET_TAG_PREFIX=INV` a `.env.example` (la sesión no puede leer ni editar ese archivo, Q32);
+- **Pendiente del responsable del proyecto**: agregar `ASSET_TAG_PREFIX=INV` a `.env.example` (la sesión no puede leer ni editar ese archivo, Q32);
   instalar la app en un celular real (Q31); repetir la medición de rendimiento contra el despliegue real (Q33).
 - **CI**: el PR #5 termina con todos los jobs en verde (lint/typecheck, unitarios en Node 26 y 24, integración con cobertura, e2e
   Playwright + axe en Docker, auditoría + OSV + gitleaks, build de imágenes y Trivy). Dos cosas que solo se vieron en CI y se
@@ -222,7 +222,7 @@ Catálogo → Activos → Nuevo activo → Asignar/Devolver → Dar de baja/Rest
 
 ## Revisión manual de F2 (2026-11-17, mismo PR #5)
 
-Los 14 puntos de la revisión de Rodrigo, un commit por punto sobre `phase/f2-inventario`:
+Los 14 puntos de la revisión del responsable del proyecto, un commit por punto sobre `phase/f2-inventario`:
 
 1. Pestaña activa del catálogo según la ruta (`/catalogo` redirige a `categories`); e2e entrando directo a cada ruta.
 2. Subtítulo del modal por entidad; ayuda de «Activo» junto al switch solo al editar.

@@ -7,7 +7,7 @@
 - `docs/progress.md`: estado de avance. Se actualiza al cerrar cada tarea relevante y cada fase.
 
 ## Alcance
-- Trabajar solo las fases que indique el prompt de arranque (`KICKOFF.md`) o Rodrigo.
+- Trabajar solo las fases que indique el prompt de arranque (`KICKOFF.md`) o el responsable del proyecto.
 - Una fase = una rama `phase/fN-nombre` = un PR hacia `main`.
 - Detenerse al completar el MVP (v1.0.0). Nada de items Should/Could sin instrucción explícita.
 
