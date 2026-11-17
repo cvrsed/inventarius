@@ -33,7 +33,7 @@ describe('AuditPage', () => {
     });
     const w = mount(AuditPage, { global: pagePlugins() });
     await flushPromises();
-    expect(w.text()).toContain('Usuario modificado');
+    expect(w.text()).toContain('Edición de usuario');
     expect(w.text()).toContain('Intento de acceso fallido');
     expect(w.text()).toContain('Sistema');
     expect(w.text()).toContain('CLI (operación)');
@@ -48,7 +48,7 @@ describe('AuditPage', () => {
     const w = mount(AuditPage, { global: pagePlugins() });
     await flushPromises();
     const card = w.get('ul > li');
-    expect(card.text()).toContain('Usuario modificado');
+    expect(card.text()).toContain('Edición de usuario');
     expect(card.find('pre').exists()).toBe(false);
     await card.get('button').trigger('click');
     expect(card.get('pre').classes()).toContain('whitespace-pre-wrap');

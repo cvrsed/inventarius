@@ -1,4 +1,4 @@
-import type { AuditEntryDto } from '@inventarius/shared';
+import type { AuditAction, AuditEntity, AuditEntryDto } from '@inventarius/shared';
 import type { Executor } from '../../core/db/executor.js';
 import type { AuditFilters, AuditRepository } from './repository.js';
 
@@ -11,8 +11,8 @@ export interface Actor {
 export interface AuditEntryInput extends Actor {
   /** Quién actuó cuando no hay usuario (`cli`). Se ignora si hay `actorId`. */
   actorLabel?: string | null;
-  action: string;
-  entity: string;
+  action: AuditAction;
+  entity: AuditEntity;
   entityId?: string | null;
   /** Antes/después de los campos que cambiaron. Nunca incluir secretos ni hashes. */
   diff?: Record<string, unknown> | null;

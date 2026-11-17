@@ -42,8 +42,8 @@ describe('AssetHistory (RF-24)', () => {
     await flushPromises();
     const text = w.text();
     expect(text).toContain('Asignado a Tomás');
-    expect(text).toContain('Datos modificados');
-    expect(text).toContain('Activo creado');
+    expect(text).toContain('Edición');
+    expect(text).toContain('Alta');
     expect(text).toContain('por Olga');
     expect(text).toContain('Disponible');
     expect(text).toContain('sale a terreno');

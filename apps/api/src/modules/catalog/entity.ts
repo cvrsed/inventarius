@@ -23,7 +23,8 @@ export function isViolation(e: unknown, code: string): boolean {
 /** Cómo se comporta una entidad del catálogo: persistencia, reglas propias y mensajes. */
 export interface EntityDef<Row extends Versioned, Dto, Create, Patch, Query> {
   /** Nombre de la entidad en auditoría (`category`, `status_label`...). */
-  entity: string;
+  /** Entidad de auditoría; sus acciones (`<entity>.create|update|delete`) están en `AUDIT_ACTIONS`. */
+  entity: 'category' | 'manufacturer' | 'model' | 'location' | 'status_label';
   notFound: string;
   duplicate: string;
   toDto(row: Row): Dto;

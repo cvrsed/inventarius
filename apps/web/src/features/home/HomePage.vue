@@ -5,6 +5,7 @@ import UIcon from '@nuxt/ui/components/Icon.vue';
 import USkeleton from '@nuxt/ui/components/Skeleton.vue';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { auditActionLabel } from '@/app/i18n/audit';
 import { useAuthStore } from '@/features/auth/useAuthStore';
 import StatusCard from '@/features/system/StatusCard.vue';
 import { formatDateOnly, formatDateTime } from '@/shared/format/format';
@@ -14,7 +15,7 @@ import HomeTile from './HomeTile.vue';
 import { statusBarClass } from '@/features/assets/status';
 import { hasNoAssets, isFieldTech, links } from './summary';
 
-const { t, te } = useI18n();
+const { t } = useI18n();
 const auth = useAuthStore();
 const { data, isPending, isError, refetch } = useDashboard();
 
@@ -49,9 +50,6 @@ const warehouseBars = computed<BarItem[]>(() =>
     to: links.warehouse(w.id),
   })),
 );
-
-const actionLabel = (action: string) =>
-  te(`home.recent.${action}`) ? t(`home.recent.${action}`) : action;
 </script>
 
 <template>
@@ -213,7 +211,9 @@ const actionLabel = (action: string) =>
                   class="flex min-h-11 flex-col justify-center rounded-md px-1 no-underline hover:bg-elevated"
                 >
                   <span class="text-sm">
-                    <span class="font-medium text-highlighted">{{ actionLabel(r.action) }}</span>
+                    <span class="font-medium text-highlighted">{{
+                      auditActionLabel(r.action)
+                    }}</span>
                     {{ r.assetTag ?? '' }} {{ r.assetName ?? '' }}
                   </span>
                   <span class="text-xs text-muted">

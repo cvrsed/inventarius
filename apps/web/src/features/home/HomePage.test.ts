@@ -142,8 +142,10 @@ describe('HomePage (RF-28)', () => {
     expect(w.text()).toContain('debía volver el 01-11-2026');
     expect(hrefs(w)).toContain('/activos?overdue=true');
     expect(w.text()).toContain('Últimos movimientos');
-    expect(w.text()).toContain('Asignado');
-    expect(w.text()).toContain('por Ana');
+    const recent = w.get('[aria-labelledby="recent-title"]').text();
+    expect(recent).toContain('Asignación');
+    expect(recent).not.toContain('asset.');
+    expect(recent).toContain('por Ana');
   });
 
   it('el técnico ve «Mis equipos asignados» y no los totales', async () => {

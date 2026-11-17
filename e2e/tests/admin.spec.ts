@@ -38,7 +38,7 @@ test.describe('gestión de usuarios (RF-03, RF-04)', () => {
     await expectNoA11yViolations(page);
     await dialog.getByRole('button', { name: 'Guardar' }).click();
 
-    await expect(page.getByText('Usuario creado', { exact: true })).toBeVisible();
+    await expect(page.getByText('Alta de usuario', { exact: true })).toBeVisible();
     await page.getByRole('searchbox').fill(email);
     await expect(page.getByText(email)).toBeVisible();
   });
@@ -133,7 +133,7 @@ test.describe('roles (RF: matriz de permisos)', () => {
     await dialog.getByRole('checkbox', { name: 'Ver auditoría' }).check();
     await expectNoA11yViolations(page);
     await dialog.getByRole('button', { name: 'Guardar' }).click();
-    await expect(page.getByText('Rol creado', { exact: true })).toBeVisible();
+    await expect(page.getByText('Alta de rol', { exact: true })).toBeVisible();
     await expect(page.getByText(name)).toBeVisible();
   });
 });
@@ -152,6 +152,6 @@ test.describe('auditoría (RF-31)', () => {
     await page.getByRole('option', { name: 'Inicio de sesión', exact: true }).click();
     await expect(page.locator('#app')).not.toHaveAttribute('inert', '');
     await expect(page.getByText('Inicio de sesión').locator('visible=true').first()).toBeVisible();
-    await expect(page.getByText('Usuario creado').locator('visible=true')).toHaveCount(0);
+    await expect(page.getByText('Alta de usuario').locator('visible=true')).toHaveCount(0);
   });
 });

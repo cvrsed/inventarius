@@ -1,5 +1,6 @@
 import {
   assetSortSchema,
+  type AuditAction,
   type AssetDto,
   type AssetFilters,
   type AssetListItemDto,
@@ -49,7 +50,7 @@ export interface AssigneeDirectory {
   search(q: string | undefined, limit: number): Promise<{ id: string; name: string }[]>;
 }
 
-const ENTITY = 'asset';
+const ENTITY = 'asset' as const;
 const EXPORT_BATCH = 1000;
 const MAX_TAG_ATTEMPTS = 5;
 
@@ -314,7 +315,7 @@ export class AssetsService {
       await this.audit.recordMany(tx, [
         ...created.map((a, i) => ({
           ...actor,
-          action: 'asset.create',
+          action: 'asset.create' as const,
           entity: ENTITY,
           entityId: a.id,
           diff: {
@@ -517,7 +518,7 @@ export class AssetsService {
   private record(
     tx: Executor,
     actor: Actor,
-    action: string,
+    action: AuditAction,
     id: string,
     diff: Record<string, unknown>,
   ) {

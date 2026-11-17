@@ -6,6 +6,7 @@ import { computed, toRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { formatDateTime } from '@/shared/format/format';
 import { useAssetHistory } from './api';
+import { auditActionLabel } from '@/app/i18n/audit';
 import { describeEntry } from './history';
 
 const props = defineProps<{ assetId: string }>();
@@ -16,6 +17,7 @@ const { data, isPending, isError, hasNextPage, isFetchingNextPage, fetchNextPage
 const ICONS = {
   create: 'i-lucide-plus',
   update: 'i-lucide-pencil',
+  status_change: 'i-lucide-refresh-cw',
   checkout: 'i-lucide-user-plus',
   checkin: 'i-lucide-undo-2',
   delete: 'i-lucide-archive',
@@ -50,7 +52,10 @@ const show = (v: unknown) => (v === null || v === '' ? t('assets.history.empty_v
         </span>
         <div class="min-w-0 flex-1">
           <p class="m-0 font-medium text-highlighted">
-            {{ t(`assets.history.actions.${view.key}`, view.params) }}
+            {{ auditActionLabel(view.action) }}
+          </p>
+          <p v-if="view.params['to']" class="m-0 text-sm text-default">
+            {{ t('assets.history.assignedTo', { to: view.params['to'] }) }}
           </p>
           <p class="m-0 text-sm text-muted">
             {{ formatDateTime(entry.at) }} ·

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AuditEntryDto } from '@inventarius/shared';
+import { AUDIT_ACTIONS, AUDIT_ENTITIES, type AuditEntryDto } from '@inventarius/shared';
 import UAlert from '@nuxt/ui/components/Alert.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
 import UFormField from '@nuxt/ui/components/FormField.vue';
@@ -8,12 +8,13 @@ import { computed, ref } from 'vue';
 import ResponsiveTable from '@/shared/ui/ResponsiveTable.vue';
 import IconAction from '@/shared/ui/IconAction.vue';
 import { useI18n } from 'vue-i18n';
+import { auditActionLabel, auditEntityLabel } from '@/app/i18n/audit';
 import { formatDateTime } from '@/shared/format/format';
 import AppSelect from '@/shared/ui/AppSelect.vue';
 import PagedFooter from '@/shared/ui/PagedFooter.vue';
 import { useAuditList, type AuditQuery } from './api';
 
-const { t, te } = useI18n();
+const { t } = useI18n();
 
 const blank: AuditQuery = { page: 1, pageSize: 25, entity: '', action: '', from: '', to: '' };
 const query = ref<AuditQuery>({ ...blank });
@@ -40,41 +41,15 @@ const columns = computed(() => [
 
 const entityOptions = computed(() => [
   { value: '', label: t('audit.all') },
-  { value: 'user', label: t('audit.entities.user') },
-  { value: 'role', label: t('audit.entities.role') },
-  { value: 'asset', label: t('audit.entities.asset') },
-  { value: 'category', label: t('audit.entities.category') },
-  { value: 'manufacturer', label: t('audit.entities.manufacturer') },
-  { value: 'model', label: t('audit.entities.model') },
-  { value: 'location', label: t('audit.entities.location') },
-  { value: 'status_label', label: t('audit.entities.status_label') },
+  ...AUDIT_ENTITIES.map((value) => ({ value, label: auditEntityLabel(value) })),
 ]);
-const FILTERABLE_ACTIONS = [
-  'auth.login',
-  'auth.login_failed',
-  'auth.logout',
-  'auth.change_password',
-  'user.create',
-  'user.update',
-  'user.deactivate',
-  'user.reset_password',
-  'role.create',
-  'role.update',
-  'role.delete',
-  'asset.create',
-  'asset.update',
-  'asset.checkout',
-  'asset.checkin',
-  'asset.delete',
-  'asset.restore',
-] as const;
 const actionOptions = computed(() => [
   { value: '', label: t('audit.all') },
-  ...FILTERABLE_ACTIONS.map((value) => ({ value, label: t(`audit.actions.${value}`) })),
+  ...AUDIT_ACTIONS.map((value) => ({ value, label: auditActionLabel(value) })),
 ]);
 
-const actionLabel = (a: string) => (te(`audit.actions.${a}`) ? t(`audit.actions.${a}`) : a);
-const entityLabel = (e: string) => (te(`audit.entities.${e}`) ? t(`audit.entities.${e}`) : e);
+const actionLabel = auditActionLabel;
+const entityLabel = auditEntityLabel;
 
 function setFilter(patch: Partial<AuditQuery>): void {
   query.value = { ...query.value, ...patch, page: 1 };
