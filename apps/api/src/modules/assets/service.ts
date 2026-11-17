@@ -5,6 +5,7 @@ import {
   type AssetFilters,
   type AssetListItemDto,
   type BatchAssetsRequest,
+  type ChangeStatusRequest,
   type BatchAssetsResult,
   type AuditEntryDto,
   type CategoryExtension,
@@ -268,13 +269,33 @@ export class AssetsService {
     if (patch.baseLocationId && patch.baseLocationId !== current.baseLocationId) {
       await this.requireWarehouse(tx, patch.baseLocationId, 'baseLocationId');
     }
-    if (patch.statusId && patch.statusId !== current.statusId) {
+  }
+
+  /**
+   * Único camino para cambiar el estado después del alta: queda en el historial (`asset.status_change`)
+   * con su nota. Un activo asignado primero se devuelve (el check-in elige el estado de vuelta).
+   */
+  async changeStatus(actor: Actor, id: string, input: ChangeStatusRequest): Promise<AssetDto> {
+    return this.db.transaction(async (tx) => {
+      const current = await this.lockAndRead(tx, id);
+      AssetsService.assertEditable(current);
       if (isAssigned(current)) {
         throw new ConflictError('El activo está asignado; devuélvelo para cambiar su estado');
       }
-      const status = await this.catalog.requireStatus(tx, patch.statusId);
+      const status = await this.catalog.requireStatus(tx, input.statusId);
       if (status.systemKey) throw reservedStatus();
-    }
+      if (status.id === current.statusId) {
+        throw new ValidationError('El activo ya tiene ese estado', {
+          statusId: ['Elige un estado distinto del actual'],
+        });
+      }
+      await this.repo.update(tx, id, { statusId: status.id });
+      await this.record(tx, actor, 'asset.status_change', id, {
+        before: { status: current.statusName },
+        after: { status: status.name, note: input.note ?? null },
+      });
+      return toDto(await this.require(tx, id));
+    });
   }
 
   /**

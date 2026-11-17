@@ -151,10 +151,22 @@ export const createAssetSchema = z.object({
 export type CreateAssetInput = z.infer<typeof createAssetSchema>;
 
 export const updateAssetSchema = z
-  .object({ ...assetEditable, assetTag: assetTagSchema })
+  .object({
+    ...assetEditable,
+    assetTag: assetTagSchema,
+    /** El estado solo se fija al crear; después cambia con «Cambiar estado» (`changeStatusRequestSchema`). */
+    statusId: z.never({ error: 'Usa «Cambiar estado» para modificar el estado' }),
+  })
   .partial()
   .refine((v) => Object.keys(v).length > 0, 'Indica al menos un campo');
 export type UpdateAssetInput = z.infer<typeof updateAssetSchema>;
+
+/** Cambio de estado de un activo no asignado: queda en el historial con su nota. */
+export const changeStatusRequestSchema = z.object({
+  statusId: z.uuid(),
+  note: text(500).optional(),
+});
+export type ChangeStatusRequest = z.infer<typeof changeStatusRequestSchema>;
 
 /** RF-27: alta en lote. Con `serials` la cantidad debe coincidir con la lista. */
 export const MAX_BATCH_SIZE = 500;

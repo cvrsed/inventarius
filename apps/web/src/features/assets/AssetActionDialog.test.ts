@@ -80,16 +80,16 @@ describe('AssetActionDialog', () => {
     expect(JSON.parse(String(call[1]!.body))).toEqual({ reason: 'Equipo robado' });
   });
 
-  it('cambiar estado parte con el estado actual y manda If-Match con la versión', async () => {
-    const fetchMock = mockApi({
-      [`PATCH /api/v1/assets/${asset.id}`]: () => jsonResponse({}, 500),
-    });
+  it('cambiar estado pide el nuevo estado, ofrece nota y no usa PATCH', async () => {
+    const fetchMock = mockApi({});
     await open('status');
-    expect(body().textContent).toContain('Disponible');
+    expect(body().textContent).toContain('Estado actual: Disponible');
+    expect(body().textContent).toContain('Nuevo estado');
+    expect(body().textContent).toContain('Nota (opcional)');
     await submit();
-    const call = fetchMock.mock.calls.find((c) => c[1]?.method === 'PATCH')!;
-    expect((call[1]!.headers as Record<string, string>)['if-match']).toBe(`"${asset.updatedAt}"`);
-    expect(JSON.parse(String(call[1]!.body))).toEqual({ statusId: asset.status.id });
+    expect(body().textContent).toContain('Este campo es obligatorio');
+    expect(fetchMock.mock.calls.some((c) => c[1]?.method === 'PATCH')).toBe(false);
+    expect(fetchMock.mock.calls.some((c) => c[1]?.method === 'POST')).toBe(false);
   });
 
   it('devolver pide el estado de vuelta antes de enviar', async () => {

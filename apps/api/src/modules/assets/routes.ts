@@ -7,6 +7,7 @@ import {
   assetSchema,
   assigneeSchema,
   auditEntrySchema,
+  changeStatusRequestSchema,
   checkinRequestSchema,
   checkoutRequestSchema,
   createAssetSchema,
@@ -118,6 +119,23 @@ export const assetsRoutes: FastifyPluginAsyncZod<{ assets: AssetsService }> = as
         req.body,
         ifMatchOf(req.headers['if-match']),
       );
+      return reply.header('etag', `"${asset.updatedAt}"`).send(asset);
+    },
+  );
+
+  app.post(
+    '/assets/:id/status',
+    {
+      ...requirePermission('asset:write'),
+      schema: {
+        tags,
+        params: idParams,
+        body: changeStatusRequestSchema,
+        response: { 200: assetSchema },
+      },
+    },
+    async (req, reply) => {
+      const asset = await assets.changeStatus(actorOf(req), req.params.id, req.body);
       return reply.header('etag', `"${asset.updatedAt}"`).send(asset);
     },
   );

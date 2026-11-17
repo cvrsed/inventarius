@@ -23,7 +23,7 @@ const visible = defineModel<boolean>('visible', { required: true });
 
 const { t } = useI18n();
 const toast = useToast();
-const { checkin, update, remove } = useAssetMutations();
+const { checkin, changeStatus, remove } = useAssetMutations();
 
 const status = ref<RemoteOption | null>(null);
 /** Bodega a la que vuelve: parte en la ubicación base del activo (RF-23). */
@@ -34,7 +34,7 @@ const fieldError = ref('');
 const returnError = ref('');
 const needsStatus = computed(() => props.mode !== 'delete');
 const pending = computed(
-  () => checkin.isPending.value || update.isPending.value || remove.isPending.value,
+  () => checkin.isPending.value || changeStatus.isPending.value || remove.isPending.value,
 );
 const doneKey = {
   checkin: 'assets.checkin.done',
@@ -44,8 +44,7 @@ const doneKey = {
 
 watch(visible, (open) => {
   if (!open) return;
-  status.value =
-    props.mode === 'status' ? { id: props.asset.status.id, name: props.asset.status.name } : null;
+  status.value = null;
   returnTo.value = props.asset.baseLocation
     ? { id: props.asset.baseLocation.id, name: props.asset.baseLocation.name }
     : null;
@@ -55,7 +54,9 @@ watch(visible, (open) => {
 
 /** «Asignado» lo pone el sistema al asignar: no se ofrece como destino. */
 const fetchStatuses = async (q: string) =>
-  (await fetchOptions('statuses', q)).filter((o) => o['isSystem'] !== true);
+  (await fetchOptions('statuses', q)).filter(
+    (o) => o['isSystem'] !== true && !(props.mode === 'status' && o.id === props.asset.status.id),
+  );
 
 async function run(): Promise<void> {
   const id = props.asset.id;
@@ -69,7 +70,13 @@ async function run(): Promise<void> {
       },
     });
   } else if (props.mode === 'status') {
-    await update.mutateAsync({ asset: props.asset, body: { statusId: status.value!.id } });
+    await changeStatus.mutateAsync({
+      id,
+      body: {
+        statusId: status.value!.id,
+        ...(text.value.trim() ? { note: text.value.trim() } : {}),
+      },
+    });
   } else {
     await remove.mutateAsync({ id, reason: text.value.trim() });
   }
@@ -100,14 +107,18 @@ async function submit(): Promise<void> {
   <UModal
     v-model:open="visible"
     :title="t(`assets.${mode}.title`)"
-    :description="mode === 'status' ? asset.name : t(`assets.${mode}.description`)"
+    :description="
+      mode === 'status'
+        ? t('assets.status.description', { name: asset.name, current: asset.status.name })
+        : t(`assets.${mode}.description`)
+    "
   >
     <template #body>
       <form id="action-form" class="flex flex-col gap-4" novalidate @submit.prevent="submit">
         <UAlert v-if="error" color="error" variant="subtle" role="alert" :description="error" />
         <UFormField
           v-if="needsStatus"
-          :label="mode === 'checkin' ? t('assets.checkin.status') : t('assets.fields.status')"
+          :label="mode === 'checkin' ? t('assets.checkin.status') : t('assets.status.newStatus')"
           name="ac-status"
           required
           :error="fieldError"
@@ -136,7 +147,6 @@ async function submit(): Promise<void> {
           />
         </UFormField>
         <UFormField
-          v-if="mode !== 'status'"
           :label="mode === 'delete' ? t('assets.delete.reason') : t('assets.checkin.note')"
           name="ac-text"
           :required="mode === 'delete'"

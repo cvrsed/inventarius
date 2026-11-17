@@ -113,16 +113,11 @@ describe('AssetFormPage (RF-20)', () => {
     expect(w.text()).toContain('Ya existe un activo con esa etiqueta');
   });
 
-  it('un activo asignado no deja cambiar el estado desde el formulario', async () => {
-    const { w } = await mountAt(`/activos/${ID}/editar`, {
-      [`GET /api/v1/assets/${ID}`]: () => ({
-        ...existing,
-        assignedUser: { id: uuid(9), name: 'Tomás' },
-        status: { id: uuid(7), name: 'Asignado', kind: 'deployable' },
-      }),
-    });
-    expect(w.text()).toContain('Está asignado: devuélvelo para cambiar su estado');
-    expect(w.get('#a-status').attributes('disabled')).toBeDefined();
+  it('la edición no tiene el campo Estado; solo el alta lo pide', async () => {
+    const { w } = await mountAt(`/activos/${ID}/editar`, {});
+    expect(w.find('#a-status').exists()).toBe(false);
+    const created = await mountAt('/activos/nuevo', {});
+    expect(created.w.find('#a-status').exists()).toBe(true);
   });
 
   it('un activo inexistente muestra el aviso', async () => {

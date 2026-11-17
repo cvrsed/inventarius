@@ -380,6 +380,8 @@ export const messages = {
     },
     status: {
       title: 'Cambiar estado',
+      description: '{name} · Estado actual: {current}. El cambio queda en el historial.',
+      newStatus: 'Nuevo estado',
       done: 'Estado actualizado',
       assignedBlocked: 'Está asignado: devuélvelo para cambiar su estado.',
     },

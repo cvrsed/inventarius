@@ -251,21 +251,52 @@ describe('edición, concurrencia e historial (RF-24)', () => {
     expect(other.assetTag).toBe('TAKEN-1');
   });
 
-  it('no deja poner a mano el estado «Asignado» (422)', async () => {
+  it('PATCH ya no cambia el estado: hay un solo camino, «Cambiar estado» (400)', async () => {
     const a = await newAsset();
     const res = await operator.patch(
       `${base}/assets/${a.id}`,
-      { statusId: ids.assigned },
+      { statusId: ids.repair },
       hdr(a.updatedAt),
     );
-    expect(res.statusCode).toBe(422);
+    expect(res.statusCode).toBe(400);
+    const still = await operator.get(`${base}/assets/${a.id}`);
+    expect(still.json().status.name).toBe('Disponible');
+  });
+
+  it('cambiar el estado queda en el historial con su nota (asset.status_change)', async () => {
+    const a = await newAsset({ name: 'Cambia estado' });
+    const res = await operator.post(`${base}/assets/${a.id}/status`, {
+      statusId: ids.repair,
+      note: 'Pantalla rota',
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().status.name).toBe('En reparación');
+    expect(res.headers.etag).toBeTruthy();
+    const h = await reader.get(`${base}/assets/${a.id}/history`);
+    const last = h.json().data[0];
+    expect(last.action).toBe('asset.status_change');
+    expect(last.actorName).toBe('Olga Operadora');
+    expect(last.diff.before).toEqual({ status: 'Disponible' });
+    expect(last.diff.after).toEqual({ status: 'En reparación', note: 'Pantalla rota' });
+  });
+
+  it('cambiar el estado: reglas (mismo estado 422, «Asignado» 422, asignado 409, permisos 403)', async () => {
+    const a = await newAsset();
+    const url = `${base}/assets/${a.id}/status`;
+    expect((await operator.post(url, { statusId: ids.available })).statusCode).toBe(422);
+    const asg = await operator.post(url, { statusId: ids.assigned });
+    expect(asg.statusCode).toBe(422);
+    expect((await tech.post(url, { statusId: ids.repair })).statusCode).toBe(403);
+    expect((await reader.post(url, { statusId: ids.repair })).statusCode).toBe(403);
+    await operator.post(`${base}/assets/${a.id}/checkout`, { userId: techId });
+    expect((await operator.post(url, { statusId: ids.repair })).statusCode).toBe(409);
   });
 
   it('el historial lista creación y cambios con antes/después, el más reciente primero', async () => {
     const a = await newAsset({ name: 'Historial' });
     const first = await operator.patch(
       `${base}/assets/${a.id}`,
-      { name: 'Historial 2', statusId: ids.repair },
+      { name: 'Historial 2' },
       hdr(a.updatedAt),
     );
     await operator.patch(
@@ -279,8 +310,8 @@ describe('edición, concurrencia e historial (RF-24)', () => {
     expect(actions).toEqual(['asset.update', 'asset.update', 'asset.create']);
     const nameChange = res.json().data[1];
     expect(nameChange.actorName).toBe('Olga Operadora');
-    expect(nameChange.diff.before).toMatchObject({ name: 'Historial', status: 'Disponible' });
-    expect(nameChange.diff.after).toMatchObject({ name: 'Historial 2', status: 'En reparación' });
+    expect(nameChange.diff.before).toMatchObject({ name: 'Historial' });
+    expect(nameChange.diff.after).toMatchObject({ name: 'Historial 2' });
   });
 });
 
@@ -643,12 +674,8 @@ describe('asignación (RF-23)', () => {
 
   it('un activo asignado no cambia de estado ni se da de baja hasta devolverlo (409)', async () => {
     const a = await newAsset();
-    const out = await operator.post(`${base}/assets/${a.id}/checkout`, { userId: techId });
-    const st = await operator.patch(
-      `${base}/assets/${a.id}`,
-      { statusId: ids.repair },
-      hdr(out.json().updatedAt),
-    );
+    await operator.post(`${base}/assets/${a.id}/checkout`, { userId: techId });
+    const st = await operator.post(`${base}/assets/${a.id}/status`, { statusId: ids.repair });
     expect(st.statusCode).toBe(409);
     const del = await operator.request({
       method: 'DELETE',

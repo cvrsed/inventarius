@@ -32,9 +32,6 @@ const form = ref<AssetForm>(emptyAssetForm());
 const fieldErrors = ref<Record<string, string>>({});
 const error = ref('');
 const submitting = computed(() => create.isPending.value || update.isPending.value);
-const assigned = computed(
-  () => !!asset.value && !!(asset.value.assignedUser || asset.value.assignedLocation),
-);
 
 const { markClean } = useUnsavedChanges(() => form.value);
 
@@ -64,7 +61,7 @@ function validate(): boolean {
   const e: Record<string, string> = {};
   if (!form.value.name.trim()) e['name'] = t('common.required');
   if (!form.value.model) e['model'] = t('common.required');
-  if (!form.value.status) e['status'] = t('common.required');
+  if (!editing.value && !form.value.status) e['status'] = t('common.required');
   fieldErrors.value = e;
   return Object.keys(e).length === 0;
 }
@@ -78,7 +75,7 @@ async function submit(): Promise<void> {
   if (!validate()) return;
   try {
     if (editing.value && asset.value) {
-      const body = toAssetPayload(form.value, 'edit', asset.value.status.id);
+      const body = toAssetPayload(form.value, 'edit');
       await update.mutateAsync({ asset: asset.value, body });
       markClean();
       toast.add({ title: t('common.saved'), color: 'success', duration: 4000 });
@@ -206,11 +203,12 @@ async function submit(): Promise<void> {
 
       <fieldset class="m-0 flex min-w-0 flex-col gap-4 rounded-lg border border-default p-4">
         <legend class="px-1 font-semibold">{{ t('assets.sections.location') }}</legend>
+        <!-- El estado solo se elige al crear; después se cambia con «Cambiar estado» (queda en el historial). -->
         <UFormField
+          v-if="!editing"
           :label="t('assets.fields.status')"
           name="a-status"
           required
-          :help="assigned ? t('assets.status.assignedBlocked') : undefined"
           :error="fieldErrors['status']"
         >
           <RemoteSelect
@@ -219,7 +217,6 @@ async function submit(): Promise<void> {
             source="statuses-form"
             :fetcher="fetchStatuses"
             :placeholder="t('assets.statusPlaceholder')"
-            :disabled="assigned"
             @update:model-value="(v: RemoteOption | null) => set('status', v)"
           />
         </UFormField>

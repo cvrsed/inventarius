@@ -75,23 +75,17 @@ function toNumber(v: string): number | null {
 }
 
 /**
- * Cuerpo de la petición. En alta la etiqueta vacía se omite (la API la genera); en edición el estado solo
- * viaja si cambió, porque un activo asignado no admite cambiarlo por esta vía.
+ * Cuerpo de la petición. En alta la etiqueta vacía se omite (la API la genera). El estado solo viaja en el
+ * alta: después cambia únicamente con «Cambiar estado», que deja nota e historial.
  */
-export function toAssetPayload(
-  f: AssetForm,
-  mode: 'create' | 'edit',
-  currentStatusId?: string,
-): Record<string, unknown> {
+export function toAssetPayload(f: AssetForm, mode: 'create' | 'edit'): Record<string, unknown> {
   const warranty = toNumber(f.warrantyMonths);
   const tag = f.assetTag.trim();
   return {
     ...(tag ? { assetTag: tag } : {}),
     name: f.name.trim(),
     modelId: f.model?.id ?? null,
-    ...(mode === 'create' || f.status?.id !== currentStatusId
-      ? { statusId: f.status?.id ?? null }
-      : {}),
+    ...(mode === 'create' ? { statusId: f.status?.id ?? null } : {}),
     serial: orNull(f.serial),
     baseLocationId: f.baseLocation?.id ?? null,
     purchaseDate: orNull(f.purchaseDate),

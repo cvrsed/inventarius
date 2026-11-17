@@ -62,7 +62,7 @@ describe('formulario de activo', () => {
     });
   });
 
-  it('la edición manda la etiqueta y omite el estado si no cambió', () => {
+  it('la edición manda la etiqueta y nunca el estado (solo se cambia con «Cambiar estado»)', () => {
     const form = {
       ...emptyAssetForm(),
       assetTag: 'INV-000001',
@@ -70,10 +70,10 @@ describe('formulario de activo', () => {
       model: option('m1', 'M'),
       status: option('s1', 'S'),
     };
-    const payload = toAssetPayload(form, 'edit', 's1');
+    const payload = toAssetPayload(form, 'edit');
     expect(payload).toMatchObject({ assetTag: 'INV-000001' });
     expect(payload).not.toHaveProperty('statusId');
-    expect(toAssetPayload(form, 'edit', 'otro')).toHaveProperty('statusId', 's1');
+    expect(toAssetPayload(form, 'create')).toHaveProperty('statusId', 's1');
   });
 
   it('carga un activo existente en el formulario', () => {

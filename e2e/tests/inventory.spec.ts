@@ -367,6 +367,8 @@ test.describe('activos: CRUD completo (RF-20 a RF-25)', () => {
 
     await page.getByRole('link', { name: 'Editar' }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'Editar activo' })).toBeVisible();
+    // El estado ya no se edita aquí: solo con «Cambiar estado» [P23].
+    await expect(page.getByRole('button', { name: /^Estado/ })).toHaveCount(0);
     const renamed = `${asset.name} v2`;
     await page.getByLabel('Nombre').first().fill(renamed);
     await page.getByRole('button', { name: 'Guardar' }).click();
@@ -376,7 +378,8 @@ test.describe('activos: CRUD completo (RF-20 a RF-25)', () => {
     await page.getByRole('button', { name: 'Cambiar estado' }).click();
     const dialog = page.getByRole('dialog', { name: 'Cambiar estado' });
     await expectNoA11yViolations(page); // diálogo abierto
-    await pick(page, dialog, /^Estado/, 'En reparación');
+    await pick(page, dialog, /^Nuevo estado/, 'En reparación');
+    await dialog.getByLabel('Nota').fill('Pantalla rota');
     await dialog.getByRole('button', { name: 'Guardar' }).click();
     await expect(toast(page, 'Estado actualizado')).toBeVisible();
     await expect(page.getByText('En reparación', { exact: true }).first()).toBeVisible();
@@ -386,6 +389,8 @@ test.describe('activos: CRUD completo (RF-20 a RF-25)', () => {
     const history = page.getByRole('region', { name: 'Historial' });
     await expect(history.getByText('Edición', { exact: true }).first()).toBeVisible();
     await expect(history.getByText('Alta', { exact: true })).toBeVisible();
+    await expect(history.getByText('Cambio de estado', { exact: true })).toBeVisible();
+    await expect(history.getByText('Pantalla rota')).toBeVisible();
     await expect(history.getByText(asset.name, { exact: true })).toBeVisible();
     // Fechas en el formato único de la app: dd-mm-aaaa HH:mm (24 h).
     await expect(history.getByText(/\b\d{2}-\d{2}-\d{4} \d{2}:\d{2}\b/).first()).toBeVisible();

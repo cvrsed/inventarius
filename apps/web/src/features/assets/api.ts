@@ -153,6 +153,12 @@ export function useAssetMutations() {
       onSuccess: (_d, v) => refresh(v.asset.id)(),
       onError: (_e, v) => refresh(v.asset.id)(),
     }),
+    changeStatus: useMutation({
+      mutationFn: (v: { id: string; body: Record<string, unknown> }) =>
+        post(v.id, 'status', v.body),
+      onSuccess: (_d, v) => refresh(v.id)(),
+      onError: (_e, v) => refresh(v.id)(),
+    }),
     checkout: useMutation({
       mutationFn: (v: { id: string; body: Record<string, unknown> }) =>
         post(v.id, 'checkout', v.body),
