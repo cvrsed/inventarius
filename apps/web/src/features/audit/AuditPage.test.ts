@@ -49,10 +49,14 @@ describe('AuditPage', () => {
     await flushPromises();
     const card = w.get('ul > li');
     expect(card.text()).toContain('Edición de usuario');
-    expect(card.find('pre').exists()).toBe(false);
+    expect(card.find('dl').exists()).toBe(false);
     await card.get('button').trigger('click');
-    expect(card.get('pre').classes()).toContain('whitespace-pre-wrap');
-    expect(card.get('pre').text()).toContain('"name"');
+    // Campo → valor en español, nunca JSON crudo.
+    expect(card.find('pre').exists()).toBe(false);
+    expect(card.get('dl').text()).toContain('Nombre');
+    expect(card.get('dl').text()).toContain('Antes: A');
+    expect(card.get('dl').text()).toContain('Después: B');
+    expect(card.text()).not.toContain('{');
   });
 
   it('pide los registros con los filtros de fecha convertidos a instantes', async () => {

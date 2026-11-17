@@ -61,3 +61,50 @@ export const auditActionLabel = (action: string): string =>
 
 export const auditEntityLabel = (entity: string): string =>
   (AUDIT_ENTITY_LABELS as Record<string, string>)[entity] ?? entity;
+
+/**
+ * Nombre en español de cada campo que aparece en el detalle de una auditoría. Un campo que no esté aquí se
+ * muestra con su clave; `audit.test.ts` fija los que hoy registra el backend.
+ */
+export const AUDIT_FIELD_LABELS: Record<string, string> = {
+  email: 'Correo electrónico',
+  name: 'Nombre',
+  active: 'Activo',
+  roles: 'Roles',
+  description: 'Descripción',
+  permissions: 'Permisos',
+  assetTag: 'Etiqueta',
+  serial: 'Número de serie',
+  model: 'Modelo',
+  status: 'Estado',
+  location: 'Ubicación',
+  baseLocation: 'Ubicación base',
+  purchaseDate: 'Fecha de compra',
+  purchaseCost: 'Costo de compra',
+  purchaseCurrency: 'Moneda',
+  supplier: 'Proveedor',
+  warrantyMonths: 'Garantía (meses)',
+  notes: 'Notas',
+  assignedTo: 'Asignado a',
+  assignedToType: 'Tipo de destino',
+  expectedReturnOn: 'Devolución esperada',
+  returnedTo: 'Devuelto a',
+  note: 'Nota',
+  reason: 'Motivo',
+  count: 'Cantidad de activos',
+  batchId: 'Lote',
+  extension: 'Tipo de extensión',
+  modelNumber: 'Código del fabricante',
+  manufacturer: 'Fabricante',
+  category: 'Categoría',
+  path: 'Ubicación',
+  type: 'Tipo',
+  address: 'Dirección',
+  kind: 'Tipo de estado',
+  lorawanClass: 'Clase LoRaWAN',
+  lorawanRegion: 'Región / plan de frecuencias',
+  lorawanVersion: 'Versión de LoRaWAN',
+  lorawanRegionalParameters: 'Versión de parámetros regionales',
+};
+
+export const auditFieldLabel = (field: string): string => AUDIT_FIELD_LABELS[field] ?? field;

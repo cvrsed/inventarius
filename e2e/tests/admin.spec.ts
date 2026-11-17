@@ -2,6 +2,8 @@ import { expect, test } from '@playwright/test';
 import {
   ADMIN,
   STRONG_PASSWORD,
+  createCatalogFixture,
+  eachTheme,
   expectNoA11yViolations,
   horizontalOverflow,
   loginViaApi,
@@ -153,5 +155,25 @@ test.describe('auditoría (RF-31)', () => {
     await expect(page.locator('#app')).not.toHaveAttribute('inert', '');
     await expect(page.getByText('Inicio de sesión').locator('visible=true').first()).toBeVisible();
     await expect(page.getByText('Alta de usuario').locator('visible=true')).toHaveCount(0);
+  });
+
+  test('el detalle es una lista campo → valor en español, no JSON [P25]', async ({ page }) => {
+    const fixture = await createCatalogFixture(page.request);
+    await page.goto('/auditoria');
+    await page.getByRole('combobox', { name: 'Acción' }).click();
+    await page.getByRole('option', { name: 'Alta de categoría', exact: true }).click();
+    await page
+      .getByRole('button', { name: /^Detalle/ })
+      .locator('visible=true')
+      .first()
+      .click();
+    const detail = page.locator('dl').locator('visible=true').first();
+    await expect(detail).toContainText('Nombre');
+    await expect(detail).toContainText('Activo');
+    await expect(detail).toContainText('Sí');
+    await expect(page.locator('pre')).toHaveCount(0);
+    expect(fixture.categoryId).toBeTruthy();
+    expect(await horizontalOverflow(page)).toBe(false);
+    await eachTheme(page, () => expectNoA11yViolations(page));
   });
 });

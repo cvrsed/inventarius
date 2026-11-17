@@ -2,6 +2,7 @@ import { AUDIT_ACTIONS, AUDIT_ENTITIES } from '@inventarius/shared';
 import { describe, expect, it } from 'vitest';
 import {
   AUDIT_ACTION_LABELS,
+  auditFieldLabel,
   AUDIT_ENTITY_LABELS,
   auditActionLabel,
   auditEntityLabel,
@@ -36,5 +37,48 @@ describe('traducción de la auditoría (RNF-05)', () => {
 
   it('un código desconocido se muestra tal cual en lugar de romper', () => {
     expect(auditActionLabel('futuro.accion')).toBe('futuro.accion');
+  });
+
+  it('los campos que hoy registra el backend tienen nombre en español', () => {
+    const fields = [
+      'email',
+      'name',
+      'active',
+      'roles',
+      'description',
+      'permissions',
+      'assetTag',
+      'serial',
+      'model',
+      'status',
+      'location',
+      'baseLocation',
+      'purchaseDate',
+      'purchaseCost',
+      'purchaseCurrency',
+      'supplier',
+      'warrantyMonths',
+      'notes',
+      'assignedTo',
+      'expectedReturnOn',
+      'returnedTo',
+      'note',
+      'reason',
+      'count',
+      'batchId',
+      'extension',
+      'modelNumber',
+      'manufacturer',
+      'category',
+      'path',
+      'type',
+      'address',
+      'kind',
+      'lorawanClass',
+      'lorawanRegion',
+      'lorawanVersion',
+      'lorawanRegionalParameters',
+    ];
+    for (const f of fields) expect(auditFieldLabel(f), f).not.toBe(f);
   });
 });

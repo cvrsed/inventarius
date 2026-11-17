@@ -12,6 +12,7 @@ import { auditActionLabel, auditEntityLabel } from '@/app/i18n/audit';
 import { formatDateTime } from '@/shared/format/format';
 import AppSelect from '@/shared/ui/AppSelect.vue';
 import PagedFooter from '@/shared/ui/PagedFooter.vue';
+import AuditDetail from './AuditDetail.vue';
 import { useAuditList, type AuditQuery } from './api';
 
 const { t } = useI18n();
@@ -57,7 +58,6 @@ function setFilter(patch: Partial<AuditQuery>): void {
 /** Usuario; si no hubo (`cli`) la operación por línea de comandos; si no, el sistema. */
 const who = (e: AuditEntryDto): string =>
   e.actorName ?? (e.actorLabel === 'cli' ? t('audit.cli') : t('audit.system'));
-const pretty = (value: unknown) => JSON.stringify(value, null, 2);
 
 /** Detalle abierto en el modo tarjeta (en la tabla lo maneja `expanded`). */
 const openCards = ref(new Set<string>());
@@ -156,10 +156,7 @@ function toggleCard(id: string): void {
       <template #action-cell="{ row }">{{ actionLabel(row.original.action) }}</template>
       <template #entity-cell="{ row }">{{ entityLabel(row.original.entity) }}</template>
       <template #expanded="{ row }">
-        <pre v-if="row.original.diff" class="m-0 overflow-x-auto text-sm">{{
-          pretty(row.original.diff)
-        }}</pre>
-        <p v-else class="m-0 text-muted">—</p>
+        <AuditDetail :entry="row.original" />
       </template>
       <template #card="{ item }">
         <div class="flex items-start justify-between gap-2">
@@ -179,10 +176,7 @@ function toggleCard(id: string): void {
           class="self-start"
           @click="toggleCard(item.id)"
         />
-        <pre
-          v-if="item.diff && openCards.has(item.id)"
-          class="m-0 text-sm break-words whitespace-pre-wrap"
-          >{{ pretty(item.diff) }}</pre>
+        <AuditDetail v-if="item.diff && openCards.has(item.id)" :entry="item" />
       </template>
     </ResponsiveTable>
 
