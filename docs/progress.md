@@ -263,6 +263,26 @@ Marcas `[P15]` a `[P19]` al final del asunto de cada commit.
 - **Decisiones provisionales nuevas**: Q41 a Q46 en `docs/open-questions.md`.
 - **Cómo probar**: `pnpm lint && pnpm typecheck && pnpm test`, integración de la API y el e2e de `docs/development.md` (escritorio y 360 px).
 
+## Cuarta tanda de revisión de F2 (2026-11-17, mismo PR #5)
+
+Marcas `[P27]` a `[P31]` al final del asunto de cada commit.
+
+- **P27** Orden del listado de activos: en escritorio, encabezados clicables (asc → desc, flecha y `aria-sort`); en móvil, «Ordenar por» y un
+  botón de dirección separado. Desaparece el select largo con ↑/↓.
+- **P28** El formulario de activo titula la sección «Ubicación» al editar y «Estado y ubicación» solo al crear.
+- **P29** La auditoría traduce también los valores enumerados («Tipo de destino: user» → «Usuario»). Los campos enumerados viven en
+  `packages/shared` (`AUDIT_ENUM_FIELDS`) y un test falla si falta la traducción de algún valor.
+- **P30** Catálogo: cambiar de sección mezclaba datos y congelaba la vista. **Causa raíz**: la consulta del listado usaba
+  `placeholderData: keepPreviousData`; al cambiar de sección (el mismo componente, otra clave) conservaba las filas de la sección anterior
+  mientras cargaba la nueva y la plantilla de la sección nueva las leía con su propia forma (`displayCells`: `catalog.kinds.undefined`,
+  `manufacturer.name` de una ubicación). El `TypeError` salía durante el render y dejaba el árbol del componente roto: la URL seguía
+  cambiando pero la vista quedaba pegada. Corrección: el dato previo solo se conserva dentro de la misma sección y la tabla lleva `key` por
+  sección. Además un manejador global (`app/errorHandling.ts`) registra y avisa con un toast los errores de render/eventos de Vue, de la
+  navegación del router y las promesas rechazadas; una falla de descarga de módulo tras un despliegue recarga la página. Tests: unitario del
+  cruce de secciones (falla sin el arreglo) y e2e con la secuencia exacta (360 px, select, escritorio sin recargar, pestañas, «Inicio»).
+- **P31** Los buscadores de activos y catálogo no tenían `id` ni `name`; ahora sí, y un e2e recorre todas las pantallas, diálogos y selectores
+  abiertos y falla si queda un campo sin ellos.
+
 ## Tercera tanda de revisión de F2 (2026-11-17, mismo PR #5)
 
 Marcas `[P20]` a `[P26]` al final del asunto de cada commit.

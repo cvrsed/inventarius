@@ -7,6 +7,14 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). D
 
 ### F2 — Inventario
 
+#### Cuarta tanda de revisión (PR #5)
+
+- Orden del listado por encabezados (escritorio, con `aria-sort`) y «Ordenar por» + dirección (móvil) [P27].
+- Sección «Ubicación» al editar un activo y «Estado y ubicación» solo al crear [P28].
+- Auditoría: también se traducen los valores enumerados [P29].
+- Catálogo: cambiar de sección ya no mezcla datos ni congela la vista; manejador global de errores de Vue, del router y de promesas [P30].
+- Todos los campos de formulario con `id` y `name` [P31].
+
 #### Tercera tanda de revisión (PR #5)
 
 - Inicio: «Activos por estado» con el nombre real de cada estado y el color de su tipo; sin jerga de tipos en la UI (el filtro dice
