@@ -172,4 +172,15 @@ describe('AssetsPage (RF-22, RF-40)', () => {
       expect(wrapper.find('button[aria-label^="Orden ascendente"]').exists()).toBe(true);
     });
   });
+
+  it('el buscador tiene id y name (autocompletado y accesibilidad) [P31]', async () => {
+    const { wrapper } = await mountAt('/activos', [asset(1)]);
+    const search = wrapper.get('input[type="search"]');
+    expect(search.attributes('id')).toBe('assets-search');
+    expect(search.attributes('name')).toBe('q');
+    const bare = wrapper
+      .findAll('input, select, textarea')
+      .filter((el) => !el.attributes('id') && !el.attributes('name'));
+    expect(bare).toHaveLength(0);
+  });
 });

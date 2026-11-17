@@ -135,7 +135,9 @@ if (hasPanelFilters) showFilters.value = true;
 
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_14rem_auto]">
       <UInput
+        id="assets-search"
         v-model="search"
+        name="q"
         type="search"
         icon="i-lucide-search"
         :placeholder="t('assets.search')"

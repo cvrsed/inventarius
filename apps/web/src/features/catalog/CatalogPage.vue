@@ -151,7 +151,9 @@ const toggleActive = (item: CatalogItem) =>
 
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_12rem]">
       <UInput
+        id="catalog-search"
         v-model="search"
+        name="q"
         type="search"
         :placeholder="
           t('catalog.searchLabel', { section: t(`catalog.sections.${section}`).toLowerCase() })

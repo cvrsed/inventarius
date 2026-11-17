@@ -324,4 +324,15 @@ describe('CatalogPage (RF-10 a RF-14)', () => {
       error.mockRestore();
     });
   });
+
+  it('el buscador tiene id y name [P31]', async () => {
+    const { wrapper } = await mountSection('categories', [], ['asset:read']);
+    const search = wrapper.get('input[type="search"]');
+    expect(search.attributes('id')).toBe('catalog-search');
+    expect(search.attributes('name')).toBe('q');
+    const bare = wrapper
+      .findAll('input, select, textarea')
+      .filter((el) => !el.attributes('id') && !el.attributes('name'));
+    expect(bare).toHaveLength(0);
+  });
 });
