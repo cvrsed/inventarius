@@ -7,6 +7,18 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). D
 
 ### F2 — Inventario
 
+#### Tercera tanda de revisión (PR #5)
+
+- Inicio: «Activos por estado» con el nombre real de cada estado y el color de su tipo; sin jerga de tipos en la UI (el filtro dice
+  «Estados asignables») [P20].
+- Acciones y entidades de auditoría en español en Inicio, historial y auditoría, con un único mapa y un test de cobertura [P21].
+- Filtros del listado: tres a la vista y el resto en «Más filtros» (se abre solo si hay alguno activo) [P22].
+- Un solo camino para cambiar el estado: `POST /assets/:id/status` con nota e historial; la edición ya no tiene Estado [P23].
+- IP real en la auditoría: solo se cree en `X-Forwarded-For` de `TRUSTED_PROXIES`; Caddy toma `CF-Connecting-IP` de su lista de
+  confianza [P24].
+- Detalle de auditoría legible (campo → valor, antes/después) [P25].
+- Controles deshabilitados atenuados, nunca tachados [P26].
+
 #### Segunda tanda de revisión (PR #5)
 
 - Aviso de cambios sin guardar al navegar, recargar o cerrar un diálogo [P15].

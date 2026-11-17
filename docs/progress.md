@@ -262,3 +262,27 @@ Marcas `[P15]` a `[P19]` al final del asunto de cada commit.
   compacto para administradores. Corrige el «Aún no hay activos» con activos existentes (test).
 - **Decisiones provisionales nuevas**: Q41 a Q46 en `docs/open-questions.md`.
 - **Cómo probar**: `pnpm lint && pnpm typecheck && pnpm test`, integración de la API y el e2e de `docs/development.md` (escritorio y 360 px).
+
+## Tercera tanda de revisión de F2 (2026-11-17, mismo PR #5)
+
+Marcas `[P20]` a `[P26]` al final del asunto de cada commit.
+
+- **P20** Sin jerga de tipos de estado: «Activos por estado» muestra cada estado con su nombre y el color de su tipo (`byStatus` en el
+  resumen; los totales siguen calculándose por tipo). Los tipos se llaman «Asignable» / «No asignable» y, en el filtro del listado,
+  «Estados asignables», «Estados pendientes», etc.
+- **P21** Un solo mapa de textos (`app/i18n/audit.ts`) para acciones y entidades en Inicio, historial y auditoría. La lista de acciones y
+  entidades vive en `packages/shared` y el API solo puede registrar esas (error de compilación si no), con un test que falla si falta una
+  traducción. «Alta», «Alta en lote», «Edición», «Cambio de estado», «Asignación», «Devolución», «Baja», «Restauración»; `asset_batch` → «Activos».
+- **P22** Filtros del listado: Estado, Categoría y Ubicación base a la vista; el resto tras «Más filtros», que se abre solo si alguno de ellos
+  está activo (p. ej. al llegar desde el Inicio).
+- **P23** Un solo camino para cambiar el estado: el formulario de edición ya no tiene Estado y `PATCH` rechaza `statusId` (400). «Cambiar
+  estado» usa `POST /api/v1/assets/:id/status` (nota opcional, acción `asset.status_change`, visible en el historial).
+- **P24** IP real en la auditoría: `trustProxy` pasa de `true` a la lista `TRUSTED_PROXIES`; Caddy acepta `CF-Connecting-IP` solo de
+  `TRUSTED_PROXY_RANGES`; el proxy de Vite informa `X-Forwarded-For`. Test con `X-Forwarded-For` falso desde un origen no confiable.
+  Documentado en `docs/security.md` y `docs/operations.md`.
+- **P25** Detalle de auditoría como lista campo → valor en español, con antes/después solo de lo que cambió (en lugar de JSON).
+- **P26** Controles deshabilitados atenuados y nunca tachados: regla global, test que impide texto tachado y e2e sobre «Limpiar filtros».
+- **Decisiones provisionales nuevas**: Q47 a Q50 en `docs/open-questions.md`.
+- **Verificación**: lint, typecheck, 250 pruebas web, 103 unitarias y 165 de integración del API, e2e completo en escritorio y 360 px.
+  En una corrida el axe de «alta por la UI» falló una vez por el `aria-hidden` del enlace de salto con un select abierto (el patrón
+  ya conocido de `useInertWhileOpen`) y pasó al reintentar y en 6 repeticiones.

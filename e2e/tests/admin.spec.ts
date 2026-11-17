@@ -40,7 +40,7 @@ test.describe('gestión de usuarios (RF-03, RF-04)', () => {
     await expectNoA11yViolations(page);
     await dialog.getByRole('button', { name: 'Guardar' }).click();
 
-    await expect(page.getByText('Alta de usuario', { exact: true })).toBeVisible();
+    await expect(page.getByText('Usuario creado', { exact: true })).toBeVisible();
     await page.getByRole('searchbox').fill(email);
     await expect(page.getByText(email)).toBeVisible();
   });
@@ -135,7 +135,7 @@ test.describe('roles (RF: matriz de permisos)', () => {
     await dialog.getByRole('checkbox', { name: 'Ver auditoría' }).check();
     await expectNoA11yViolations(page);
     await dialog.getByRole('button', { name: 'Guardar' }).click();
-    await expect(page.getByText('Alta de rol', { exact: true })).toBeVisible();
+    await expect(page.getByText('Rol creado', { exact: true })).toBeVisible();
     await expect(page.getByText(name)).toBeVisible();
   });
 });
