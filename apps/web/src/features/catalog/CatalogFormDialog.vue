@@ -116,7 +116,7 @@ const selectItems = (f: { options?: { value: string; label: string }[] }) =>
   <UModal
     v-model:open="visible"
     :title="creating ? t(`catalog.new.${section}`) : t(`catalog.edit.${section}`)"
-    :description="t('catalog.activeHint')"
+    :description="t(`catalog.purpose.${section}`)"
   >
     <template #body>
       <form id="catalog-form" class="flex flex-col gap-4" novalidate @submit.prevent="submit">
@@ -174,6 +174,7 @@ const selectItems = (f: { options?: { value: string; label: string }[] }) =>
           id="cf-active"
           :model-value="form['active'] === true"
           :label="t('catalog.fields.active')"
+          :description="t('catalog.activeHint')"
           :disabled="locked"
           @update:model-value="(v: boolean) => setValue('active', v)"
         />

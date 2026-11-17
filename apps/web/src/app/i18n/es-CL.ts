@@ -185,6 +185,16 @@ export const messages = {
     parentPlaceholder: 'Sin ubicación superior',
     selectPlaceholder: 'Elige una opción',
     activeHint: 'Un registro inactivo no se puede elegir en formularios nuevos.',
+    purpose: {
+      categories:
+        'Agrupa los activos por tipo de equipo. Una categoría LoRaWAN habilita los datos de red en sus modelos.',
+      manufacturers: 'Empresa que fabrica los equipos. Cada modelo pertenece a un fabricante.',
+      models:
+        'Ficha técnica reutilizable: fabricante, categoría y, si es LoRaWAN, sus parámetros de red.',
+      locations:
+        'Lugares donde pueden estar los activos: bodegas, sitios de clientes y oficinas, en jerarquía.',
+      statuses: 'Situación en que se encuentra un activo; solo los desplegables se pueden asignar.',
+    },
     extensions: { none: 'Ninguna', lorawan: 'LoRaWAN' },
     kinds: {
       deployable: 'Desplegable',

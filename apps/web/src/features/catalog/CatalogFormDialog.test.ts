@@ -61,6 +61,17 @@ describe('CatalogFormDialog', () => {
     expect(w.emitted('update:visible')?.at(-1)).toEqual([false]);
   });
 
+  it('el subtítulo explica la entidad y la ayuda de «Activo» aparece solo al editar', async () => {
+    await open('manufacturers');
+    expect(document.body.textContent).toContain('Empresa que fabrica los equipos');
+    expect(document.body.textContent).not.toContain('Un registro inactivo no se puede elegir');
+    mounted.pop()!.unmount();
+    document.body.innerHTML = '';
+    await open('manufacturers', { ...created, id: created.id });
+    expect(document.body.textContent).toContain('Empresa que fabrica los equipos');
+    expect(document.body.textContent).toContain('Un registro inactivo no se puede elegir');
+  });
+
   it('un modelo pide fabricante y categoría', async () => {
     await open('models');
     await type('#cf-name', 'SDM530');
