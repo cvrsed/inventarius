@@ -14,6 +14,14 @@ const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
  * intermedios y da falsos positivos de contraste. Se congelan transiciones y animaciones antes de medir.
  */
 export async function expectNoA11yViolations(page: Page): Promise<void> {
+  // Con un listbox abierto el fondo pasa a `inert` un instante después de mostrarse (useInertWhileOpen); medir antes da un
+  // falso `aria-hidden-focus` (enlace de salto). Se espera a que el fondo esté inerte.
+  if (await page.getByRole('listbox').isVisible()) {
+    // (en un diálogo modal el select no marca `inert`: ahí no se espera, y axe decide.)
+    await expect(page.locator('#app'))
+      .toHaveAttribute('inert', '', { timeout: 1500 })
+      .catch(() => undefined);
+  }
   await page.addStyleTag({
     content: '*, *::before, *::after { transition: none !important; animation: none !important; }',
   });
