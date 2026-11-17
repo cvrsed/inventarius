@@ -5,7 +5,7 @@ import UFormField from '@nuxt/ui/components/FormField.vue';
 import UInput from '@nuxt/ui/components/Input.vue';
 import UTextarea from '@nuxt/ui/components/Textarea.vue';
 import { useToast } from '@nuxt/ui/composables/useToast';
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { CURRENCY_OPTIONS } from '@inventarius/shared';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
@@ -14,6 +14,7 @@ import { fetchOptions } from '@/features/catalog/api';
 import { ApiError } from '@/shared/api/http';
 import SearchSelect from '@/shared/ui/SearchSelect.vue';
 import RemoteSelect, { type RemoteOption } from '@/shared/ui/RemoteSelect.vue';
+import { useUnsavedChanges } from '@/shared/ui/useUnsavedChanges';
 import { useAsset, useAssetMutations } from './api';
 import { emptyAssetForm, formFromAsset, toAssetPayload, type AssetForm } from './form';
 
@@ -35,10 +36,16 @@ const assigned = computed(
   () => !!asset.value && !!(asset.value.assignedUser || asset.value.assignedLocation),
 );
 
+const { markClean } = useUnsavedChanges(() => form.value);
+
 watch(
   asset,
   (a) => {
-    if (a && editing.value) form.value = formFromAsset(a);
+    if (a && editing.value) {
+      form.value = formFromAsset(a);
+      // El formulario recién cargado es el estado «limpio»; sin esto avisaría de cambios que nadie hizo.
+      void nextTick(markClean);
+    }
   },
   { immediate: true },
 );
@@ -73,10 +80,12 @@ async function submit(): Promise<void> {
     if (editing.value && asset.value) {
       const body = toAssetPayload(form.value, 'edit', asset.value.status.id);
       await update.mutateAsync({ asset: asset.value, body });
+      markClean();
       toast.add({ title: t('common.saved'), color: 'success', duration: 4000 });
       await router.push({ name: 'asset', params: { id: id.value } });
     } else {
       const created = await create.mutateAsync(toAssetPayload(form.value, 'create'));
+      markClean();
       toast.add({ title: t('assets.created'), color: 'success', duration: 4000 });
       await router.push({ name: 'asset', params: { id: created.id } });
     }

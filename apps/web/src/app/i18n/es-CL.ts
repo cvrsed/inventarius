@@ -57,6 +57,12 @@ export const messages = {
     updated: 'Actualizado',
     created: 'Creado',
   },
+  unsaved: {
+    title: 'Cambios sin guardar',
+    message: 'Si sales ahora perderás lo que escribiste.',
+    discard: 'Descartar cambios',
+    stay: 'Seguir editando',
+  },
   session: {
     expired: 'Tu sesión expiró. Inicia sesión de nuevo.',
     logout: 'Cerrar sesión',

@@ -10,6 +10,7 @@ import USwitch from '@nuxt/ui/components/Switch.vue';
 import { useToast } from '@nuxt/ui/composables/useToast';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useUnsavedChanges } from '@/shared/ui/useUnsavedChanges';
 import { errorMessage } from '@/features/auth/errors';
 import { useAuthStore } from '@/features/auth/useAuthStore';
 import { ApiError } from '@/shared/api/http';
@@ -110,13 +111,21 @@ async function submit(): Promise<void> {
     }
   }
 }
+
+const { requestClose } = useUnsavedChanges(() => form.value, visible);
+/** Cerrar con Escape, clic fuera o la X también pide confirmar si hay cambios sin guardar. */
+const onOpenChange = (open: boolean) => {
+  if (open) visible.value = true;
+  else void requestClose(() => (visible.value = false));
+};
 </script>
 
 <template>
   <UModal
-    v-model:open="visible"
+    :open="visible"
     :title="creating ? t('users.new') : t('users.edit')"
     :description="creating ? t('users.formNewDescription') : t('users.formEditDescription')"
+    @update:open="onOpenChange"
   >
     <template #body>
       <form id="user-form" class="flex flex-col gap-4" novalidate @submit.prevent="submit">
@@ -182,7 +191,7 @@ async function submit(): Promise<void> {
           :label="t('common.cancel')"
           color="neutral"
           variant="ghost"
-          @click="visible = false"
+          @click="requestClose(() => (visible = false))"
         />
         <UButton type="submit" form="user-form" :label="t('common.save')" :loading="submitting" />
       </div>

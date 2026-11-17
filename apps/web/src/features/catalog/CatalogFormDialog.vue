@@ -8,6 +8,7 @@ import USwitch from '@nuxt/ui/components/Switch.vue';
 import { useToast } from '@nuxt/ui/composables/useToast';
 import { computed, ref, toRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useUnsavedChanges } from '@/shared/ui/useUnsavedChanges';
 import { errorMessage } from '@/features/auth/errors';
 import { ApiError } from '@/shared/api/http';
 import AppSelect from '@/shared/ui/AppSelect.vue';
@@ -112,13 +113,21 @@ const selectItems = (f: FieldDef) =>
     value: o.value,
     label: f.translateOptions ? t(o.label) : o.label,
   }));
+
+const { requestClose } = useUnsavedChanges(() => form.value, visible);
+/** Cerrar con Escape, clic fuera o la X también pide confirmar si hay cambios sin guardar. */
+const onOpenChange = (open: boolean) => {
+  if (open) visible.value = true;
+  else void requestClose(() => (visible.value = false));
+};
 </script>
 
 <template>
   <UModal
-    v-model:open="visible"
+    :open="visible"
     :title="creating ? t(`catalog.new.${section}`) : t(`catalog.edit.${section}`)"
     :description="t(`catalog.purpose.${section}`)"
+    @update:open="onOpenChange"
   >
     <template #body>
       <form id="catalog-form" class="flex flex-col gap-4" novalidate @submit.prevent="submit">
@@ -200,7 +209,7 @@ const selectItems = (f: FieldDef) =>
           :label="t('common.cancel')"
           color="neutral"
           variant="ghost"
-          @click="visible = false"
+          @click="requestClose(() => (visible = false))"
         />
         <UButton
           type="submit"

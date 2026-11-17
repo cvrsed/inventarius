@@ -253,6 +253,62 @@ test.describe('activos: CRUD completo (RF-20 a RF-25)', () => {
     expect(await horizontalOverflow(page)).toBe(false);
   });
 
+  test('un formulario con cambios avisa al navegar fuera, recargar o cerrar un diálogo [P15]', async ({
+    page,
+  }) => {
+    await page.goto('/activos/nuevo');
+    await page.getByLabel('Nombre', { exact: false }).first().fill('Borrador sin guardar');
+
+    // Navegar dentro de la app: el guardián del router pregunta.
+    await page.getByRole('link', { name: 'Activos' }).first().click();
+    const ask = page.getByRole('dialog', { name: 'Cambios sin guardar' });
+    await expect(ask).toBeVisible();
+    await expectNoA11yViolations(page);
+    await ask.getByRole('button', { name: 'Seguir editando' }).click();
+    await expect(page).toHaveURL(/\/activos\/nuevo$/);
+    await expect(page.getByLabel('Nombre', { exact: false }).first()).toHaveValue(
+      'Borrador sin guardar',
+    );
+
+    // Recargar: el navegador muestra su aviso (beforeunload).
+    const kinds: string[] = [];
+    page.once('dialog', async (dialog) => {
+      kinds.push(dialog.type());
+      await dialog.dismiss();
+    });
+    await page.evaluate(() => {
+      // Chromium solo avisa si hubo interacción; el relleno anterior ya cuenta.
+      window.dispatchEvent(new Event('beforeunload', { cancelable: true }));
+    });
+    await page.reload().catch(() => undefined);
+    expect(kinds).toEqual(['beforeunload']);
+    await expect(page).toHaveURL(/\/activos\/nuevo$/);
+
+    // Descartar sí sale.
+    await page.getByRole('link', { name: 'Activos' }).first().click();
+    await ask.getByRole('button', { name: 'Descartar cambios' }).click();
+    await expect(page).toHaveURL(/\/activos$/);
+  });
+
+  test('un diálogo con cambios pide confirmar antes de cerrarse [P15]', async ({ page }) => {
+    await page.goto('/catalogo/manufacturers');
+    await page.getByRole('button', { name: 'Nuevo fabricante' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Nuevo fabricante' });
+    await dialog.getByLabel('Nombre').fill('A medias');
+    await dialog.getByRole('button', { name: 'Cancelar' }).click();
+    const ask = page.getByRole('dialog', { name: 'Cambios sin guardar' });
+    await expect(ask).toBeVisible();
+    await ask.getByRole('button', { name: 'Seguir editando' }).click();
+    await expect(dialog.getByLabel('Nombre')).toHaveValue('A medias');
+    await dialog.getByRole('button', { name: 'Cancelar' }).click();
+    await ask.getByRole('button', { name: 'Descartar cambios' }).click();
+    await expect(dialog).toBeHidden();
+    // Sin cambios, cerrar no pregunta.
+    await page.getByRole('button', { name: 'Nuevo fabricante' }).click();
+    await dialog.getByRole('button', { name: 'Cancelar' }).click();
+    await expect(dialog).toBeHidden();
+  });
+
   test('las acciones principales se ven sin hacer scroll (RF-41)', async ({ page }) => {
     const fixture = await createCatalogFixture(page.request);
     const asset = await createAssetViaApi(page.request, fixture);
