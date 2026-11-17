@@ -34,6 +34,7 @@ export interface ModelRow {
   categoryExtension: string;
   active: boolean;
   lorawanClass: string | null;
+  lorawanRegion: string | null;
   lorawanVersion: string | null;
   lorawanRegionalParameters: string | null;
   createdAt: Date;
@@ -197,6 +198,7 @@ export class CatalogRepository {
     categoryExtension: categories.extension,
     active: models.active,
     lorawanClass: models.lorawanClass,
+    lorawanRegion: models.lorawanRegion,
     lorawanVersion: models.lorawanVersion,
     lorawanRegionalParameters: models.lorawanRegionalParameters,
     createdAt: models.createdAt,

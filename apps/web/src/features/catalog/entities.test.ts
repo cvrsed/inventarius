@@ -1,4 +1,9 @@
 import type { AssetModelDto, LocationDto, StatusLabelDto } from '@inventarius/shared';
+import {
+  LORAWAN_REGIONAL_PARAMETERS_OPTIONS,
+  LORAWAN_REGION_OPTIONS,
+  LORAWAN_VERSION_OPTIONS,
+} from '@inventarius/shared';
 import { describe, expect, it } from 'vitest';
 import { emptyForm, formFromItem, toPayload, visibleFields } from './entities';
 
@@ -10,6 +15,7 @@ const model: AssetModelDto = {
   category: { id: '018f0000-0000-7000-8000-0000000000b1', name: 'Medidores', extension: 'lorawan' },
   active: true,
   lorawanClass: 'C',
+  lorawanRegion: null,
   lorawanVersion: '1.0.3',
   lorawanRegionalParameters: null,
   updatedAt: '2026-11-16T12:00:00.000Z',
@@ -64,6 +70,23 @@ describe('formularios del catálogo', () => {
     );
     expect(plain).toMatchObject({ lorawanClass: null, lorawanVersion: null });
     expect(plain).not.toHaveProperty('active');
+  });
+
+  it('los campos LoRaWAN usan las listas compartidas y la clase es obligatoria', () => {
+    const fields = visibleFields('models', formFromItem('models', model));
+    const byKey = Object.fromEntries(fields.map((f) => [f.key, f]));
+    expect(byKey['lorawanClass']).toMatchObject({ required: true, kind: 'select' });
+    expect(byKey['lorawanRegion']!.options).toBe(LORAWAN_REGION_OPTIONS);
+    expect(byKey['lorawanVersion']!.options).toBe(LORAWAN_VERSION_OPTIONS);
+    expect(byKey['lorawanRegionalParameters']!.options).toBe(LORAWAN_REGIONAL_PARAMETERS_OPTIONS);
+    expect(byKey['lorawanRegion']!.kind).toBe('search');
+    expect(byKey['lorawanRegion']!.required).toBeUndefined();
+    expect(byKey['lorawanRegion']!.options!.length).toBe(13);
+  });
+
+  it('la región viaja en el payload solo con categoría LoRaWAN', () => {
+    const form = { ...formFromItem('models', model), lorawanRegion: 'AU915' };
+    expect(toPayload('models', form, 'edit')).toMatchObject({ lorawanRegion: 'AU915' });
   });
 
   it('la ubicación manda el padre como id o null', () => {

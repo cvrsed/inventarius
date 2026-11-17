@@ -178,6 +178,7 @@ export const models = pgTable(
       .references(() => categories.id, { onDelete: 'restrict' }),
     active: boolean('active').notNull().default(true),
     lorawanClass: text('lorawan_class'),
+    lorawanRegion: text('lorawan_region'),
     lorawanVersion: text('lorawan_version'),
     lorawanRegionalParameters: text('lorawan_regional_parameters'),
     createdAt: createdAt(),

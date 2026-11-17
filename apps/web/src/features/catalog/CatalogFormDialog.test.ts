@@ -79,6 +79,38 @@ describe('CatalogFormDialog', () => {
     expect(document.body.textContent).not.toContain('Número de modelo');
   });
 
+  it('en un modelo LoRaWAN la clase es obligatoria y el resto son listas en español', async () => {
+    const lora = {
+      id: '018f0000-0000-7000-8000-000000000042',
+      name: 'SDM530',
+      modelNumber: null,
+      manufacturer: { id: '018f0000-0000-7000-8000-0000000000a1', name: 'Acme' },
+      category: {
+        id: '018f0000-0000-7000-8000-0000000000b1',
+        name: 'Medidores',
+        extension: 'lorawan',
+      },
+      active: true,
+      lorawanClass: null,
+      lorawanRegion: null,
+      lorawanVersion: null,
+      lorawanRegionalParameters: null,
+      updatedAt: '2026-11-16T12:00:00.000Z',
+    };
+    const fetchMock = mockApi({
+      'PATCH /api/v1/models/018f0000-0000-7000-8000-000000000042': () => lora,
+    });
+    await open('models', lora);
+    const body = document.body.textContent ?? '';
+    expect(body).toContain('Seleccione clase');
+    expect(body).not.toContain('__empty__');
+    expect(body).toContain('Región / plan de frecuencias');
+    expect(body).toContain('Versión de parámetros regionales');
+    await save();
+    expect(document.body.textContent).toContain('Este campo es obligatorio');
+    expect(fetchMock.mock.calls.some((c) => c[1]?.method === 'PATCH')).toBe(false);
+  });
+
   it('un modelo pide fabricante y categoría', async () => {
     await open('models');
     await type('#cf-name', 'SDM530');

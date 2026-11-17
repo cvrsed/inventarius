@@ -134,15 +134,31 @@ test.describe('catálogo (RF-10 a RF-14)', () => {
     await page.goto('/catalogo/models');
     await page.getByRole('button', { name: 'Nuevo modelo' }).click();
     const dialog = page.getByRole('dialog', { name: 'Nuevo modelo' });
-    await expect(dialog.getByLabel('Clase LoRaWAN por defecto')).toHaveCount(0);
+    await expect(dialog.getByRole('combobox', { name: /^Clase/ })).toHaveCount(0);
 
     await dialog.getByRole('button', { name: /^Categoría/ }).click();
     await expect(page.getByRole('listbox')).toBeVisible();
     await expectNoA11yViolations(page); // selector con búsqueda ABIERTO
     await page.getByPlaceholder(/Buscar…/).fill(lora);
     await page.getByRole('option', { name: lora }).click();
-    await expect(dialog.getByRole('combobox', { name: /^Clase LoRaWAN/ })).toBeVisible();
-    await expect(dialog.getByLabel('Versión de LoRaWAN')).toBeVisible();
+    const classSelect = dialog.getByRole('combobox', { name: /^Clase/ });
+    await expect(classSelect).toContainText('Seleccione clase');
+    // Región, versión y parámetros regionales: listas cerradas con búsqueda, en español.
+    await dialog.getByRole('button', { name: /^Región \/ plan de frecuencias/ }).click();
+    await expect(page.getByRole('option', { name: /^AU915/ })).toBeVisible();
+    await expect(page.getByRole('option')).toHaveCount(13);
+    await expectNoA11yViolations(page); // lista de regiones ABIERTA
+    await page.getByPlaceholder(/Buscar…/).fill('AS923');
+    await expect(page.getByRole('option')).toHaveCount(4);
+    await page.getByRole('option', { name: /^AS923-1/ }).click();
+    await expect(page.getByRole('listbox')).toBeHidden();
+    await expect(dialog.getByRole('button', { name: /^Versión de LoRaWAN/ })).toBeVisible();
+    await expect(
+      dialog.getByRole('button', { name: /^Versión de parámetros regionales/ }),
+    ).toBeVisible();
+    // La clase es obligatoria.
+    await dialog.getByRole('button', { name: 'Guardar' }).click();
+    await expect(dialog.getByText('Este campo es obligatorio').first()).toBeVisible();
     expect(fixture.modelId).toBeTruthy();
   });
 

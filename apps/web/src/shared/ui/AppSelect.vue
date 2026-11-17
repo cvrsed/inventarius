@@ -17,9 +17,11 @@ const EMPTY = '__empty__';
 const items = computed(() =>
   props.items.map((i) => ({ ...i, value: i.value === '' ? EMPTY : i.value })),
 );
-const shown = computed({
-  get: () => (model.value === '' ? EMPTY : model.value),
-  set: (v: string | number) => (model.value = v === EMPTY ? '' : v),
+/** Con una opción «todas» (valor `''`) el vacío es esa opción; sin ella, el select queda sin valor y muestra el placeholder. */
+const hasEmptyOption = computed(() => props.items.some((i) => i.value === ''));
+const shown = computed<string | number | undefined>({
+  get: () => (model.value === '' ? (hasEmptyOption.value ? EMPTY : undefined) : model.value),
+  set: (v: string | number | undefined) => (model.value = v === EMPTY || v === undefined ? '' : v),
 });
 
 const onOpen = useInertWhileOpen();

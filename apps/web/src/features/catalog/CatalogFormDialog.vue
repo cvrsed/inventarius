@@ -11,10 +11,12 @@ import { useI18n } from 'vue-i18n';
 import { errorMessage } from '@/features/auth/errors';
 import { ApiError } from '@/shared/api/http';
 import AppSelect from '@/shared/ui/AppSelect.vue';
+import SearchSelect from '@/shared/ui/SearchSelect.vue';
 import RemoteSelect, { type RemoteOption } from '@/shared/ui/RemoteSelect.vue';
 import { fetchOptions, useCatalogMutations, type CatalogItem } from './api';
 import {
   emptyForm,
+  type FieldDef,
   formFromItem,
   toPayload,
   visibleFields,
@@ -105,10 +107,10 @@ async function submit(): Promise<void> {
 }
 
 const fetcherFor = (source: Section) => (q: string) => fetchOptions(source, q);
-const selectItems = (f: { options?: { value: string; label: string }[] }) =>
+const selectItems = (f: FieldDef) =>
   (f.options ?? []).map((o) => ({
     value: o.value,
-    label: o.label.includes('.') ? t(o.label) : o.label,
+    label: f.translateOptions ? t(o.label) : o.label,
   }));
 </script>
 
@@ -152,9 +154,20 @@ const selectItems = (f: { options?: { value: string; label: string }[] }) =>
             :id="`cf-${f.key}`"
             :model-value="textOf(f.key)"
             :items="selectItems(f)"
+            :placeholder="f.placeholder ? t(f.placeholder) : undefined"
             :disabled="locked"
             class="w-full"
             @update:model-value="(v: string | number) => setValue(f.key, String(v))"
+          />
+          <SearchSelect
+            v-else-if="f.kind === 'search'"
+            :id="`cf-${f.key}`"
+            :model-value="textOf(f.key)"
+            :items="selectItems(f)"
+            :placeholder="t(f.placeholder ?? 'catalog.selectPlaceholder')"
+            :disabled="locked"
+            clearable
+            @update:model-value="(v: string) => setValue(f.key, v)"
           />
           <RemoteSelect
             v-else

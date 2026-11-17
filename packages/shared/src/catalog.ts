@@ -1,5 +1,11 @@
 import { z } from 'zod';
 import { pageQuerySchema } from './identity.js';
+import {
+  lorawanClassSchema,
+  lorawanRegionSchema,
+  lorawanRegionalParametersSchema,
+  lorawanVersionSchema,
+} from './lorawan.js';
 
 /** Tipo de extensión de una categoría (RF-10). `lorawan` agrega la sección LoRaWAN a la ficha (F3). */
 export const CATEGORY_EXTENSIONS = ['none', 'lorawan'] as const;
@@ -10,9 +16,6 @@ export type CategoryExtension = z.infer<typeof categoryExtensionSchema>;
 export const STATUS_KINDS = ['deployable', 'pending', 'undeployable', 'archived'] as const;
 export const statusKindSchema = z.enum(STATUS_KINDS);
 export type StatusKind = z.infer<typeof statusKindSchema>;
-
-export const LORAWAN_CLASSES = ['A', 'B', 'C'] as const;
-export const lorawanClassSchema = z.enum(LORAWAN_CLASSES);
 
 const name = z.string().trim().min(1).max(120);
 const optionalText = (max: number) =>
@@ -91,6 +94,7 @@ export const assetModelSchema = z.object({
   active: z.boolean(),
   /** Solo en modelos de categoría `lorawan`. */
   lorawanClass: lorawanClassSchema.nullable(),
+  lorawanRegion: z.string().nullable(),
   lorawanVersion: z.string().nullable(),
   lorawanRegionalParameters: z.string().nullable(),
   ...versioned,
@@ -102,13 +106,15 @@ const modelFields = {
   manufacturerId: z.uuid(),
   categoryId: z.uuid(),
   lorawanClass: lorawanClassSchema.nullable(),
-  lorawanVersion: optionalText(20),
-  lorawanRegionalParameters: optionalText(20),
+  lorawanRegion: lorawanRegionSchema.nullable(),
+  lorawanVersion: lorawanVersionSchema.nullable(),
+  lorawanRegionalParameters: lorawanRegionalParametersSchema.nullable(),
 };
 export const createModelSchema = z.object({
   ...modelFields,
   modelNumber: modelFields.modelNumber.default(null),
   lorawanClass: modelFields.lorawanClass.default(null),
+  lorawanRegion: modelFields.lorawanRegion.default(null),
   lorawanVersion: modelFields.lorawanVersion.default(null),
   lorawanRegionalParameters: modelFields.lorawanRegionalParameters.default(null),
 });

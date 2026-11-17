@@ -23,6 +23,7 @@ describe('columnas del catálogo', () => {
       category: { id: 'c', name: 'Medidores', extension: 'lorawan' },
       active: true,
       lorawanClass: null,
+      lorawanRegion: null,
       lorawanVersion: null,
       lorawanRegionalParameters: null,
       updatedAt: '',

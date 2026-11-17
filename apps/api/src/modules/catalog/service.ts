@@ -33,7 +33,12 @@ const listOpts = (q: ListQuery) => ({
 });
 const iso = (d: Date) => d.toISOString();
 
-const LORAWAN_FIELDS = ['lorawanClass', 'lorawanVersion', 'lorawanRegionalParameters'] as const;
+const LORAWAN_FIELDS = [
+  'lorawanClass',
+  'lorawanRegion',
+  'lorawanVersion',
+  'lorawanRegionalParameters',
+] as const;
 
 type ModelPatch = { [K in keyof ModelInput]?: ModelInput[K] | undefined } & {
   active?: boolean | undefined;
@@ -49,6 +54,7 @@ interface ModelInput {
   manufacturerId: string;
   categoryId: string;
   lorawanClass: string | null;
+  lorawanRegion: string | null;
   lorawanVersion: string | null;
   lorawanRegionalParameters: string | null;
 }
@@ -158,6 +164,7 @@ export class CatalogService {
           },
           active: r.active,
           lorawanClass: r.lorawanClass as AssetModelDto['lorawanClass'],
+          lorawanRegion: r.lorawanRegion,
           lorawanVersion: r.lorawanVersion,
           lorawanRegionalParameters: r.lorawanRegionalParameters,
           updatedAt: iso(r.updatedAt),
@@ -169,6 +176,7 @@ export class CatalogService {
           category: r.categoryName,
           active: r.active,
           lorawanClass: r.lorawanClass,
+          lorawanRegion: r.lorawanRegion,
           lorawanVersion: r.lorawanVersion,
           lorawanRegionalParameters: r.lorawanRegionalParameters,
         }),
@@ -308,6 +316,7 @@ export class CatalogService {
         out = {
           ...input,
           lorawanClass: null,
+          lorawanRegion: null,
           lorawanVersion: null,
           lorawanRegionalParameters: null,
         };

@@ -1,10 +1,14 @@
 import type { CatalogItem } from './api';
 import type { RemoteOption } from '@/shared/ui/RemoteSelect.vue';
-import type {
-  AssetModelDto,
-  CategoryExtension,
-  LocationDto,
-  StatusLabelDto,
+import {
+  LORAWAN_CLASS_OPTIONS,
+  LORAWAN_REGIONAL_PARAMETERS_OPTIONS,
+  LORAWAN_REGION_OPTIONS,
+  LORAWAN_VERSION_OPTIONS,
+  type AssetModelDto,
+  type CategoryExtension,
+  type LocationDto,
+  type StatusLabelDto,
 } from '@inventarius/shared';
 
 export const SECTIONS = ['categories', 'manufacturers', 'models', 'locations', 'statuses'] as const;
@@ -18,13 +22,17 @@ export interface FieldDef {
   key: string;
   /** Clave i18n del rótulo. */
   label: string;
-  kind: 'text' | 'select' | 'ref';
+  /** `select`: lista corta; `search`: lista cerrada con búsqueda; `ref`: registro de otra sección. */
+  kind: 'text' | 'select' | 'search' | 'ref';
   required?: boolean;
   maxLength?: number;
   /** Clave i18n de un texto de ayuda bajo el campo. */
   help?: string;
-  /** Para `select`: valores y su clave i18n. */
-  options?: { value: string; label: string }[];
+  /** Para `select` y `search`: valores y su etiqueta (clave i18n si `translateOptions`). */
+  options?: readonly { value: string; label: string }[];
+  translateOptions?: boolean;
+  /** Clave i18n del texto que se ve mientras no hay valor. */
+  placeholder?: string;
   /** Para `ref`: de qué sección se elige. */
   source?: Section;
   /** Solo se muestra si devuelve `true` (p. ej. campos LoRaWAN según la categoría). */
@@ -49,6 +57,7 @@ const FIELDS: Record<Section, FieldDef[]> = {
       label: 'catalog.fields.extension',
       kind: 'select',
       required: true,
+      translateOptions: true,
       options: [
         { value: 'none', label: 'catalog.extensions.none' },
         { value: 'lorawan', label: 'catalog.extensions.lorawan' },
@@ -77,16 +86,35 @@ const FIELDS: Record<Section, FieldDef[]> = {
       key: 'lorawanClass',
       label: 'catalog.fields.lorawanClass',
       kind: 'select',
+      required: true,
       when: isLora,
-      options: [
-        { value: '', label: 'common.none' },
-        { value: 'A', label: 'A' },
-        { value: 'B', label: 'B' },
-        { value: 'C', label: 'C' },
-      ],
+      placeholder: 'catalog.placeholders.lorawanClass',
+      options: LORAWAN_CLASS_OPTIONS,
     },
-    text('lorawanVersion', { maxLength: 20, when: isLora }),
-    text('lorawanRegionalParameters', { maxLength: 20, when: isLora }),
+    {
+      key: 'lorawanRegion',
+      label: 'catalog.fields.lorawanRegion',
+      kind: 'search',
+      when: isLora,
+      placeholder: 'catalog.placeholders.lorawanRegion',
+      options: LORAWAN_REGION_OPTIONS,
+    },
+    {
+      key: 'lorawanVersion',
+      label: 'catalog.fields.lorawanVersion',
+      kind: 'search',
+      when: isLora,
+      placeholder: 'catalog.placeholders.lorawanVersion',
+      options: LORAWAN_VERSION_OPTIONS,
+    },
+    {
+      key: 'lorawanRegionalParameters',
+      label: 'catalog.fields.lorawanRegionalParameters',
+      kind: 'search',
+      when: isLora,
+      placeholder: 'catalog.placeholders.lorawanRegionalParameters',
+      options: LORAWAN_REGIONAL_PARAMETERS_OPTIONS,
+    },
   ],
   locations: [
     text('name', { required: true, maxLength: 120 }),
@@ -100,6 +128,7 @@ const FIELDS: Record<Section, FieldDef[]> = {
       label: 'catalog.fields.kind',
       kind: 'select',
       required: true,
+      translateOptions: true,
       options: (['deployable', 'pending', 'undeployable', 'archived'] as const).map((k) => ({
         value: k,
         label: `catalog.kinds.${k}`,
@@ -124,6 +153,7 @@ const DEFAULTS: Record<Section, FormState> = {
     manufacturer: null,
     category: null,
     lorawanClass: '',
+    lorawanRegion: '',
     lorawanVersion: '',
     lorawanRegionalParameters: '',
     active: true,
@@ -148,6 +178,7 @@ export function formFromItem(section: Section, item: CatalogItem): FormState {
         manufacturer: ref(m.manufacturer),
         category: ref(m.category, { extension: m.category.extension satisfies CategoryExtension }),
         lorawanClass: m.lorawanClass ?? '',
+        lorawanRegion: m.lorawanRegion ?? '',
         lorawanVersion: m.lorawanVersion ?? '',
         lorawanRegionalParameters: m.lorawanRegionalParameters ?? '',
         active: m.active,
@@ -195,6 +226,7 @@ export function toPayload(
         manufacturerId: idOf(form['manufacturer']),
         categoryId: idOf(form['category']),
         lorawanClass: lora ? orNull(form['lorawanClass']) : null,
+        lorawanRegion: lora ? orNull(form['lorawanRegion']) : null,
         lorawanVersion: lora ? orNull(form['lorawanVersion']) : null,
         lorawanRegionalParameters: lora ? orNull(form['lorawanRegionalParameters']) : null,
         ...active,
