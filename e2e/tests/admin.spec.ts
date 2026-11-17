@@ -151,7 +151,7 @@ test.describe('auditoría (RF-31)', () => {
     await expectNoA11yViolations(page); // select de página ABIERTO
     await page.getByRole('option', { name: 'Inicio de sesión', exact: true }).click();
     await expect(page.locator('#app')).not.toHaveAttribute('inert', '');
-    await expect(page.getByRole('cell', { name: 'Inicio de sesión' }).first()).toBeVisible();
-    await expect(page.getByRole('cell', { name: 'Usuario creado' })).toHaveCount(0);
+    await expect(page.getByText('Inicio de sesión').locator('visible=true').first()).toBeVisible();
+    await expect(page.getByText('Usuario creado').locator('visible=true')).toHaveCount(0);
   });
 });
