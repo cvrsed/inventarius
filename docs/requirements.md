@@ -18,7 +18,7 @@ Despliegue inicial: `inventarius.supporti.cl` (homelab pve-z420). Requisito de d
 
 ### Fuera de alcance del MVP
 
-- Licencias de software, consumibles, accesorios y componentes (módulos de Snipe-IT que vienen después).
+- Licencias de software, accesorios y componentes (módulos de Snipe-IT que vienen después). Los consumibles entran en la fase F3.5.
 - Campos personalizados genéricos por categoría (el MVP solo trae la extensión LoRaWAN fija).
 - Activación ABP, registro masivo, sincronización bidireccional con el LNS, lectura de uplinks o telemetría.
 - Modo offline, app nativa, SSO/LDAP, API tokens para terceros, multiempresa.
@@ -41,7 +41,7 @@ Todo lo que salió, clasificado con MoSCoW. **Must** = MVP. **Should** = entra s
 | Búsqueda y filtros en listados, paginación del lado servidor | Must |  |
 | Etiqueta con QR por activo e impresión | Should | Clave para terreno |
 | Escanear QR con la cámara para abrir la ficha | Should |  |
-| Importación CSV de activos LoRaWAN (DevEUI, JoinEUI, AppKey) | Should | Lotes de medidores |
+| Importación CSV de datos LoRaWAN por número de serie (DevEUI, JoinEUI, AppKey) | Must (F3) | Lotes de medidores: se dan de alta en lote (RF-27) y los datos LoRaWAN se completan por CSV (RF-66) |
 | 2FA TOTP para usuarios administradores | Should |  |
 | Registro masivo en LNS desde un lote importado | Could |  |
 | Verificación de estado contra el LNS (último visto, joined) | Could |  |
@@ -50,6 +50,7 @@ Todo lo que salió, clasificado con MoSCoW. **Must** = MVP. **Should** = entra s
 | Mantenimientos y garantías con alertas | Could |  |
 | API tokens con alcance para integraciones (n8n, GLPI) | Could |  |
 | Dashboard de resumen | Could |  |
+| Consumibles por cantidad (EPP, etc.): ingreso a bodega, entrega, stock y mínimo | Must (F3.5) | Fase propia después de F3 (RF-70 a RF-74) |
 | Modo offline en terreno | Won't por ahora | Complejidad alta (sincronización, conflictos) |
 | SSO (OIDC), LDAP | Won't por ahora | Se deja la capa de auth desacoplada |
 | Otros LNS (Loriot, Actility, Helium) | Won't por ahora | Entran como nuevos adaptadores |
@@ -122,6 +123,16 @@ Cada requerimiento tiene ID para trazarlo en issues, commits y tests (`RF-xx`).
 - **RF-41** Ficha de activo optimizada para terreno: datos clave arriba, botones Asignar, Cambiar estado y Registrar en LNS visibles sin scroll.
 - **RF-42** PWA instalable (manifest e íconos). Sin modo offline en el MVP: si no hay red, se muestra un aviso claro.
 
+### 4.6 Consumibles (fase F3.5)
+
+Ítems que se manejan por **cantidad** y no uno a uno (p. ej. EPP: guantes, cascos). Van en una fase propia después de F3.
+
+- **RF-70** CRUD de **consumibles**: nombre, categoría, unidad de medida y **stock mínimo** (global o por bodega). Un consumible en uso no se borra, solo se desactiva.
+- **RF-71** **Ingreso a bodega**: suma cantidad a una bodega con fecha, proveedor opcional y nota.
+- **RF-72** **Entrega a una persona**: descuenta de una bodega y deja constancia de quién recibió, cuánto y cuándo; no permite entregar más que el stock de esa bodega.
+- **RF-73** **Stock por bodega**: cantidad disponible de cada consumible en cada bodega, derivada del libro de movimientos (ingresos, entregas, ajustes), con historial por consumible.
+- **RF-74** **Stock mínimo**: aviso visible (listado e Inicio) cuando el stock de un consumible queda por debajo de su mínimo.
+
 ## 5. Integración LoRaWAN
 
 ### 5.1 Perfiles LNS
@@ -152,6 +163,7 @@ Extensión 1:1 del activo: **DevEUI** (16 hex, único), **JoinEUI / AppEUI** (16
 - **RF-63** **Reintentar** desde `error` o `parcial`. Reintentos automáticos con backoff solo para errores transitorios (timeout, 5xx, `UNAVAILABLE`); los 4xx / `INVALID_ARGUMENT` / `ALREADY_EXISTS` no se reintentan.
 - **RF-64** Idempotencia: antes de crear se consulta si el DevEUI ya existe en el destino. Si existe y no fue creado por Inventarius, el job termina en `conflicto` y ofrece **Vincular** (tomarlo como registrado sin tocarlo) o cancelar.
 - **RF-65** Un activo solo puede estar registrado en un perfil a la vez en el MVP.
+- **RF-66** **Importación CSV de datos LoRaWAN por número de serie** (F3): el archivo trae `serial`, DevEUI, JoinEUI y AppKey (más opcionales: NwkKey, clase, versión, región). Cada fila se asocia al activo que tiene ese número de serie, con vista previa y errores por fila (serie inexistente o repetida, formato, DevEUI duplicado) antes de confirmar. Se aplica en una transacción y deja un registro de auditoría; las claves no se escriben en logs ni en la auditoría.
 
 ### 5.4 Pasos por proveedor
 
@@ -572,14 +584,15 @@ Portabilidad: mover la app a otro servidor = copiar `deploy/`, crear `.env`, `do
 
 ## 13. Plan de entrega del MVP
 
-Cinco fases. Cada una termina en un PR revisado y un tag de pre-release (`v0.1.0`, `v0.2.0`...). El MVP es `v1.0.0`. Claude Code no empieza una fase sin el merge de la anterior.
+Seis fases (F0 a F4, con F3.5 entre F3 y F4). Cada una termina en un PR revisado y un tag de pre-release (`v0.1.0`, `v0.2.0`...). El MVP es `v1.0.0`. Claude Code no empieza una fase sin el merge de la anterior.
 
 | Fase | Contenido | Criterio de aceptación |
 | --- | --- | --- |
 | F0 Fundaciones | Monorepo pnpm, TS estricto, lint/format, hooks, `compose.yml` de desarrollo, Fastify con config validada, logger, health, métricas, Drizzle con primera migración, esqueleto Vue + Nuxt UI (tema propio) + Tailwind + i18n + layout responsivo, Vitest y Playwright funcionando, CI completo, ADRs 0001-0004, `CLAUDE.md` | `pnpm i && docker compose up` levanta todo; CI verde; `/api/health/ready` responde; una página vacía con layout pasa axe en móvil y escritorio |
 | F1 Identidad | RF-01 a RF-05, roles y permisos sembrados, decorador de permisos, sesiones, CSRF, rate limit, auditoría (RF-30, RF-31), gestión de usuarios y roles en UI | Tests de permisos por rol en todas las rutas; test que detecta rutas sin permiso; login, bloqueo y expiración probados en e2e |
 | F2 Inventario | Catálogo RF-10 a RF-14, activos RF-20 a RF-26, historial, vistas móviles RF-40 a RF-42 | CRUD completo e2e en escritorio y móvil; listado con 10.000 activos sembrados dentro del objetivo de rendimiento |
-| F3 LoRaWAN | Extensión LoRaWAN del activo, cifrado de claves, perfiles LNS RF-50 a RF-52, adaptadores ChirpStack y TTN, cola pg-boss y worker, RF-60 a RF-65 | Registro y baja OK contra ChirpStack de prueba en Docker; contra TTN con mock en CI y con una aplicación de prueba real en el job manual; compensación probada simulando fallo en cada paso |
+| F3 LoRaWAN | Extensión LoRaWAN del activo, cifrado de claves, perfiles LNS RF-50 a RF-52, adaptadores ChirpStack y TTN, cola pg-boss y worker, RF-60 a RF-65, **importación CSV de datos LoRaWAN por número de serie (RF-66)** | Registro y baja OK contra ChirpStack de prueba en Docker; contra TTN con mock en CI y con una aplicación de prueba real en el job manual; compensación probada simulando fallo en cada paso; importar un CSV de 100 series asocia los datos a los activos correctos y rechaza filas inválidas con su error |
+| F3.5 Consumibles | Consumibles por cantidad (RF-70 a RF-74): catálogo, ingreso a bodega, entrega a persona, stock por bodega y stock mínimo con aviso en Inicio | e2e del ciclo ingreso → entrega → stock mínimo en escritorio y 360 px; no se puede entregar más que el stock de la bodega; el libro de movimientos cuadra con el stock mostrado |
 | F4 Cierre | Endurecimiento (CSP, cabeceras, revisión de secretos en logs), `deploy/` de producción, respaldo y restauración probados, docs de instalación y operación, release-please, imágenes en GHCR | Despliegue en la VM de producción siguiendo solo `docs/install.md`; restauración desde dump verificada; `v1.0.0` publicado |
 
 ### Definición de terminado (cada PR)
