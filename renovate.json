@@ -13,6 +13,12 @@
       "description": "Playwright: paquete e imagen deben moverse juntos",
       "groupName": "playwright",
       "matchPackageNames": ["@playwright/test", "mcr.microsoft.com/playwright"]
+    },
+    {
+      "description": "Acciones de GitHub: siempre fijadas por SHA de commit, con la versión en el comentario; se actualizan juntas",
+      "matchManagers": ["github-actions"],
+      "pinDigests": true,
+      "groupName": "github-actions"
     }
   ]
 }
