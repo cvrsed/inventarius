@@ -119,6 +119,15 @@ describe('CatalogPage (RF-10 a RF-14)', () => {
     }
   });
 
+  it('en móvil las secciones son un select que muestra la actual y navega al cambiar', async () => {
+    const { wrapper } = await mountSection('locations', [], ['asset:read']);
+    const select = wrapper.get('button[aria-label="Sección del catálogo"]');
+    expect(select.text()).toContain('Ubicaciones');
+    await router.push('/catalogo/models');
+    await flushPromises();
+    expect(wrapper.get('button[aria-label="Sección del catálogo"]').text()).toContain('Modelos');
+  });
+
   it('/catalogo y una sección desconocida redirigen a la primera sección', async () => {
     await router.push('/catalogo');
     expect(router.currentRoute.value.fullPath).toBe('/catalogo/categories');

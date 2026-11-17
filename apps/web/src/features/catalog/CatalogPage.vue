@@ -7,7 +7,7 @@ import UTable from '@nuxt/ui/components/Table.vue';
 import { useToast } from '@nuxt/ui/composables/useToast';
 import { computed, onBeforeUnmount, ref, toRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { errorMessage } from '@/features/auth/errors';
 import { useAuthStore } from '@/features/auth/useAuthStore';
 import { useListQuery } from '@/shared/list/useListQuery';
@@ -30,6 +30,13 @@ const section = computed<Section>(() => {
   const s = String(route.params['section'] ?? '');
   return (SECTIONS as readonly string[]).includes(s) ? (s as Section) : 'categories';
 });
+const router = useRouter();
+/** En móvil las secciones son un select; en escritorio, pestañas. */
+const sectionItems = computed(() =>
+  SECTIONS.map((s) => ({ label: t(`catalog.sections.${s}`), value: s })),
+);
+const goToSection = (value: string | number) =>
+  router.push({ name: 'catalog', params: { section: String(value) } });
 const canWrite = computed(() => auth.can('catalog:write'));
 
 const { query, update, setPage } = useListQuery({ page: 1, pageSize: 25, q: '', active: '' });
@@ -108,7 +115,15 @@ const toggleActive = (item: CatalogItem) =>
       />
     </div>
 
-    <nav :aria-label="t('catalog.tabsLabel')" class="-mx-4 overflow-x-auto px-4">
+    <AppSelect
+      :model-value="section"
+      :items="sectionItems"
+      :aria-label="t('catalog.sectionSelect')"
+      class="w-full md:hidden"
+      @update:model-value="goToSection"
+    />
+
+    <nav :aria-label="t('catalog.tabsLabel')" class="hidden md:block">
       <ul class="m-0 flex list-none gap-1 p-0">
         <li v-for="s in SECTIONS" :key="s">
           <RouterLink

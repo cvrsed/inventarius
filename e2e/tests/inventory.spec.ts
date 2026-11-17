@@ -46,21 +46,34 @@ test.describe('catálogo (RF-10 a RF-14)', () => {
     ['statuses', 'Estados'],
   ];
 
-  test('al entrar directo a cada ruta, la pestaña activa es la de la ruta', async ({ page }) => {
+  test('al entrar directo a cada ruta, la pestaña (o el select en móvil) muestra la sección', async ({
+    page,
+  }) => {
     const wide = (page.viewportSize()?.width ?? 0) >= 768;
-    test.skip(!wide, 'en móvil las secciones son un select (ver prueba de 360 px)');
+    const active = wide
+      ? page
+          .getByRole('navigation', { name: 'Secciones del catálogo' })
+          .locator('a[aria-current="page"]')
+      : page.getByRole('combobox', { name: 'Sección del catálogo' });
     for (const [slug, label] of SECTION_LABELS) {
       await page.goto(`/catalogo/${slug}`);
-      const tabs = page.getByRole('navigation', { name: 'Secciones del catálogo' });
-      await expect(tabs.locator('a[aria-current="page"]')).toHaveText(label);
+      if (wide) await expect(active).toHaveText(label);
+      else await expect(active).toContainText(label);
     }
     await page.goto('/catalogo');
     await expect(page).toHaveURL(/\/catalogo\/categories$/);
-    await expect(
-      page
-        .getByRole('navigation', { name: 'Secciones del catálogo' })
-        .locator('a[aria-current="page"]'),
-    ).toHaveText('Categorías');
+    if (wide) await expect(active).toHaveText('Categorías');
+    else await expect(active).toContainText('Categorías');
+  });
+
+  test('en móvil el select de sección cambia de sección y pasa axe abierto', async ({ page }) => {
+    test.skip((page.viewportSize()?.width ?? 0) >= 768, 'en escritorio hay pestañas');
+    await page.goto('/catalogo/categories');
+    await expect(page.getByRole('navigation', { name: 'Secciones del catálogo' })).toBeHidden();
+    await page.getByRole('combobox', { name: 'Sección del catálogo' }).click();
+    await expectNoA11yViolations(page);
+    await page.getByRole('option', { name: 'Modelos' }).click();
+    await expect(page).toHaveURL(/\/catalogo\/models$/);
   });
 
   test('CRUD de fabricantes: crear, editar, desactivar y borrar, con axe en claro y oscuro', async ({

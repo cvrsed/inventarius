@@ -124,6 +124,7 @@ export const messages = {
     title: 'Catálogo',
     description: 'Categorías, fabricantes, modelos, ubicaciones y estados que usan los activos.',
     tabsLabel: 'Secciones del catálogo',
+    sectionSelect: 'Sección del catálogo',
     searchLabel: 'Buscar en {section}',
     stateFilter: 'Estado del registro',
     sections: {
