@@ -16,3 +16,8 @@ allowBuilds:
 
 # RNF-09: versiones exactas siempre.
 savePrefix: ''
+
+# Avisos sin versión corregida, revisados (osv-scanner.toml tiene el mismo y su justificación; revisar el 2027-02-16).
+auditConfig:
+  ignoreGhsas:
+    - GHSA-fc5q-39xc-vjpf
