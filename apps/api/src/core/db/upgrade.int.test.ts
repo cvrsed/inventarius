@@ -69,6 +69,7 @@ describe('migración de F1 a F2 sobre una base con datos', () => {
       'Dañado',
       'Disponible',
       'En reparación',
+      'Pendiente de configuración',
     ]);
     expect(statuses.rows.find((r) => r.name === 'Asignado').system_key).toBe('assigned');
 
@@ -91,6 +92,6 @@ describe('migración de F1 a F2 sobre una base con datos', () => {
 
   it('volver a migrar es idempotente', async () => {
     await expect(runMigrations(testDb.migratorUrl)).resolves.toBeUndefined();
-    expect((await pool.query('SELECT count(*)::int AS n FROM status_labels')).rows[0].n).toBe(5);
+    expect((await pool.query('SELECT count(*)::int AS n FROM status_labels')).rows[0].n).toBe(6);
   });
 });
