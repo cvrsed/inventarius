@@ -5,7 +5,6 @@ import { useRoute } from 'vue-router';
 import { useAuthStore } from '@/features/auth/useAuthStore';
 import OfflineNotice from '@/shared/ui/OfflineNotice.vue';
 import AppNav from './AppNav.vue';
-import ThemeToggle from './ThemeToggle.vue';
 import UserMenu from './UserMenu.vue';
 
 const { t } = useI18n();
@@ -30,7 +29,6 @@ const showNav = computed(() => !route.meta.bare && !!auth.user && !auth.user.mus
       </div>
       <div class="flex items-center gap-1">
         <UserMenu />
-        <ThemeToggle />
       </div>
     </header>
 

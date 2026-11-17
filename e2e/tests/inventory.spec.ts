@@ -11,6 +11,7 @@ import {
   provisionUser,
   uniqueName,
   type Fixture,
+  chooseUserMenu,
 } from './support';
 
 test.beforeEach(async ({ page }) => {
@@ -291,7 +292,7 @@ test.describe('activos: CRUD completo (RF-20 a RF-25)', () => {
       await page.keyboard.press('Escape');
       await expect(dialog).toBeHidden();
       if (theme === 'light') {
-        await page.getByRole('button', { name: 'Cambiar a modo oscuro' }).click();
+        await chooseUserMenu(page, 'Cambiar a modo oscuro');
         await expect(page.locator('html')).toHaveClass(/\bdark\b/);
       }
     }

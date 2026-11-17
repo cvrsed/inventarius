@@ -117,15 +117,21 @@ export const horizontalOverflow = (page: Page) =>
 /** Nombre único para datos de prueba: la base de e2e es compartida y los tests corren en paralelo. */
 export const uniqueName = (prefix: string): string => `${prefix} ${randomUUID().slice(0, 8)}`;
 
+/** Abre el menú de usuario de la cabecera y elige una opción por su texto. */
+export async function chooseUserMenu(page: Page, option: string | RegExp): Promise<void> {
+  await page.getByRole('button', { name: /^Menú de usuario/ }).click();
+  await page.getByRole('menuitem', { name: option }).click();
+}
+
 /** Ejecuta `check` en modo claro y luego en modo oscuro (RNF-02). Debe poder repetirse sin efectos. */
 export async function eachTheme(page: Page, check: () => Promise<void>): Promise<void> {
   // El tema se recuerda entre páginas: si un paso anterior ya lo dejó en oscuro, se parte de claro.
   if (await page.locator('html').evaluate((el) => el.classList.contains('dark'))) {
-    await page.getByRole('button', { name: 'Cambiar a modo claro' }).click();
+    await chooseUserMenu(page, 'Cambiar a modo claro');
     await expect(page.locator('html')).not.toHaveClass(/\bdark\b/);
   }
   await check();
-  await page.getByRole('button', { name: 'Cambiar a modo oscuro' }).click();
+  await chooseUserMenu(page, 'Cambiar a modo oscuro');
   await expect(page.locator('html')).toHaveClass(/\bdark\b/);
   await check();
 }

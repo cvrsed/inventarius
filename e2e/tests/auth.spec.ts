@@ -6,6 +6,7 @@ import {
   loginViaApi,
   loginViaUi,
   provisionUser,
+  chooseUserMenu,
 } from './support';
 
 test.describe('login y sesión (RF-01)', () => {
@@ -34,7 +35,7 @@ test.describe('login y sesión (RF-01)', () => {
   test('cerrar sesión devuelve al login y la ruta queda protegida', async ({ page }) => {
     await loginViaApi(page.request, ADMIN.email, ADMIN.password);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Cerrar sesión' }).click();
+    await chooseUserMenu(page, 'Cerrar sesión');
     await expect(page).toHaveURL(/iniciar-sesion/);
     await page.goto('/usuarios');
     await expect(page).toHaveURL(/iniciar-sesion/);

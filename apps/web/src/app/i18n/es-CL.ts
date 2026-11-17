@@ -58,6 +58,7 @@ export const messages = {
     expired: 'Tu sesión expiró. Inicia sesión de nuevo.',
     logout: 'Cerrar sesión',
     account: 'Cuenta',
+    menu: 'Menú de usuario',
     changePassword: 'Cambiar contraseña',
   },
   login: {

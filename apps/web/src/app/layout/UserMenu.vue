@@ -1,37 +1,35 @@
 <script setup lang="ts">
 import UButton from '@nuxt/ui/components/Button.vue';
+import UDropdownMenu from '@nuxt/ui/components/DropdownMenu.vue';
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
+import { useAccountActions } from '@/features/auth/useAccountActions';
 import { useAuthStore } from '@/features/auth/useAuthStore';
 
 const { t } = useI18n();
 const auth = useAuthStore();
-const router = useRouter();
+const { themeLabel, themeIcon, changePassword, toggleTheme, logout } = useAccountActions();
 
-async function logout(): Promise<void> {
-  await auth.logout();
-  await router.replace({ name: 'login' });
-}
+/** Opciones con texto: nada de íconos sueltos en la cabecera. */
+const items = computed(() => [
+  [{ type: 'label' as const, label: auth.user?.name ?? '', description: auth.user?.email }],
+  [
+    { label: t('session.changePassword'), icon: 'i-lucide-key-round', onSelect: changePassword },
+    { label: themeLabel.value, icon: themeIcon.value, onSelect: toggleTheme },
+  ],
+  [{ label: t('session.logout'), icon: 'i-lucide-log-out', onSelect: logout }],
+]);
 </script>
 
 <template>
-  <div v-if="auth.user" class="flex items-center gap-1">
-    <span class="hidden max-w-40 truncate text-sm text-muted sm:inline" :title="auth.user.email">{{
-      auth.user.name
-    }}</span>
+  <UDropdownMenu v-if="auth.user" :items="items" :content="{ align: 'end' }">
     <UButton
-      icon="i-lucide-key-round"
-      :aria-label="t('session.changePassword')"
+      icon="i-lucide-circle-user"
       color="neutral"
       variant="ghost"
-      @click="router.push({ name: 'change-password' })"
+      :label="auth.user.name"
+      :aria-label="`${t('session.menu')}: ${auth.user.name}`"
+      :ui="{ label: 'hidden max-w-40 truncate sm:inline' }"
     />
-    <UButton
-      icon="i-lucide-log-out"
-      :aria-label="t('session.logout')"
-      color="neutral"
-      variant="ghost"
-      @click="logout"
-    />
-  </div>
+  </UDropdownMenu>
 </template>
