@@ -20,6 +20,10 @@
   Versiones exactas siempre (`save-exact`), lockfile commiteado.
 - Secretos: nunca reales en código, tests, fixtures, logs ni commits. Solo `.env.example`.
   No leer ni imprimir `.env`.
+- Información sensible: prohibidas en código, comentarios, tests, fixtures, docs y mensajes de commit las IPs internas, hostnames,
+  nombres de VMs/CTs, dominios reales, correos reales, nombres de clientes y DevEUI/JoinEUI/AppKey reales. En ejemplos usar
+  dominios `example.com`/`.test`, IPs de documentación (`192.0.2.0/24`, `2001:db8::/32`) y datos inventados.
+  gitleaks (pre-commit y CI, reglas en `.gitleaks.toml`) lo vigila.
 - Toda variable de entorno nueva (en `core/config` o en Caddy/compose) se agrega a `.env.example` en el mismo commit, con un comentario corto.
 - Sin `sudo`. Lo que necesite paquetes del sistema corre en contenedores
   (ej. e2e con la imagen oficial de Playwright, versión fijada igual a la del paquete).
