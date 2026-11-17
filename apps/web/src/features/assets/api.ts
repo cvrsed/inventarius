@@ -126,6 +126,7 @@ export function useAssetMutations() {
   const refresh = (id?: string) => async () => {
     await Promise.all([
       qc.invalidateQueries({ queryKey: ['assets'] }),
+      qc.invalidateQueries({ queryKey: ['dashboard'] }),
       qc.invalidateQueries({ queryKey: id ? ['asset', id] : ['asset'] }),
     ]);
   };

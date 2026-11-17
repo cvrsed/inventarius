@@ -8,6 +8,7 @@ import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useApiStatus } from './useApiStatus';
 
+defineProps<{ compact?: boolean }>();
 const { t } = useI18n();
 const { data, isPending, isError, refetch } = useApiStatus();
 
@@ -22,7 +23,42 @@ const components = computed(() =>
 </script>
 
 <template>
-  <UCard>
+  <section
+    v-if="compact"
+    class="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-default px-3 py-2 text-sm"
+    aria-labelledby="status-compact-title"
+  >
+    <h2 id="status-compact-title" class="m-0 text-sm font-semibold text-highlighted">
+      {{ t('status.title') }}
+    </h2>
+    <span v-if="isPending" role="status" class="text-muted">{{ t('status.loading') }}</span>
+    <span v-else-if="isError" class="flex items-center gap-2 text-error">
+      {{ t('status.error') }}
+      <UButton
+        :label="t('status.retry')"
+        size="sm"
+        variant="link"
+        icon="i-lucide-refresh-cw"
+        @click="refetch()"
+      />
+    </span>
+    <template v-else-if="data">
+      <UBadge
+        :color="data.status === 'ok' ? 'success' : 'warning'"
+        variant="subtle"
+        :label="data.status === 'ok' ? t('status.ok') : t('status.degraded')"
+      />
+      <span v-for="[name, state] in components" :key="name" class="flex items-center gap-1">
+        {{ t(`status.${name}`) }}
+        <UBadge
+          :color="state === 'up' ? 'success' : 'error'"
+          variant="subtle"
+          :label="t(`status.${state}`)"
+        />
+      </span>
+    </template>
+  </section>
+  <UCard v-else>
     <template #header>
       <h2 class="m-0 text-lg font-semibold text-highlighted">{{ t('status.title') }}</h2>
     </template>
