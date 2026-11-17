@@ -134,6 +134,7 @@ const selectItems = (f: { options?: { value: string; label: string }[] }) =>
           :label="t(f.label)"
           :name="`cf-${f.key}`"
           :required="f.required"
+          :help="f.help ? t(f.help) : undefined"
           :error="fieldErrors[f.key]"
         >
           <UInput

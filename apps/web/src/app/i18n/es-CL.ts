@@ -160,7 +160,7 @@ export const messages = {
     columns: {
       name: 'Nombre',
       extension: 'Extensión',
-      modelNumber: 'Número de modelo',
+      modelNumber: 'Código del fabricante',
       manufacturer: 'Fabricante',
       category: 'Categoría',
       path: 'Ubicación',
@@ -171,7 +171,7 @@ export const messages = {
     fields: {
       name: 'Nombre',
       extension: 'Tipo de extensión',
-      modelNumber: 'Número de modelo',
+      modelNumber: 'Código del fabricante',
       manufacturer: 'Fabricante',
       category: 'Categoría',
       parent: 'Ubicación superior',
@@ -182,6 +182,7 @@ export const messages = {
       lorawanRegionalParameters: 'Regional parameters',
       active: 'Activo',
     },
+    help: { modelNumber: 'Ej.: SDM530-LR-AU915' },
     parentPlaceholder: 'Sin ubicación superior',
     selectPlaceholder: 'Elige una opción',
     activeHint: 'Un registro inactivo no se puede elegir en formularios nuevos.',

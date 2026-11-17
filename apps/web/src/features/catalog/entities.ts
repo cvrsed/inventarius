@@ -21,6 +21,8 @@ export interface FieldDef {
   kind: 'text' | 'select' | 'ref';
   required?: boolean;
   maxLength?: number;
+  /** Clave i18n de un texto de ayuda bajo el campo. */
+  help?: string;
   /** Para `select`: valores y su clave i18n. */
   options?: { value: string; label: string }[];
   /** Para `ref`: de qué sección se elige. */
@@ -56,7 +58,7 @@ const FIELDS: Record<Section, FieldDef[]> = {
   manufacturers: [text('name', { required: true, maxLength: 120 })],
   models: [
     text('name', { required: true, maxLength: 120 }),
-    text('modelNumber', { maxLength: 80 }),
+    text('modelNumber', { maxLength: 80, help: 'catalog.help.modelNumber' }),
     {
       key: 'manufacturer',
       label: 'catalog.fields.manufacturer',

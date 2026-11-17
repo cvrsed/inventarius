@@ -72,6 +72,13 @@ describe('CatalogFormDialog', () => {
     expect(document.body.textContent).toContain('Un registro inactivo no se puede elegir');
   });
 
+  it('el código del fabricante se rotula así y trae un ejemplo de ayuda', async () => {
+    await open('models');
+    expect(document.body.textContent).toContain('Código del fabricante');
+    expect(document.body.textContent).toContain('Ej.: SDM530-LR-AU915');
+    expect(document.body.textContent).not.toContain('Número de modelo');
+  });
+
   it('un modelo pide fabricante y categoría', async () => {
     await open('models');
     await type('#cf-name', 'SDM530');
