@@ -43,6 +43,28 @@ describe('UsersPage', () => {
     );
   });
 
+  it('en móvil cada usuario es una tarjeta con correo y acciones con texto', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify({ data: [user(1)], meta: { page: 1, pageSize: 10, total: 1 } }),
+            { status: 200 },
+          ),
+        ),
+    );
+    const wrapper = mountPage();
+    await flushPromises();
+    const card = wrapper.get('ul.md\\:hidden > li');
+    expect(card.text()).toContain('u1@ejemplo.cl');
+    expect(card.findAll('button').map((b) => b.text())).toEqual([
+      'Editar',
+      'Restablecer contraseña',
+    ]);
+  });
+
   it('muestra el estado vacío cuando no hay usuarios', async () => {
     vi.stubGlobal(
       'fetch',

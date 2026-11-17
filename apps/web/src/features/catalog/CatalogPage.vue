@@ -3,7 +3,6 @@ import UAlert from '@nuxt/ui/components/Alert.vue';
 import UBadge from '@nuxt/ui/components/Badge.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
 import UInput from '@nuxt/ui/components/Input.vue';
-import UTable from '@nuxt/ui/components/Table.vue';
 import { useToast } from '@nuxt/ui/composables/useToast';
 import { computed, onBeforeUnmount, ref, toRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -13,6 +12,7 @@ import { useAuthStore } from '@/features/auth/useAuthStore';
 import { useListQuery } from '@/shared/list/useListQuery';
 import AppSelect from '@/shared/ui/AppSelect.vue';
 import IconAction from '@/shared/ui/IconAction.vue';
+import ResponsiveTable from '@/shared/ui/ResponsiveTable.vue';
 import PagedFooter from '@/shared/ui/PagedFooter.vue';
 import { useConfirm } from '@/shared/ui/useConfirm';
 import { useCatalogList, useCatalogMutations, type CatalogItem } from './api';
@@ -55,6 +55,11 @@ const { data, isPending, isFetching, isError, refetch } = useCatalogList(section
 const { remove, update: patch } = useCatalogMutations(toRef(() => section.value));
 
 const columns = computed(() => columnsOf(section.value, t));
+type CellKey = 'second' | 'third' | 'fourth';
+/** Columnas de datos que van como filas «campo: valor» en la tarjeta (sin nombre, estado ni acciones). */
+const cardColumns = computed(() =>
+  columns.value.filter((c) => ['second', 'third', 'fourth'].includes(c.id)),
+);
 const activeItems = computed(() => [
   { label: t('common.all'), value: '' },
   { label: t('common.active'), value: 'true' },
@@ -177,16 +182,13 @@ const toggleActive = (item: CatalogItem) =>
       </template>
     </UAlert>
 
-    <UTable
+    <ResponsiveTable
       :data="data?.data ?? []"
       :columns="columns"
       :loading="isPending || isFetching"
       :get-row-id="(i: CatalogItem) => i.id"
       class="rounded-lg border border-default"
     >
-      <template #empty>{{
-        query.q || query.active ? t('common.emptyFiltered') : t(`catalog.empty.${section}`)
-      }}</template>
       <template #name-cell="{ row }">
         <span class="font-medium">{{ displayCells(section, row.original).title }}</span>
         <UBadge
@@ -233,7 +235,74 @@ const toggleActive = (item: CatalogItem) =>
           />
         </span>
       </template>
-    </UTable>
+
+      <template #empty>{{
+        query.q || query.active ? t('common.emptyFiltered') : t(`catalog.empty.${section}`)
+      }}</template>
+      <template #card="{ item }">
+        <div class="flex items-start justify-between gap-2">
+          <span class="font-semibold text-highlighted">
+            {{ displayCells(section, item).title }}
+            <UBadge
+              v-if="isSystem(item)"
+              :label="t('catalog.system')"
+              color="neutral"
+              variant="subtle"
+              class="ml-1"
+            />
+          </span>
+          <UBadge
+            :label="item.active ? t('common.active') : t('common.inactive')"
+            :color="item.active ? 'success' : 'warning'"
+            variant="subtle"
+          />
+        </div>
+        <dl class="m-0 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+          <template v-for="col in cardColumns" :key="col.id">
+            <template v-if="displayCells(section, item, t)[col.id as CellKey]">
+              <dt class="text-muted">{{ col.header }}</dt>
+              <dd class="m-0 break-words">
+                {{ displayCells(section, item, t)[col.id as CellKey] }}
+              </dd>
+            </template>
+          </template>
+        </dl>
+        <div v-if="canWrite" class="flex flex-wrap gap-2">
+          <UButton
+            icon="i-lucide-pencil"
+            :label="t('common.edit')"
+            :aria-label="`${t('common.edit')} ${displayCells(section, item).title}`"
+            color="neutral"
+            variant="outline"
+            size="sm"
+            @click="openForm(item)"
+          />
+          <UButton
+            v-if="!isSystem(item)"
+            :icon="item.active ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+            :label="item.active ? t('catalog.deactivate') : t('catalog.activate')"
+            :aria-label="`${item.active ? t('catalog.deactivate') : t('catalog.activate')} ${displayCells(section, item).title}`"
+            color="neutral"
+            variant="outline"
+            size="sm"
+            @click="toggleActive(item)"
+          />
+          <UButton
+            icon="i-lucide-trash-2"
+            :label="t('common.delete')"
+            :aria-label="`${t('common.delete')} ${displayCells(section, item).title}`"
+            color="neutral"
+            variant="outline"
+            size="sm"
+            :disabled="!!deleteBlockedReason(item)"
+            @click="askDelete(item)"
+          />
+        </div>
+        <p v-if="canWrite && deleteBlockedReason(item)" class="m-0 text-xs text-muted">
+          {{ deleteBlockedReason(item) }}
+        </p>
+      </template>
+    </ResponsiveTable>
 
     <PagedFooter
       :page="query.page"

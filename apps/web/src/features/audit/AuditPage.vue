@@ -4,8 +4,8 @@ import UAlert from '@nuxt/ui/components/Alert.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
 import UFormField from '@nuxt/ui/components/FormField.vue';
 import UInput from '@nuxt/ui/components/Input.vue';
-import UTable from '@nuxt/ui/components/Table.vue';
 import { computed, ref } from 'vue';
+import ResponsiveTable from '@/shared/ui/ResponsiveTable.vue';
 import IconAction from '@/shared/ui/IconAction.vue';
 import { useI18n } from 'vue-i18n';
 import { formatDateTime } from '@/shared/format/format';
@@ -83,6 +83,14 @@ function setFilter(patch: Partial<AuditQuery>): void {
 const who = (e: AuditEntryDto): string =>
   e.actorName ?? (e.actorLabel === 'cli' ? t('audit.cli') : t('audit.system'));
 const pretty = (value: unknown) => JSON.stringify(value, null, 2);
+
+/** Detalle abierto en el modo tarjeta (en la tabla lo maneja `expanded`). */
+const openCards = ref(new Set<string>());
+function toggleCard(id: string): void {
+  const next = new Set(openCards.value);
+  if (!next.delete(id)) next.add(id);
+  openCards.value = next;
+}
 </script>
 
 <template>
@@ -150,7 +158,7 @@ const pretty = (value: unknown) => JSON.stringify(value, null, 2);
       </template>
     </UAlert>
 
-    <UTable
+    <ResponsiveTable
       v-model:expanded="expanded"
       :data="data?.data ?? []"
       :columns="columns"
@@ -178,7 +186,30 @@ const pretty = (value: unknown) => JSON.stringify(value, null, 2);
         }}</pre>
         <p v-else class="m-0 text-muted">—</p>
       </template>
-    </UTable>
+      <template #card="{ item }">
+        <div class="flex items-start justify-between gap-2">
+          <span class="font-semibold text-highlighted">{{ actionLabel(item.action) }}</span>
+          <span class="shrink-0 text-xs text-muted">{{ formatDateTime(item.at) }}</span>
+        </div>
+        <p class="m-0 text-sm text-muted">{{ entityLabel(item.entity) }} · {{ who(item) }}</p>
+        <UButton
+          v-if="item.diff"
+          :label="t('audit.detail')"
+          :aria-label="`${t('audit.detail')}: ${actionLabel(item.action)}`"
+          :icon="openCards.has(item.id) ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'"
+          :aria-expanded="openCards.has(item.id)"
+          color="neutral"
+          variant="outline"
+          size="sm"
+          class="self-start"
+          @click="toggleCard(item.id)"
+        />
+        <pre
+          v-if="item.diff && openCards.has(item.id)"
+          class="m-0 text-sm break-words whitespace-pre-wrap"
+          >{{ pretty(item.diff) }}</pre>
+      </template>
+    </ResponsiveTable>
 
     <PagedFooter
       v-model:page="page"

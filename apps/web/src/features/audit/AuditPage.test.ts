@@ -40,6 +40,20 @@ describe('AuditPage', () => {
     expect(w.text()).toContain('Ana');
   });
 
+  it('en móvil cada registro es una tarjeta cuyo detalle se abre sin scroll horizontal', async () => {
+    mockApi({
+      'GET /api/v1/audit': () => ({ data: [entry(1)], meta: { page: 1, pageSize: 25, total: 1 } }),
+    });
+    const w = mount(AuditPage, { global: pagePlugins() });
+    await flushPromises();
+    const card = w.get('ul.md\\:hidden > li');
+    expect(card.text()).toContain('Usuario modificado');
+    expect(card.find('pre').exists()).toBe(false);
+    await card.get('button').trigger('click');
+    expect(card.get('pre').classes()).toContain('whitespace-pre-wrap');
+    expect(card.get('pre').text()).toContain('"name"');
+  });
+
   it('pide los registros con los filtros de fecha convertidos a instantes', async () => {
     const fetchMock = mockApi({
       'GET /api/v1/audit': () => ({ data: [], meta: { page: 1, pageSize: 25, total: 0 } }),

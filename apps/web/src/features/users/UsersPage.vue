@@ -4,12 +4,12 @@ import UAlert from '@nuxt/ui/components/Alert.vue';
 import UBadge from '@nuxt/ui/components/Badge.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
 import UInput from '@nuxt/ui/components/Input.vue';
-import UTable from '@nuxt/ui/components/Table.vue';
 import { useToast } from '@nuxt/ui/composables/useToast';
 import { computed, ref, watchEffect } from 'vue';
 import IconAction from '@/shared/ui/IconAction.vue';
 import { useI18n } from 'vue-i18n';
 import { errorMessage } from '@/features/auth/errors';
+import ResponsiveTable from '@/shared/ui/ResponsiveTable.vue';
 import PagedFooter from '@/shared/ui/PagedFooter.vue';
 import { useConfirm } from '@/shared/ui/useConfirm';
 import { useUserMutations, useUsersList, type UsersQuery } from './api';
@@ -110,7 +110,7 @@ function askReset(user: UserDto): void {
       </template>
     </UAlert>
 
-    <UTable
+    <ResponsiveTable
       :data="data?.data ?? []"
       :columns="columns"
       :loading="isPending || isFetching"
@@ -152,7 +152,47 @@ function askReset(user: UserDto): void {
           />
         </span>
       </template>
-    </UTable>
+      <template #card="{ item }">
+        <div class="flex items-start justify-between gap-2">
+          <span class="min-w-0 font-semibold text-highlighted break-words">{{ item.name }}</span>
+          <UBadge
+            :label="item.active ? t('users.active') : t('users.inactive')"
+            :color="item.active ? 'success' : 'warning'"
+            variant="subtle"
+          />
+        </div>
+        <p class="m-0 text-sm break-all text-muted">{{ item.email }}</p>
+        <span class="flex flex-wrap gap-1">
+          <UBadge
+            v-for="r in item.roles"
+            :key="r.id"
+            :label="r.name"
+            color="neutral"
+            variant="subtle"
+          />
+        </span>
+        <div class="flex flex-wrap gap-2">
+          <UButton
+            icon="i-lucide-pencil"
+            :label="t('common.edit')"
+            :aria-label="`${t('common.edit')} ${item.name}`"
+            color="neutral"
+            variant="outline"
+            size="sm"
+            @click="openEdit(item)"
+          />
+          <UButton
+            icon="i-lucide-key-round"
+            :label="t('users.reset')"
+            :aria-label="`${t('users.reset')} ${item.name}`"
+            color="neutral"
+            variant="outline"
+            size="sm"
+            @click="askReset(item)"
+          />
+        </div>
+      </template>
+    </ResponsiveTable>
 
     <PagedFooter
       v-model:page="page"

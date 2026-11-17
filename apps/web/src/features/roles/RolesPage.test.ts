@@ -36,6 +36,19 @@ describe('RolesPage', () => {
     expect(w.find('button[aria-label="Editar Operador"]').exists()).toBe(true);
   });
 
+  it('en móvil cada rol es una tarjeta con sus acciones visibles', async () => {
+    mockApi({
+      'GET /api/v1/roles': () => [role({ isSystem: false })],
+      'GET /api/v1/permissions': () => catalog,
+    });
+    const w = mount(RolesPage, { global: pagePlugins() });
+    await flushPromises();
+    const card = w.get('ul.md\\:hidden > li');
+    expect(card.text()).toContain('Operador');
+    const labels = card.findAll('button').map((b) => b.text());
+    expect(labels).toEqual(['Editar', 'Eliminar']);
+  });
+
   it('muestra error con reintento si falla la carga', async () => {
     mockApi({ 'GET /api/v1/roles': () => jsonResponse({}, 500) });
     const w = mount(RolesPage, { global: pagePlugins() });
