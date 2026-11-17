@@ -88,6 +88,7 @@ beforeAll(async () => {
       name: 'Modelo L',
       manufacturerId: manufacturer.id,
       categoryId: ids.loraCategory,
+      lorawanClass: 'A',
     })
   ).id;
   ids.available = await statusId('Disponible');

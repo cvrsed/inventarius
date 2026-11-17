@@ -135,38 +135,116 @@ describe('modelos (RF-11)', () => {
     });
   });
 
-  it('los defaults LoRaWAN solo valen en categorías lorawan (422)', async () => {
-    const bad = await operator.post(`${base}/models`, {
-      name: 'Raro',
-      manufacturerId,
-      categoryId: plainCategoryId,
-      lorawanClass: 'A',
-    });
-    expect(bad.statusCode).toBe(422);
+  const loraBody = {
+    lorawanClass: 'C',
+    lorawanRegion: 'AU915',
+    lorawanVersion: '1.0.3',
+    lorawanRegionalParameters: 'RP002-1.0.3',
+  };
+
+  it.each(Object.entries(loraBody))(
+    'rechaza %s en un modelo cuya categoría no es LoRaWAN (422, con el campo señalado)',
+    async (field, value) => {
+      const bad = await operator.post(`${base}/models`, {
+        name: `Raro ${field}`,
+        manufacturerId,
+        categoryId: plainCategoryId,
+        [field]: value,
+      });
+      expect(bad.statusCode).toBe(422);
+      expect(Object.keys(bad.json().errors ?? {})).toContain(field);
+    },
+  );
+
+  it('un modelo de categoría LoRaWAN guarda los cuatro campos', async () => {
     const ok = await create(operator, 'models', {
       name: 'SDM530',
       manufacturerId,
       categoryId: loraCategoryId,
-      lorawanClass: 'C',
-      lorawanVersion: '1.0.3',
-      lorawanRegionalParameters: 'RP002-1.0.3',
+      ...loraBody,
     });
-    expect(ok).toMatchObject({ lorawanClass: 'C', lorawanVersion: '1.0.3' });
+    expect(ok).toMatchObject(loraBody);
   });
 
-  it('cambiar a una categoría sin extensión borra los defaults LoRaWAN', async () => {
+  it('en una categoría LoRaWAN la clase es obligatoria, al crear y al editar (422)', async () => {
+    const missing = await operator.post(`${base}/models`, {
+      name: 'Sin clase',
+      manufacturerId,
+      categoryId: loraCategoryId,
+    });
+    expect(missing.statusCode).toBe(422);
+    expect(Object.keys(missing.json().errors ?? {})).toContain('lorawanClass');
+    const m = await create(operator, 'models', {
+      name: 'Con clase',
+      manufacturerId,
+      categoryId: loraCategoryId,
+      lorawanClass: 'A',
+    });
+    const clear = await operator.patch(
+      `${base}/models/${m.id}`,
+      { lorawanClass: null },
+      { 'if-match': `"${m.updatedAt}"` },
+    );
+    expect(clear.statusCode).toBe(422);
+  });
+
+  it('pasar a una categoría LoRaWAN exige la clase en el mismo cambio', async () => {
+    const m = await create(operator, 'models', {
+      name: 'Genérico',
+      manufacturerId,
+      categoryId: plainCategoryId,
+    });
+    const bad = await operator.patch(
+      `${base}/models/${m.id}`,
+      { categoryId: loraCategoryId },
+      { 'if-match': `"${m.updatedAt}"` },
+    );
+    expect(bad.statusCode).toBe(422);
+    const ok = await operator.patch(
+      `${base}/models/${m.id}`,
+      { categoryId: loraCategoryId, lorawanClass: 'B' },
+      { 'if-match': `"${m.updatedAt}"` },
+    );
+    expect(ok.statusCode, ok.body).toBe(200);
+  });
+
+  it('los valores fuera de las listas cerradas se rechazan', async () => {
+    for (const bad of [
+      { lorawanRegion: 'AU916' },
+      { lorawanVersion: '9.9' },
+      { lorawanRegionalParameters: 'RP-X' },
+      { lorawanClass: 'D' },
+    ]) {
+      const res = await operator.post(`${base}/models`, {
+        name: 'Valores raros',
+        manufacturerId,
+        categoryId: loraCategoryId,
+        lorawanClass: 'A',
+        ...bad,
+      });
+      expect(res.statusCode).toBeGreaterThanOrEqual(400);
+      expect(res.statusCode).toBeLessThan(500);
+    }
+  });
+
+  it('cambiar a una categoría sin extensión descarta los campos LoRaWAN, región incluida', async () => {
     const m = await create(operator, 'models', {
       name: 'Medidor',
       manufacturerId,
       categoryId: loraCategoryId,
-      lorawanClass: 'A',
+      ...loraBody,
     });
     const res = await operator.patch(
       `${base}/models/${m.id}`,
       { categoryId: plainCategoryId },
       { 'if-match': `"${m.updatedAt}"` },
     );
-    expect(res.json()).toMatchObject({ lorawanClass: null, lorawanVersion: null });
+    expect(res.json()).toMatchObject({
+      lorawanClass: null,
+      lorawanRegion: null,
+      lorawanVersion: null,
+      lorawanRegionalParameters: null,
+    });
   });
 
   it('no repite nombre dentro del mismo fabricante (409) y filtra por categoría', async () => {

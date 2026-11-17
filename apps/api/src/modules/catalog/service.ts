@@ -321,6 +321,11 @@ export class CatalogService {
           lorawanRegionalParameters: null,
         };
       }
+    } else {
+      // La clase es lo que decide cómo se comunica el dispositivo: sin ella el modelo no sirve en F3.
+      const effectiveClass =
+        input.lorawanClass !== undefined ? input.lorawanClass : current?.lorawanClass;
+      if (!effectiveClass) errors['lorawanClass'] = ['La clase es obligatoria en modelos LoRaWAN'];
     }
     if (Object.keys(errors).length)
       throw new ValidationError('Revisa los datos del modelo', errors);
