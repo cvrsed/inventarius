@@ -546,9 +546,9 @@ test.describe('listado de activos (RF-22, RF-26, RF-40)', () => {
 
     // Modelo está tras «Más filtros»; a la vista solo hay Estado, Categoría y Ubicación base [P22].
     await expect(page.getByRole('button', { name: /^Categoría/ })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Modelo/ })).toBeHidden();
+    await expect(page.locator('#filter-modelId')).toBeHidden();
     await page.getByRole('button', { name: 'Más filtros' }).click();
-    await page.getByRole('button', { name: /^Modelo/ }).click();
+    await page.locator('#filter-modelId').click();
     await expect(page.getByRole('listbox')).toBeVisible();
     await expectNoA11yViolations(page); // filtro con búsqueda ABIERTO
     await page.getByPlaceholder(/Buscar…/).fill(fixture.modelName.slice(0, 14));
@@ -560,9 +560,7 @@ test.describe('listado de activos (RF-22, RF-26, RF-40)', () => {
     if (info.project.name === 'mobile' && (await toggle.getAttribute('aria-expanded')) !== 'true')
       await toggle.click();
     // El nombre accesible del selector es su rótulo; lo elegido se lee en su contenido.
-    await expect(page.getByRole('button', { name: /^Modelo/ })).toContainText(
-      fixture.modelName.slice(0, 20),
-    );
+    await expect(page.locator('#filter-modelId')).toContainText(fixture.modelName.slice(0, 20));
 
     await eachTheme(page, () => expectNoA11yViolations(page));
   });
@@ -601,7 +599,7 @@ test.describe('listado de activos (RF-22, RF-26, RF-40)', () => {
     for (let i = 0; i < 3; i += 1) await createAssetViaApi(page.request, fixture);
     await page.goto(`/activos?modelId=${fixture.modelId}&pageSize=10&sort=-name`);
     await expect(page.getByText('3 resultados')).toBeVisible();
-    await expect(page.getByRole('combobox', { name: 'Ordenar' })).toHaveCount(0); // sin el select largo ↑/↓
+    await expect(page.getByRole('combobox', { name: 'Ordenar', exact: true })).toHaveCount(0); // sin el select largo ↑/↓
 
     if (info.project.name === 'mobile') {
       await page.getByRole('combobox', { name: 'Ordenar por' }).click();
@@ -615,13 +613,13 @@ test.describe('listado de activos (RF-22, RF-26, RF-40)', () => {
     } else {
       const th = (name: string) => page.getByRole('columnheader', { name });
       await expect(th('Nombre')).toHaveAttribute('aria-sort', 'descending');
-      await page.getByRole('button', { name: 'Nombre' }).click();
+      await page.locator('[data-sort-column="name"]').click();
       await expect(page).toHaveURL(/sort=name(&|$)/);
       await expect(th('Nombre')).toHaveAttribute('aria-sort', 'ascending');
-      await page.getByRole('button', { name: 'Modelo' }).click();
+      await page.locator('[data-sort-column="model"]').click();
       await expect(th('Modelo')).toHaveAttribute('aria-sort', 'ascending');
       await expect(th('Nombre')).toHaveAttribute('aria-sort', 'none');
-      await page.getByRole('button', { name: 'Modelo' }).click();
+      await page.locator('[data-sort-column="model"]').click();
       await expect(page).toHaveURL(/sort=-model/);
       await expect(th('Modelo')).toHaveAttribute('aria-sort', 'descending');
     }
