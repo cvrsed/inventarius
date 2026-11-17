@@ -66,10 +66,10 @@ Se crean una sola vez al inicializar el volumen (`deploy/postgres/init/01-roles.
 ## 6. Autorización por ruta
 
 - **Cómo se declara:** cada ruta de `/api/v1` lleva `config.access` con una de tres funciones (`apps/api/src/core/access.ts:38,43,57`): `publicRoute()`, `authenticatedRoute({ allowPendingPasswordChange })` o `requirePermission(...permisos)` (basta uno).
-- **Cómo se obliga:** el hook `onRoute` lanza un error y la app **no arranca** si una ruta del prefijo no declara acceso (`access.ts:64-76`, registrado en `app.ts:185`). El hook `onRequest` resuelve la sesión (`app.ts:194`) y aplica el acceso (`access.ts:79-99`, `app.ts:197`): 401 sin sesión, 403 sin permiso, y un error específico si la contraseña es temporal (`access.ts:82-85`).
+- **Cómo se obliga:** el hook `onRoute` lanza un error y la app **no arranca** si una ruta del prefijo no declara acceso (`access.ts:64-76`, registrado en `app.ts:185`). El hook `onRequest` resuelve la sesión (`app.ts:194`) y aplica el acceso (`access.ts:79-99`, `app.ts:196`): 401 sin sesión, 403 sin permiso, y un error específico si la contraseña es temporal (`access.ts:82-85`).
 - **Rutas públicas de `/api/v1` (solo dos):** `GET /auth/csrf` (`auth/routes.ts:37`) y `POST /auth/login` (`auth/routes.ts:47`, con límite de 20/min por IP configurable). Las autenticadas sin permiso específico: `POST /auth/logout`, `GET /auth/me`, `POST /auth/change-password` (`auth/routes.ts:64,78,90`) y `GET /settings` (`settings/routes.ts:11`).
-- **Fuera de `/api/v1` (no cubiertas por el hook):** `GET /api/health/live` y `/api/health/ready` (públicas, `health/routes.ts:7-14`) y `GET /api/metrics` (bearer `METRICS_TOKEN` o solo IP interna, `core/metrics.ts:36-47`; Caddy responde 404 a esa ruta, `Caddyfile`). `GET /api/openapi.json` solo existe fuera de producción (`app.ts:204`).
-- **Test que lo garantiza:** `apps/api/src/modules/rbac/permissions.int.test.ts:35-96`: recorre **todas** las rutas registradas de `/api/v1` y las llama sin sesión y con cada uno de los 4 roles semilla, comparando con el permiso declarado (anónimo → 401; rol sin permiso → 403; con permiso → ni 401 ni 403). Además la matriz de la BD debe coincidir con `packages/shared` (`:22-33`).
+- **Fuera de `/api/v1` (no cubiertas por el hook):** `GET /api/health/live` y `/api/health/ready` (públicas, `health/routes.ts:7-14`) y `GET /api/metrics` (bearer `METRICS_TOKEN` o solo IP interna, `core/metrics.ts:36-47`; Caddy responde 404 a esa ruta, `Caddyfile`). `GET /api/openapi.json` solo existe fuera de producción (`app.ts:214`).
+- **Test que lo garantiza:** `apps/api/src/modules/rbac/permissions.int.test.ts:35-93`: recorre **todas** las rutas registradas de `/api/v1` y las llama sin sesión y con cada uno de los 4 roles semilla, comparando con el permiso declarado (anónimo → 401; rol sin permiso → 403; con permiso → ni 401 ni 403). Además la matriz de la BD debe coincidir con `packages/shared` (`:22-33`).
 
 ## 7. Sesiones
 
@@ -81,7 +81,7 @@ Se crean una sola vez al inicializar el volumen (`deploy/postgres/init/01-roles.
 - **Invalidaciones:** al desactivar al usuario (`users/service.ts:205`), al cambiar su correo (`:207` y `:249`), al restablecer su contraseña (`:274`) y al cambiar la propia (`auth/service.ts:195`). Logout borra la sesión actual (`service.ts:162-172`). Una cuenta desactivada se rechaza también en `resolve` (`service.ts:151-155`). Los permisos se leen en cada petición (`service.ts:151`), por lo que un cambio de rol surte efecto de inmediato sin invalidar sesiones.
 - **Purga:** cada hora (`jobs/maintenance.ts:8`, `0 * * * *`) con pg-boss en el worker (`worker.ts:25`).
 - **CSRF:** doble envío con `@fastify/csrf-protection` (`app.ts:142-158`): secreto en cookie `csrf`/`__Host-csrf` (`HttpOnly`, `SameSite=Strict`) y token en la cabecera `x-csrf-token` (`app.ts:152-153`), que entrega `GET /auth/csrf`. Se exige en todo método distinto de `GET`/`HEAD`/`OPTIONS` de `/api/v1`, **incluido el login** (`app.ts:198-200`). El token no está ligado a la sesión ni se rota al login. Test: `auth.int.test.ts:43`.
-- **Bloqueo por fuerza bruta:** por cuenta (5 fallos) y por IP (20) con espera progresiva y tope (`auth/throttle.ts`, `config.ts` `LOGIN_*`); rate limit global de 600/min por IP (`app.ts:136-141`).
+- **Bloqueo por fuerza bruta:** por cuenta (5 fallos) y por IP (20) con espera progresiva y tope (`auth/throttle.ts`, `config.ts` `LOGIN_*`); rate limit global de 600/min por IP (`app.ts:135-141`).
 
 ## 8. Diferencias entre la documentación y el código
 
@@ -105,7 +105,7 @@ rangos y el CI instala con `--frozen-lockfile` (`.github/workflows/ci.yml:28`).
 
 | Componente                                | Versión                                                                                                           | Fuente                                                                |
 | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Node (desarrollo y CI)                    | 26.13.1                                                                                                           | `.nvmrc:1`; CI también prueba la `24` (`ci.yml:42`)                   |
+| Node (desarrollo y CI)                    | 26.13.1                                                                                                           | `.nvmrc:1`; CI también prueba la `24` (`ci.yml:39`)                   |
 | Node (imagen)                             | 26.13.1, `node:26-slim@sha256:e6bedef2…20bc`                                                                      | `Dockerfile:2`                                                        |
 | pnpm                                      | 12.21.0                                                                                                           | `package.json:6`, `Dockerfile:6`, `ci.yml:16`                         |
 | TypeScript                                | 6.0.3                                                                                                             | lock `:4412`                                                          |
@@ -152,6 +152,6 @@ Ninguna dependencia npm: todas son exactas. Quedan sin fijar o fijadas de forma 
 
 1. **Acciones de GitHub por etiqueta mayor, no por SHA:** `actions/checkout@v7`, `actions/setup-node@v7`, `actions/upload-artifact@v7`, `docker/setup-buildx-action@v4`, `docker/build-push-action@v7`, `gitleaks/gitleaks-action@v3` (`ci.yml`). Las de OSV y Trivy llevan versión exacta de la acción, pero no del binario/base de datos que descargan.
 2. **gitleaks del CI:** la acción elige su binario; solo el de pre-commit y el del test de reglas está fijado (8.24.3, por etiqueta de imagen, sin digest).
-3. **Matriz de Node del CI:** `'24'` flota entre parches (`ci.yml:42`); `'26.13.1'` es exacta. `engines` pide rangos mínimos (`node >=24.0.0`, `pnpm >=12.21.0`, `package.json:7-10`), mientras `.nvmrc` y `packageManager` son exactos.
+3. **Matriz de Node del CI:** `'24'` flota entre parches (`ci.yml:39`); `'26.13.1'` es exacta. `engines` pide rangos mínimos (`node >=24.0.0`, `pnpm >=12.21.0`, `package.json:7-10`), mientras `.nvmrc` y `packageManager` son exactos.
 4. **Imagen `api`:** `apt-get upgrade -y` al construirla (`Dockerfile:38-39`) trae los paquetes de Debian vigentes ese día, así que la imagen no es reproducible bit a bit (es deliberado, por parches de seguridad). Además `npm` (solo en las etapas de build) viene de la imagen base.
 5. Las imágenes de Postgres, Caddy, Node y Playwright llevan etiqueta **y** digest, por lo que están fijadas de forma exacta; Renovate propone las actualizaciones por PR (`renovate.json`).
