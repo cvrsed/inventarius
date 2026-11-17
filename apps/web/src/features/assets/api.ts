@@ -9,6 +9,7 @@ import {
   assetListItemSchema,
   assetSchema,
   assigneeSchema,
+  batchAssetsResultSchema,
   auditEntrySchema,
   pageOf,
   type AssetDto,
@@ -123,6 +124,11 @@ export function useAssetMutations() {
     create: useMutation({
       mutationFn: (body: Record<string, unknown>) =>
         api('/api/v1/assets', assetSchema, { method: 'POST', body }),
+      onSuccess: refresh(),
+    }),
+    createBatch: useMutation({
+      mutationFn: (body: Record<string, unknown>) =>
+        api('/api/v1/assets/batch', batchAssetsResultSchema, { method: 'POST', body }),
       onSuccess: refresh(),
     }),
     update: useMutation({

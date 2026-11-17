@@ -121,6 +121,15 @@ async function submit(): Promise<void> {
       <h1 class="m-0 text-2xl font-semibold text-highlighted">
         {{ editing ? t('assets.edit') : t('assets.new') }}
       </h1>
+      <UButton
+        v-if="!editing"
+        :to="{ name: 'asset-batch' }"
+        icon="i-lucide-layers"
+        :label="t('assets.batch.link')"
+        color="neutral"
+        variant="outline"
+        class="ml-auto"
+      />
     </div>
 
     <p v-if="editing && isPending" class="text-muted">{{ t('common.loading') }}</p>

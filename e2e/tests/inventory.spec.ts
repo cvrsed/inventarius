@@ -309,6 +309,46 @@ test.describe('activos: CRUD completo (RF-20 a RF-25)', () => {
     await expect(dialog).toBeHidden();
   });
 
+  test('alta en lote: crea N activos con series, rechaza duplicadas y pasa axe [P16]', async ({
+    page,
+  }) => {
+    const fixture = await createCatalogFixture(page.request);
+    const stamp = Date.now().toString(36);
+    await page.goto('/activos/nuevo');
+    await page.getByRole('link', { name: 'Alta en lote' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Alta en lote' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Estado/ })).toContainText(
+      'Pendiente de configuración',
+    );
+    expect(await horizontalOverflow(page)).toBe(false);
+    await eachTheme(page, () => expectNoA11yViolations(page));
+
+    await pick(page, page.locator('form'), /^Modelo/, fixture.modelName);
+    await pick(page, page.locator('form'), /^Ubicación base/, fixture.locationName);
+    await page.getByLabel('Cantidad').fill('3');
+    await page.getByLabel('Números de serie').fill(`L-${stamp}-1\nL-${stamp}-2`);
+    await page.getByRole('button', { name: 'Crear activos' }).click();
+    await expect(page.getByText(/La cantidad de series debe coincidir/)).toBeVisible();
+
+    await page.getByLabel('Números de serie').fill(`L-${stamp}-1\nl-${stamp}-1\nL-${stamp}-3`);
+    await page.getByRole('button', { name: 'Crear activos' }).click();
+    await expect(page.getByText(/Hay series repetidas/)).toBeVisible();
+
+    await page.getByLabel('Números de serie').fill(`L-${stamp}-1\nL-${stamp}-2\nL-${stamp}-3`);
+    await page.getByRole('button', { name: 'Crear activos' }).click();
+    await expect(toast(page, /Se crearon 3 activos/)).toBeVisible();
+    await expect(page).toHaveURL(/\/activos\?/);
+
+    // Repetir las mismas series: ya existen en la base.
+    await page.goto('/activos/lote');
+    await pick(page, page.locator('form'), /^Modelo/, fixture.modelName);
+    await pick(page, page.locator('form'), /^Ubicación base/, fixture.locationName);
+    await page.getByLabel('Cantidad').fill('1');
+    await page.getByLabel('Números de serie').fill(`L-${stamp}-2`);
+    await page.getByRole('button', { name: 'Crear activos' }).click();
+    await expect(page.getByText(/Ya existen activos con estas series/)).toBeVisible();
+  });
+
   test('las acciones principales se ven sin hacer scroll (RF-41)', async ({ page }) => {
     const fixture = await createCatalogFixture(page.request);
     const asset = await createAssetViaApi(page.request, fixture);

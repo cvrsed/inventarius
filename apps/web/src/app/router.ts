@@ -24,6 +24,12 @@ export const router = createRouter({
       meta: { permissions: ['asset:read'] },
     },
     {
+      path: '/activos/lote',
+      name: 'asset-batch',
+      component: () => import('@/features/assets/AssetBatchPage.vue'),
+      meta: { permissions: ['asset:write'] },
+    },
+    {
       path: '/activos/nuevo',
       name: 'asset-new',
       component: () => import('@/features/assets/AssetFormPage.vue'),

@@ -32,6 +32,7 @@ export const APP_ICONS = [
   'lucide:key-round',
   'lucide:circle-user',
   'lucide:ellipsis',
+  'lucide:layers',
   'lucide:x',
   'lucide:log-out',
   'lucide:sun',
