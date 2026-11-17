@@ -6,6 +6,21 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). D
 ## [Sin publicar]
 
 ### F2 — Inventario
+
+#### Revisión manual (PR #5)
+
+- Catálogo: la pestaña activa refleja la ruta al entrar (`/catalogo` redirige a la primera sección); en móvil las
+  secciones son un select.
+- Modales con subtítulo por entidad y ayuda de «Activo» junto al switch (solo al editar); acciones de solo ícono con
+  tooltip; «Eliminar» deshabilitado con el motivo cuando el registro está en uso (`withUsage`).
+- Modelos: «Código del fabricante» con ejemplo; región, versión y parámetros regionales LoRaWAN como listas cerradas con
+  búsqueda (fuente única en `packages/shared`); clase obligatoria; la API rechaza o descarta campos LoRaWAN si la
+  categoría no es LoRaWAN.
+- Fechas `dd-mm-aaaa HH:mm` (24 h) en la zona `APP_TIMEZONE`; costo de compra con moneda (`DEFAULT_CURRENCY`).
+- Ubicaciones con tipo; activos con ubicación base y actual; asignar a persona deja la ubicación vacía («Con <persona>»),
+  asignar a sitio excluye bodegas, devolver exige bodega (migración 0009; requirements.md actualizado).
+- Historial de 10 en 10 con «Ver más»; menú de usuario con texto; barra inferior móvil con «Más»; tarjetas en móvil
+  para catálogo, usuarios, roles y auditoría.
 - Catálogo: categorías, fabricantes, modelos (con valores LoRaWAN por defecto), ubicaciones jerárquicas y estados con tipo;
   no se borra lo que está en uso, se desactiva (RF-10 a RF-14).
 - Activos: alta con etiqueta autogenerable (`ASSET_TAG_PREFIX`), edición con `If-Match`, asignación a usuario o ubicación,

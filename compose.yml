@@ -12,6 +12,8 @@ x-dev-service: &dev-service
     DATABASE_URL: postgres://inventarius_app:${APP_DB_PASSWORD:-dev-app-password}@postgres:5432/inventarius
     MIGRATION_DATABASE_URL: postgres://inventarius_migrator:${MIGRATOR_DB_PASSWORD:-dev-migrator-password}@postgres:5432/inventarius
     APP_TIMEZONE: ${APP_TIMEZONE:-America/Santiago}
+    DEFAULT_CURRENCY: ${DEFAULT_CURRENCY:-CLP}
+    ASSET_TAG_PREFIX: ${ASSET_TAG_PREFIX:-INV}
   restart: unless-stopped
 
 services:

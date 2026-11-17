@@ -86,6 +86,14 @@ de un usuario) están en `docs/operations.md`.
 `ASSET_TAG_PREFIX` (por defecto `INV`) fija el prefijo de las etiquetas autogeneradas: `INV-000123`. Debe tener solo
 letras y números (hasta 10). Cambiarlo no renumera los activos existentes. Agrégala a tu `.env` si quieres otro prefijo.
 
+## Fechas y moneda (RNF-05, RF-20)
+
+`APP_TIMEZONE` (por defecto `America/Santiago`, zona IANA validada al arrancar) es la zona en que la web muestra todas las
+fechas con el formato `dd-mm-aaaa HH:mm` (24 h); en la base y en la API siguen en UTC. `DEFAULT_CURRENCY` (por defecto
+`CLP`; una de `CLP USD EUR BRL ARS PEN COP MXN`) es la moneda que propone el formulario del costo de compra. La web
+lee ambas de `GET /api/v1/settings` al iniciar sesión. Ambas se pasan por `compose.yml`; agrégalas a tu `.env` si quieres
+otro valor (`.env.example` no se puede editar desde la sesión: ver Q32).
+
 ## Datos de prueba de rendimiento (RNF-06)
 
 `pnpm --filter @inventarius/api exec vitest run --project int assets.perf --disableConsoleIntercept` siembra 10.000 activos

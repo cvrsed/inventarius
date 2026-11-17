@@ -219,3 +219,29 @@ Catálogo → Activos → Nuevo activo → Asignar/Devolver → Dar de baja/Rest
   corrigieron: el umbral de cobertura (80 %) del paquete compartido con los esquemas nuevos, y un selector de e2e que dependía
   de que el panel anterior ya estuviera cerrado (se verificó con tres repeticiones del spec).
 - **Siguiente paso sugerido**: revisar y mergear el PR de F2; empezar F3 (LoRaWAN) solo con instrucción explícita.
+
+## Revisión manual de F2 (2026-11-17, mismo PR #5)
+
+Los 14 puntos de la revisión de Rodrigo, un commit por punto sobre `phase/f2-inventario`:
+
+1. Pestaña activa del catálogo según la ruta (`/catalogo` redirige a `categories`); e2e entrando directo a cada ruta.
+2. Subtítulo del modal por entidad; ayuda de «Activo» junto al switch solo al editar.
+3. `IconAction` (tooltip con texto) en todas las acciones de solo ícono; «Eliminar» deshabilitado con el motivo (`withUsage`).
+4. «Código del fabricante» con ayuda «Ej.: SDM530-LR-AU915».
+5. Listas LoRaWAN en `packages/shared` (13 regiones, versiones, parámetros regionales, clases) con selects con búsqueda en
+   español; nueva columna `lorawan_region` (migración 0007).
+6. La API rechaza campos LoRaWAN si la categoría no lo es (y los descarta al cambiar de categoría); clase obligatoria.
+7. Fechas `dd-mm-aaaa HH:mm` en `APP_TIMEZONE` vía `GET /api/v1/settings`.
+8. Costo con moneda (`DEFAULT_CURRENCY`, CLP; migración 0008).
+9. Tipo de ubicación, ubicación base y devolución a bodega (migración 0009); `docs/requirements.md` actualizado (RF-12, RF-20, RF-23).
+10. Historial de 10 en 10 con «Ver más» (infinite query sobre la paginación de la API).
+11. Barra inferior móvil: Inicio, Activos, Catálogo y Más (panel con Usuarios, Roles, Auditoría, contraseña, tema y salir), por permisos.
+12. Menú de usuario en la cabecera con opciones con texto.
+13. Select de sección del catálogo en móvil.
+14. `ResponsiveTable`: tarjetas con acciones visibles en móvil para catálogo, usuarios, roles y auditoría.
+
+- **Decisiones provisionales nuevas**: Q36 a Q40 en `docs/open-questions.md` (moneda por activo, migración de datos de F2,
+  destinos de asignación, valores de las listas LoRaWAN, `modelNumber` solo cambia de rótulo).
+- **Nota**: `compose.yml` ahora pasa `DEFAULT_CURRENCY` y `ASSET_TAG_PREFIX`; `.env.example` sigue sin poder editarse desde la sesión.
+- **Cómo probar**: `pnpm lint && pnpm typecheck && pnpm test`, `pnpm --filter @inventarius/api exec vitest run --project int`
+  y el e2e de `docs/development.md` (escritorio y 360 px).
