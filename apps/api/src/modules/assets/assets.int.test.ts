@@ -335,6 +335,50 @@ describe('listado (RF-22)', () => {
   });
 });
 
+describe('filtros del Inicio (RF-28)', () => {
+  const ids_ = async (qs: string) =>
+    ((await reader.get(`${base}/assets?${qs}&pageSize=100`)).json().data as { id: string }[]).map(
+      (x) => x.id,
+    );
+
+  it('filtra por tipo de estado, no por nombre', async () => {
+    const free = await newAsset({ statusId: ids.available, name: 'Filtro kind' });
+    const broken = await newAsset({ statusId: ids.repair, name: 'Filtro kind roto' });
+    expect(await ids_('statusKind=deployable&q=Filtro kind')).toEqual([free.id]);
+    expect(await ids_('statusKind=undeployable&q=Filtro kind')).toEqual([broken.id]);
+    expect((await reader.get(`${base}/assets?statusKind=otro`)).statusCode).toBe(400);
+  });
+
+  it('separa asignados de libres y filtra por bodega base', async () => {
+    const a = await newAsset({ name: 'Filtro asig', baseLocationId: ids.other });
+    const b = await newAsset({ name: 'Filtro asig 2', baseLocationId: ids.other });
+    await operator.post(`${base}/assets/${a.id}/checkout`, { userId: techId });
+    expect(await ids_('assigned=yes&q=Filtro asig')).toEqual([a.id]);
+    expect(await ids_('assigned=no&q=Filtro asig')).toEqual([b.id]);
+    expect((await ids_(`baseLocationId=${ids.other}&q=Filtro asig`)).sort()).toEqual(
+      [a.id, b.id].sort(),
+    );
+  });
+
+  it('overdue trae solo las devoluciones esperadas con fecha vencida', async () => {
+    const late = await newAsset({ name: 'Filtro tarde' });
+    const ontime = await newAsset({ name: 'Filtro a tiempo' });
+    const none = await newAsset({ name: 'Filtro sin fecha' });
+    await operator.post(`${base}/assets/${late.id}/checkout`, {
+      userId: techId,
+      expectedReturnOn: '2020-01-01',
+    });
+    await operator.post(`${base}/assets/${ontime.id}/checkout`, {
+      userId: techId,
+      expectedReturnOn: '2099-01-01',
+    });
+    await operator.post(`${base}/assets/${none.id}/checkout`, { userId: techId });
+    const res = await reader.get(`${base}/assets?overdue=true&q=Filtro`);
+    expect(res.json().data.map((x: { id: string }) => x.id)).toEqual([late.id]);
+    expect(res.json().meta.total).toBe(1);
+  });
+});
+
 describe('alta en lote (RF-27)', () => {
   const batch = (extra: Record<string, unknown> = {}, client = operator) =>
     client.post(`${base}/assets/batch`, {

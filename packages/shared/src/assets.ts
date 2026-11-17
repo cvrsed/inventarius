@@ -50,6 +50,14 @@ export const assetFiltersSchema = z.object({
   statusId: z.uuid().optional(),
   locationId: z.uuid().optional(),
   assignedUserId: z.uuid().optional(),
+  /** Bodega base del activo (stock por bodega del Inicio, RF-28). */
+  baseLocationId: z.uuid().optional(),
+  /** Tipo del estado (no su nombre): renombrar un estado no rompe los enlaces del Inicio. */
+  statusKind: statusKindSchema.optional(),
+  /** `yes` = asignados a una persona o ubicación; `no` = libres. */
+  assigned: z.enum(['yes', 'no']).optional(),
+  /** `true` = con la devolución esperada vencida. */
+  overdue: z.enum(['true']).optional(),
   /** `exclude` (por defecto), `include` o `only` (papelera, RF-25). */
   deleted: z.enum(['exclude', 'include', 'only']).default('exclude'),
 });

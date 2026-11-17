@@ -135,6 +135,8 @@ export class AssetsService {
     private readonly people: AssigneeDirectory,
     private readonly tagPrefix: string,
     private readonly defaultCurrency: Currency,
+    /** «Hoy» (AAAA-MM-DD) en la zona horaria de la instalación; define qué devoluciones están atrasadas. */
+    private readonly today: () => string,
   ) {}
 
   async list(
@@ -142,10 +144,16 @@ export class AssetsService {
     sort: string | undefined,
     page: { page: number; pageSize: number },
   ) {
-    const { rows, total } = await this.repo.list(this.db, filters, parseSort(sort), {
-      limit: page.pageSize,
-      offset: (page.page - 1) * page.pageSize,
-    });
+    const { rows, total } = await this.repo.list(
+      this.db,
+      filters,
+      parseSort(sort),
+      {
+        limit: page.pageSize,
+        offset: (page.page - 1) * page.pageSize,
+      },
+      this.today(),
+    );
     return { data: rows.map(toListItem), meta: { ...page, total } };
   }
 
@@ -491,10 +499,16 @@ export class AssetsService {
     yield '﻿' + csvRow(EXPORT_HEADERS);
     const spec = parseSort(sort);
     for (let offset = 0; ; offset += EXPORT_BATCH) {
-      const { rows, total } = await this.repo.list(this.db, filters, spec, {
-        limit: EXPORT_BATCH,
-        offset,
-      });
+      const { rows, total } = await this.repo.list(
+        this.db,
+        filters,
+        spec,
+        {
+          limit: EXPORT_BATCH,
+          offset,
+        },
+        this.today(),
+      );
       for (const r of rows) yield csvRow(exportCells(r));
       if (offset + EXPORT_BATCH >= total) return;
     }

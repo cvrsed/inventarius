@@ -1,5 +1,5 @@
 import type { Clock } from './clock.js';
-import { systemClock } from './clock.js';
+import { localDate, systemClock } from './clock.js';
 import type { AppConfig } from './config.js';
 import type { Executor } from './db/executor.js';
 import { AssetsRepository } from '../modules/assets/repository.js';
@@ -86,6 +86,7 @@ export function buildServices(deps: ContainerDeps): Services {
     },
     config.assetTagPrefix,
     config.defaultCurrency,
+    () => localDate(clock.now(), config.timezone),
   );
   return { audit, rbac, users, auth, catalog, assets };
 }

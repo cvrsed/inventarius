@@ -163,7 +163,7 @@ export class AssetsRepository {
       );
   }
 
-  private where(f: AssetFilters): SQL | undefined {
+  private where(f: AssetFilters, today: string): SQL | undefined {
     const term = f.q ? `%${escapeLike(f.q)}%` : undefined;
     return and(
       term
@@ -178,6 +178,15 @@ export class AssetsRepository {
       f.statusId ? eq(assets.statusId, f.statusId) : undefined,
       f.locationId ? eq(assets.locationId, f.locationId) : undefined,
       f.assignedUserId ? eq(assets.assignedUserId, f.assignedUserId) : undefined,
+      f.baseLocationId ? eq(assets.baseLocationId, f.baseLocationId) : undefined,
+      f.statusKind ? eq(statusLabels.kind, f.statusKind) : undefined,
+      f.assigned === 'yes'
+        ? or(isNotNull(assets.assignedUserId), isNotNull(assets.assignedLocationId))
+        : undefined,
+      f.assigned === 'no'
+        ? and(isNull(assets.assignedUserId), isNull(assets.assignedLocationId))
+        : undefined,
+      f.overdue ? sql`${openAssignment.expectedReturnOn} < ${today}::date` : undefined,
       f.deleted === 'exclude' ? isNull(assets.deletedAt) : undefined,
       f.deleted === 'only' ? isNotNull(assets.deletedAt) : undefined,
     );
@@ -188,8 +197,9 @@ export class AssetsRepository {
     filters: AssetFilters,
     sort: AssetSortSpec,
     page: { limit: number; offset: number },
+    today: string,
   ): Promise<{ rows: AssetRow[]; total: number }> {
-    const where = this.where(filters);
+    const where = this.where(filters, today);
     const column = SORT_COLUMNS[sort.key];
     const [rows, totals] = await Promise.all([
       this.select(exec)
@@ -201,6 +211,11 @@ export class AssetsRepository {
         .select({ n: count() })
         .from(assets)
         .innerJoin(models, eq(models.id, assets.modelId))
+        .innerJoin(statusLabels, eq(statusLabels.id, assets.statusId))
+        .leftJoin(
+          openAssignment,
+          and(eq(openAssignment.assetId, assets.id), isNull(openAssignment.checkedInAt)),
+        )
         .where(where),
     ]);
     return { rows, total: totals[0]?.n ?? 0 };
