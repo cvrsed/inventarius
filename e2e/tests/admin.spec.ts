@@ -142,7 +142,7 @@ test.describe('auditoría (RF-31)', () => {
   test('lista las acciones, se filtra por acción y pasa axe', async ({ page }) => {
     await page.goto('/auditoria');
     await expect(page.getByRole('heading', { level: 1, name: 'Auditoría' })).toBeVisible();
-    await expect(page.getByText('Inicio de sesión').first()).toBeVisible();
+    await expect(page.getByText('Inicio de sesión').locator('visible=true').first()).toBeVisible();
     await expectNoA11yViolations(page);
     expect(await horizontalOverflow(page)).toBe(false);
 

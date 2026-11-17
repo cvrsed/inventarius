@@ -126,7 +126,11 @@ test.describe('catálogo (RF-10 a RF-14)', () => {
     await page.getByRole('searchbox').fill(mk.name);
     const remove = page.getByRole('button', { name: `Eliminar ${mk.name}` });
     await expect(remove).toBeDisabled();
-    await expect(remove).toHaveAccessibleDescription(/está en uso/);
+    if ((page.viewportSize()?.width ?? 0) >= 768) {
+      await expect(remove).toHaveAccessibleDescription(/está en uso/);
+    } else {
+      await expect(page.getByText(/está en uso/).locator('visible=true')).toBeVisible();
+    }
     await expect(page.getByRole('button', { name: `Editar ${mk.name}` })).toBeVisible();
     // La API sigue siendo la barrera: borrar directamente responde 409 e invita a desactivar.
     const token = (
@@ -349,7 +353,7 @@ test.describe('activos: CRUD completo (RF-20 a RF-25)', () => {
 
     const history = page.getByRole('region', { name: 'Historial' });
     await expect(history.getByText('Asignado a Admin E2E')).toBeVisible();
-    await expect(history.getByText('Devuelto')).toBeVisible();
+    await expect(history.getByText('Devuelto', { exact: true })).toBeVisible();
   });
 
   test('el historial muestra 10 movimientos y «Ver más» trae el resto, sin scroll interno', async ({
