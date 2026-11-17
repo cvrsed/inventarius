@@ -13,6 +13,9 @@ export const messages = {
     users: 'Usuarios',
     roles: 'Roles',
     audit: 'Auditoría',
+    more: 'Más',
+    moreHint: 'Otras secciones y tu cuenta',
+    moreLabel: 'Otras secciones',
   },
   common: {
     save: 'Guardar',

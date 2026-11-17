@@ -7,14 +7,23 @@ export interface NavigationItem {
   path: string;
   labelKey: string;
   icon: string;
+  /** `primary` va en la barra inferior móvil; `more` queda dentro del panel «Más». */
+  placement: 'primary' | 'more';
   /** Se muestra si el usuario tiene al menos uno; sin lista, a todos. */
   permissions?: Permission[];
 }
 
 export const navigationItems: readonly NavigationItem[] = [
-  { routeName: 'home', path: '/', labelKey: 'nav.home', icon: 'i-lucide-house' },
+  {
+    routeName: 'home',
+    placement: 'primary',
+    path: '/',
+    labelKey: 'nav.home',
+    icon: 'i-lucide-house',
+  },
   {
     routeName: 'assets',
+    placement: 'primary',
     path: '/activos',
     labelKey: 'nav.assets',
     icon: 'i-lucide-package',
@@ -22,6 +31,7 @@ export const navigationItems: readonly NavigationItem[] = [
   },
   {
     routeName: 'catalog',
+    placement: 'primary',
     path: '/catalogo/categories',
     labelKey: 'nav.catalog',
     icon: 'i-lucide-library',
@@ -29,6 +39,7 @@ export const navigationItems: readonly NavigationItem[] = [
   },
   {
     routeName: 'users',
+    placement: 'more',
     path: '/usuarios',
     labelKey: 'nav.users',
     icon: 'i-lucide-users',
@@ -36,6 +47,7 @@ export const navigationItems: readonly NavigationItem[] = [
   },
   {
     routeName: 'roles',
+    placement: 'more',
     path: '/roles',
     labelKey: 'nav.roles',
     icon: 'i-lucide-shield',
@@ -43,6 +55,7 @@ export const navigationItems: readonly NavigationItem[] = [
   },
   {
     routeName: 'audit',
+    placement: 'more',
     path: '/auditoria',
     labelKey: 'nav.audit',
     icon: 'i-lucide-history',

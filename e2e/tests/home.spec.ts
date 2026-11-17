@@ -44,6 +44,27 @@ test.describe('página de inicio (con sesión)', () => {
     await expect(page).toHaveURL(/cambiar-contrasena/);
   });
 
+  test('en móvil la barra inferior tiene 4 destinos y «Más» abre el resto, con axe', async ({
+    page,
+  }) => {
+    test.skip((page.viewportSize()?.width ?? 0) >= 768, 'solo en móvil');
+    await page.goto('/');
+    const bar = page.locator('.app-bottom-nav');
+    await expect(bar.locator('li')).toHaveText(['Inicio', 'Activos', 'Catálogo', 'Más']);
+    await bar.getByRole('button', { name: 'Más' }).click();
+    const sheet = page.getByRole('dialog', { name: 'Más' });
+    for (const name of ['Usuarios', 'Roles', 'Auditoría']) {
+      await expect(sheet.getByRole('link', { name })).toBeVisible();
+    }
+    for (const name of ['Cambiar contraseña', 'Cambiar a modo oscuro', 'Cerrar sesión']) {
+      await expect(sheet.getByRole('button', { name })).toBeVisible();
+    }
+    await expectNoA11yViolations(page);
+    await sheet.getByRole('link', { name: 'Roles' }).click();
+    await expect(page).toHaveURL(/\/roles$/);
+    await expect(sheet).toBeHidden();
+  });
+
   test('no hay scroll horizontal', async ({ page }) => {
     await page.goto('/');
     expect(await horizontalOverflow(page)).toBe(false);
