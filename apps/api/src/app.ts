@@ -71,8 +71,9 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const app = Fastify({
     logger: buildLoggerOptions(config),
     requestIdHeader: 'x-request-id',
-    // Detrás de Caddy; el proxy es de confianza porque Postgres y la API no se exponen fuera de Compose.
-    trustProxy: true,
+    // Solo se cree en X-Forwarded-For si la conexión viene de un proxy conocido (Caddy; en dev, el de Vite).
+    // De cualquier otro origen manda la IP del socket, para que nadie falsee la IP de la auditoría (RF-30).
+    trustProxy: config.trustedProxies.length ? config.trustedProxies : false,
   }).withTypeProvider<ZodTypeProvider>();
 
   app.setValidatorCompiler(validatorCompiler);

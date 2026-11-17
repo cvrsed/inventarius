@@ -14,6 +14,7 @@ x-dev-service: &dev-service
     APP_TIMEZONE: ${APP_TIMEZONE:-America/Santiago}
     DEFAULT_CURRENCY: ${DEFAULT_CURRENCY:-CLP}
     ASSET_TAG_PREFIX: ${ASSET_TAG_PREFIX:-INV}
+    TRUSTED_PROXIES: ${TRUSTED_PROXIES:-loopback,uniquelocal}
   restart: unless-stopped
 
 services:

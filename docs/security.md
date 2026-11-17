@@ -23,6 +23,23 @@ Referencia: sección 10 del requerimiento. Este documento crece por fase; aquí 
   de error es idéntica para cuenta inexistente o contraseña incorrecta (se iguala también el tiempo de hash).
 - Rate limit global por IP y específico en el login.
 
+## IP del cliente (proxies de confianza)
+
+La IP que queda en la auditoría y que usan el bloqueo por IP y el rate limit es la del **cliente real**, sin que
+nadie pueda falsearla con una cabecera:
+
+- Fastify solo cree en `X-Forwarded-For` cuando la conexión viene de un proxy de la lista `TRUSTED_PROXIES` (IP, CIDR o
+  `loopback`/`linklocal`/`uniquelocal`, separados por coma; valor por defecto `loopback,uniquelocal`: localhost y las
+  redes privadas de Compose). De cualquier otro origen se usa la IP del socket y la cabecera se ignora. Una lista
+  vacía desactiva la confianza. En producción conviene acotarla a la IP de Caddy.
+- Caddy (el proxy de producción) solo acepta las cabeceras de IP de quien conecte desde `TRUSTED_PROXY_RANGES`
+  (por defecto `private_ranges`) y prefiere `CF-Connecting-IP` (túnel de cloudflared) sobre `X-Forwarded-For`; de un
+  origen no confiable las descarta y reenvía a la API la IP del socket.
+- En desarrollo el proxy de Vite añade `X-Forwarded-For` (`xfwd`).
+- Test: `trusted-proxy.int.test.ts` comprueba que una petición con `X-Forwarded-For` falso desde un origen no confiable
+  registra la IP del socket, y que desde el proxy conocido se registra la del cliente.
+- Requisito: la API no debe ser alcanzable desde fuera sin pasar por el proxy (en Compose de producción no publica puertos).
+
 ## Autorización
 
 - Toda ruta de `/api/v1` declara su acceso (`publicRoute`, `authenticatedRoute`, `requirePermission`). Si una ruta no lo

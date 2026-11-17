@@ -2,6 +2,14 @@
 {
 	admin off
 	auto_https off
+
+	servers {
+		# Solo se cree en las cabeceras de IP de quien conecta desde un proxy conocido (p. ej. cloudflared).
+		# Acótalo con TRUSTED_PROXY_RANGES (IP o CIDR separados por espacio); por defecto, redes privadas.
+		trusted_proxies static {$TRUSTED_PROXY_RANGES:private_ranges}
+		# Detrás de cloudflared la IP real llega en CF-Connecting-IP; si no, en X-Forwarded-For.
+		client_ip_headers CF-Connecting-IP X-Forwarded-For
+	}
 }
 
 :8080 {

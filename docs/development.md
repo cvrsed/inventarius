@@ -81,6 +81,9 @@ de un usuario) están en `docs/operations.md`.
 `LOGIN_MAX_FAILURES_PER_ACCOUNT` (5), `LOGIN_MAX_FAILURES_PER_IP` (20), `LOGIN_LOCK_BASE_SECONDS` (60),
 `LOGIN_LOCK_MAX_SECONDS` (1800), `LOGIN_RATE_LIMIT_PER_MINUTE` (20), `RATE_LIMIT_MAX_PER_MINUTE` (600).
 
+`TRUSTED_PROXIES` (por defecto `loopback,uniquelocal`) y, para Caddy, `TRUSTED_PROXY_RANGES` (por defecto
+`private_ranges`) fijan de qué proxies se acepta la IP del cliente; ver `docs/security.md` y `docs/operations.md`.
+
 ## Etiquetas de activo (RF-20)
 
 `ASSET_TAG_PREFIX` (por defecto `INV`) fija el prefijo de las etiquetas autogeneradas: `INV-000123`. Debe tener solo

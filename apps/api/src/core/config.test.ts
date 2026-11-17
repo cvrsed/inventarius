@@ -15,6 +15,18 @@ describe('loadConfig', () => {
     expect(config.isProduction).toBe(false);
   });
 
+  it('TRUSTED_PROXIES: por defecto localhost y redes privadas; acepta IP, CIDR y palabras; rechaza basura', () => {
+    expect(loadConfig(valid).trustedProxies).toEqual(['loopback', 'uniquelocal']);
+    expect(
+      loadConfig({ ...valid, TRUSTED_PROXIES: ' 172.20.0.5, 10.0.0.0/8 ,::1,loopback' })
+        .trustedProxies,
+    ).toEqual(['172.20.0.5', '10.0.0.0/8', '::1', 'loopback']);
+    expect(loadConfig({ ...valid, TRUSTED_PROXIES: '' }).trustedProxies).toEqual([]);
+    for (const bad of ['caddy', '10.0.0.0/33', '1.2.3.4/x', '*', '1.2.3.4/8/9']) {
+      expect(() => loadConfig({ ...valid, TRUSTED_PROXIES: bad })).toThrowError(/TRUSTED_PROXIES/);
+    }
+  });
+
   it('falla de forma legible si falta DATABASE_URL', () => {
     expect(() => loadConfig({})).toThrowError(/DATABASE_URL/);
   });

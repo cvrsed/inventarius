@@ -28,7 +28,10 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     // Mismo origen en dev: el front llama a /api y Vite lo reenvía a la API.
-    proxy: { '/api': { target: process.env['API_PROXY_TARGET'] ?? 'http://localhost:3000' } },
+    // `xfwd` hace que el proxy de dev informe la IP del cliente (X-Forwarded-For), como Caddy en producción.
+    proxy: {
+      '/api': { target: process.env['API_PROXY_TARGET'] ?? 'http://localhost:3000', xfwd: true },
+    },
   },
   build: { target: 'es2023' },
   test: {

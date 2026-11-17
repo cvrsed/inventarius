@@ -1,5 +1,21 @@
 import { currencySchema, type Currency } from '@inventarius/shared';
+import { isIP } from 'node:net';
 import { z } from 'zod';
+
+/** Palabras que `proxy-addr` (Fastify) entiende además de IP y CIDR. */
+const PROXY_KEYWORDS = new Set(['loopback', 'linklocal', 'uniquelocal']);
+
+/** `true` si es una IP, una IP/prefijo o una de las palabras de `proxy-addr`. */
+function isProxyEntry(entry: string): boolean {
+  if (PROXY_KEYWORDS.has(entry)) return true;
+  const [ip, prefix, ...rest] = entry.split('/');
+  if (rest.length > 0 || !ip) return false;
+  const version = isIP(ip);
+  if (version === 0) return false;
+  if (prefix === undefined) return true;
+  const max = version === 4 ? 32 : 128;
+  return /^\d+$/.test(prefix) && Number(prefix) <= max;
+}
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -19,6 +35,24 @@ const envSchema = z.object({
         return false;
       }
     }, 'zona horaria IANA inválida (p. ej. America/Santiago)'),
+  /**
+   * Proxies inversos de los que se acepta `X-Forwarded-For` (RF-30): IPs, CIDR o `loopback`, `linklocal`,
+   * `uniquelocal`, separados por coma. De cualquier otro origen se usa la IP del socket. En producción conviene
+   * acotarlo a la IP de Caddy; el valor por defecto cubre localhost y las redes privadas de Compose.
+   */
+  TRUSTED_PROXIES: z
+    .string()
+    .default('loopback,uniquelocal')
+    .transform((v) =>
+      v
+        .split(',')
+        .map((x) => x.trim())
+        .filter(Boolean),
+    )
+    .refine(
+      (list) => list.every(isProxyEntry),
+      'lista de IP/CIDR (o loopback, linklocal, uniquelocal)',
+    ),
   DATABASE_URL: z.string().min(1),
   MIGRATION_DATABASE_URL: z.string().min(1).optional(),
   SESSION_IDLE_TIMEOUT_SECONDS: z.coerce
@@ -59,6 +93,8 @@ export interface AppConfig {
   host: string;
   port: number;
   timezone: string;
+  /** Proxies de confianza para `X-Forwarded-For`; vacío = no confiar en ninguno. */
+  trustedProxies: string[];
   databaseUrl: string;
   migrationDatabaseUrl: string | undefined;
   metricsToken: string | undefined;
@@ -101,6 +137,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     host: e.HOST,
     port: e.PORT,
     timezone: e.APP_TIMEZONE,
+    trustedProxies: e.TRUSTED_PROXIES,
     databaseUrl: e.DATABASE_URL,
     migrationDatabaseUrl: e.MIGRATION_DATABASE_URL,
     metricsToken: e.METRICS_TOKEN,
