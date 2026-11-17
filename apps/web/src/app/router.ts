@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { SECTIONS as CATALOG_SECTIONS } from '@/features/catalog/entities';
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -40,8 +41,13 @@ export const router = createRouter({
       component: () => import('@/features/assets/AssetFormPage.vue'),
       meta: { permissions: ['asset:write'] },
     },
+    // La URL siempre lleva la sección visible: `/catalogo` o una sección desconocida van a la primera.
     {
-      path: '/catalogo/:section?',
+      path: '/catalogo/:rest(.*)?',
+      redirect: (to) => ({ path: `/catalogo/${CATALOG_SECTIONS[0]}`, query: to.query }),
+    },
+    {
+      path: `/catalogo/:section(${CATALOG_SECTIONS.join('|')})`,
       name: 'catalog',
       component: () => import('@/features/catalog/CatalogPage.vue'),
       meta: { permissions: ['asset:read'] },

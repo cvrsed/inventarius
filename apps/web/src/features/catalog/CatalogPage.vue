@@ -106,10 +106,18 @@ const toggleActive = (item: CatalogItem) =>
       <ul class="m-0 flex list-none gap-1 p-0">
         <li v-for="s in SECTIONS" :key="s">
           <RouterLink
-            class="app-nav-link px-3 whitespace-nowrap"
+            v-slot="{ href, navigate }"
+            custom
             :to="{ name: 'catalog', params: { section: s } }"
           >
-            {{ t(`catalog.sections.${s}`) }}
+            <a
+              :href="href"
+              class="app-nav-link px-3 whitespace-nowrap"
+              :aria-current="s === section ? 'page' : undefined"
+              @click="navigate"
+            >
+              {{ t(`catalog.sections.${s}`) }}
+            </a>
           </RouterLink>
         </li>
       </ul>

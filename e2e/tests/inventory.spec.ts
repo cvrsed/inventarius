@@ -36,6 +36,31 @@ const toast = (page: Page, text: string | RegExp) =>
     .first();
 
 test.describe('catálogo (RF-10 a RF-14)', () => {
+  const SECTION_LABELS: [string, string][] = [
+    ['categories', 'Categorías'],
+    ['manufacturers', 'Fabricantes'],
+    ['models', 'Modelos'],
+    ['locations', 'Ubicaciones'],
+    ['statuses', 'Estados'],
+  ];
+
+  test('al entrar directo a cada ruta, la pestaña activa es la de la ruta', async ({ page }) => {
+    const wide = (page.viewportSize()?.width ?? 0) >= 768;
+    test.skip(!wide, 'en móvil las secciones son un select (ver prueba de 360 px)');
+    for (const [slug, label] of SECTION_LABELS) {
+      await page.goto(`/catalogo/${slug}`);
+      const tabs = page.getByRole('navigation', { name: 'Secciones del catálogo' });
+      await expect(tabs.locator('a[aria-current="page"]')).toHaveText(label);
+    }
+    await page.goto('/catalogo');
+    await expect(page).toHaveURL(/\/catalogo\/categories$/);
+    await expect(
+      page
+        .getByRole('navigation', { name: 'Secciones del catálogo' })
+        .locator('a[aria-current="page"]'),
+    ).toHaveText('Categorías');
+  });
+
   test('CRUD de fabricantes: crear, editar, desactivar y borrar, con axe en claro y oscuro', async ({
     page,
   }) => {

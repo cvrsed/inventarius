@@ -103,6 +103,28 @@ describe('CatalogPage (RF-10 a RF-14)', () => {
     expect(wrapper.text()).toContain('Aún no hay fabricantes');
   });
 
+  it('la pestaña activa refleja la ruta al entrar directo, sin clic previo', async () => {
+    for (const [section, label] of [
+      ['categories', 'Categorías'],
+      ['manufacturers', 'Fabricantes'],
+      ['models', 'Modelos'],
+      ['locations', 'Ubicaciones'],
+      ['statuses', 'Estados'],
+    ] as const) {
+      const { wrapper } = await mountSection(section, [], ['asset:read']);
+      const current = wrapper.findAll('nav a[aria-current="page"]');
+      expect(current.map((a) => a.text())).toEqual([label]);
+      wrapper.unmount();
+    }
+  });
+
+  it('/catalogo y una sección desconocida redirigen a la primera sección', async () => {
+    await router.push('/catalogo');
+    expect(router.currentRoute.value.fullPath).toBe('/catalogo/categories');
+    await router.push('/catalogo/inexistente?q=a');
+    expect(router.currentRoute.value.fullPath).toBe('/catalogo/categories?q=a');
+  });
+
   it('el filtro de estado del registro viaja a la API', async () => {
     const { fetchMock } = await mountSection('manufacturers', [], ['asset:read']);
     await router.push('/catalogo/manufacturers?active=false&q=acme');
