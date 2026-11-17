@@ -15,6 +15,8 @@
     "test": "pnpm -r --if-present test",
     "test:coverage": "pnpm -r --if-present test:coverage",
     "build": "pnpm -r --if-present build",
+    "gitleaks": "scripts/gitleaks.sh history",
+    "test:gitleaks": "scripts/test-gitleaks.sh",
     "prepare": "lefthook install"
   },
   "devDependencies": {

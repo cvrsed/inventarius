@@ -8,3 +8,6 @@ pre-commit:
       run: pnpm lint
     typecheck:
       run: pnpm typecheck
+    gitleaks:
+      # Versión fijada en scripts/gitleaks.sh (la misma que usa el CI). Revisa solo lo que se va a commitear.
+      run: scripts/gitleaks.sh staged
