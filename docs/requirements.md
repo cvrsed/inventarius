@@ -6,7 +6,7 @@ Nov 16, 2026 · @Yatto · Estado: borrador v0.1
 
 **Inventarius** es una aplicación web de inventario de activos (estilo Snipe-IT), construida desde cero, simple y modular. Su diferencia: los activos de tipo **dispositivo LoRaWAN** se pueden registrar directamente en un Network Server (**ChirpStack v4** o **The Things Stack / TTN v3**) desde la ficha del activo, usando conexiones configuradas previamente como **perfiles LNS** dentro de la app.
 
-Despliegue inicial: una VM de producción detrás de un túnel hacia Internet (ver sección 12). Requisito de diseño: debe poder migrarse sin cambios de código a otra infraestructura (por ejemplo, servidores de Zensi), solo cambiando configuración.
+Despliegue inicial: una VM de producción detrás de un túnel hacia Internet (ver sección 12). Requisito de diseño: debe poder migrarse sin cambios de código a otra infraestructura (por ejemplo, servidores del cliente), solo cambiando configuración.
 
 ### Objetivos del MVP
 
@@ -245,8 +245,8 @@ Los adaptadores se prueban contra dobles (fake gRPC server y mock HTTP) en CI, y
 | RNF-04 | Patrones de UX | Estados vacíos, de carga (skeleton) y de error en cada vista. Confirmación solo en acciones destructivas. Feedback de cada acción (toast). Mensajes de error accionables, sin jerga técnica. |
 | RNF-05 | Idioma | Español (Chile) por defecto; todo texto pasa por i18n desde el día 1 para poder agregar inglés. Fechas en zona horaria configurable (por defecto `America/Santiago`), guardadas en UTC. |
 | RNF-06 | Rendimiento | API p95 < 300 ms en lecturas con 10.000 activos; listados siempre paginados (máx. 100 por página). Bundle inicial del frontend < 250 KB gzip; rutas con carga diferida. |
-| RNF-07 | Disponibilidad | Objetivo homelab: reinicio automático de contenedores, arranque sin intervención tras reboot del host. Sin HA en el MVP. |
-| RNF-08 | Portabilidad | Toda configuración por variables de entorno (12-factor). Sin dominio, IP ni ruta del homelab escritos en código. Despliegue completo con `docker compose up` + migraciones. Guía de instalación en `docs/`. |
+| RNF-07 | Disponibilidad | Objetivo de infraestructura propia: reinicio automático de contenedores, arranque sin intervención tras reboot del host. Sin HA en el MVP. |
+| RNF-08 | Portabilidad | Toda configuración por variables de entorno (12-factor). Sin dominio, IP ni ruta de la infraestructura escritos en código. Despliegue completo con `docker compose up` + migraciones. Guía de instalación en `docs/`. |
 | RNF-09 | Versiones trabadas | Lockfile commiteado, dependencias con versión exacta, Node y pnpm fijados, imágenes Docker fijadas por digest. Actualizaciones solo vía PR (Renovate) con CI en verde. |
 | RNF-10 | Versionamiento | SemVer para la app, Conventional Commits, CHANGELOG generado, tags `vX.Y.Z` e imágenes etiquetadas con la misma versión. Esquema de BD versionado por migraciones. API bajo prefijo `/api/v1`. |
 | RNF-11 | Calidad de código | TypeScript estricto en todo el repo, ESLint + Prettier, sin `any` implícito, módulos con límites claros, funciones pequeñas, comentarios donde explican el porqué (no el qué). |
@@ -266,7 +266,7 @@ Reglas de módulos: cada módulo expone un plugin Fastify (rutas) y un servicio 
 ```mermaid
 flowchart LR
     U[Usuario<br/>navegador o celular] --> CF[Cloudflare<br/>DNS + Access opcional]
-    CF --> T[Tunnel supporti-home<br/>cloudflared en CT102]
+    CF --> T[Túnel hacia Internet<br/>cloudflared]
     T --> C
     subgraph VM[VM inventarius - Docker Compose]
         C[Caddy<br/>sirve SPA y proxya /api] --> A[API Fastify]
@@ -275,8 +275,8 @@ flowchart LR
     end
     W --> TTN[TTN / The Things Stack<br/>REST]
     W --> CS[ChirpStack v4<br/>gRPC]
-    K[Uptime Kuma GCP] -.-> CF
-    M[Prometheus / Zabbix<br/>futuro] -.-> A
+    K[Monitoreo externo] -.-> CF
+    M[Monitoreo centralizado<br/>futuro] -.-> A
 ```
 
 SPA y API se sirven en el **mismo origen** (`/` y `/api`): cookies de sesión sin CORS ni tokens en el navegador.
@@ -290,12 +290,12 @@ Regla: se fija la versión exacta en la Fase 0 con el lockfile y se registra en 
 | Runtime | Node.js 26 LTS (CI también en 24 LTS como respaldo) | 26 pasó a LTS en octubre 2026, soporte hasta abril 2029; 24 queda hasta abril 2028 |
 | Gestor de paquetes | pnpm (fijado con `packageManager` + corepack), workspaces | Monorepo, lockfile estricto |
 | Lenguaje | TypeScript estricto en front, back y paquete compartido | Tipos de punta a punta |
-| Frontend | Vue 3 (Composition API, `<script setup>`), Vite, Vue Router, Pinia, vue-i18n, TanStack Query (Vue) | Recomendación de Carlos (Zensi) + caché y estados de carga sin código repetido |
-| UI | Nuxt UI v4 (MIT) en modo Vue + Vite, sin Nuxt (`@nuxt/ui/vite`), tema propio por design tokens; Tailwind CSS v4 solo para layout; íconos Lucide (`@iconify-json/lucide`) empaquetados en el build | Reemplaza a Volt, propuesto por Carlos, y a PrimeVue, que desde la v5 exige licencia con clave (ver 7.3 y ADR 0004) |
-| Backend | Fastify 5.x con `fastify-type-provider-zod`, `@fastify/helmet`, `@fastify/rate-limit`, `@fastify/cookie`, `@fastify/csrf-protection`, `@fastify/swagger`, `@fastify/under-pressure` | Recomendación de Carlos; Fastify 6 sigue en alpha, no se usa |
+| Frontend | Vue 3 (Composition API, `<script setup>`), Vite, Vue Router, Pinia, vue-i18n, TanStack Query (Vue) | Recomendación del proveedor del stack sugerido + caché y estados de carga sin código repetido |
+| UI | Nuxt UI v4 (MIT) en modo Vue + Vite, sin Nuxt (`@nuxt/ui/vite`), tema propio por design tokens; Tailwind CSS v4 solo para layout; íconos Lucide (`@iconify-json/lucide`) empaquetados en el build | Reemplaza a Volt, propuesto por el proveedor del stack sugerido, y a PrimeVue, que desde la v5 exige licencia con clave (ver 7.3 y ADR 0004) |
+| Backend | Fastify 5.x con `fastify-type-provider-zod`, `@fastify/helmet`, `@fastify/rate-limit`, `@fastify/cookie`, `@fastify/csrf-protection`, `@fastify/swagger`, `@fastify/under-pressure` | Recomendación del proveedor del stack sugerido; Fastify 6 sigue en alpha, no se usa |
 | Validación | Zod en `packages/shared`, mismo esquema en API y formularios | Una sola fuente de verdad |
 | Contrato API | OpenAPI 3.1 generado desde las rutas; cliente del front tipado generado desde ese OpenAPI | El front no puede desalinearse de la API |
-| Base de datos | PostgreSQL 18 | Recomendación de Carlos |
+| Base de datos | PostgreSQL 18 | Recomendación del proveedor del stack sugerido |
 | ORM / migraciones | Drizzle ORM + drizzle-kit (migraciones SQL versionadas en el repo) | SQL explícito, tipos, migraciones revisables |
 | Cola de jobs | pg-boss (sobre el mismo Postgres); primer uso: purga horaria de sesiones vencidas | Sin Redis: un servicio menos |
 | Cliente ChirpStack | `@chirpstack/chirpstack-api` + `@grpc/grpc-js` | Cliente oficial, gRPC recomendado |
@@ -310,7 +310,7 @@ Regla: se fija la versión exacta en la Fase 0 con el lockfile y se registra en 
 
 Se registra como `docs/adr/0004-ui-nuxt-ui-v4.md`, que reemplaza a `docs/adr/0003-ui-primevue-styled.md`.
 
-**Contexto.** Carlos (Zensi) propuso Vue + Volt; Volt copia los componentes al repositorio, por lo que pasan a ser código propio. La primera respuesta fue PrimeVue en modo styled (ADR 0003). Desde la versión 5, PrimeVue y todo PrimeTek (incluido Volt) exigen una licencia con clave: la versión gratuita solo cubre organizaciones chicas y se renueva cada año. Eso choca con RNF-08 (portabilidad a otras organizaciones).
+**Contexto.** El proveedor del stack sugerido propuso Vue + Volt; Volt copia los componentes al repositorio, por lo que pasan a ser código propio. La primera respuesta fue PrimeVue en modo styled (ADR 0003). Desde la versión 5, PrimeVue y todo PrimeTek (incluido Volt) exigen una licencia con clave: la versión gratuita solo cubre organizaciones chicas y se renueva cada año. Eso choca con RNF-08 (portabilidad a otras organizaciones).
 
 **Decisión.** Usar Nuxt UI v4 (MIT) en modo Vue + Vite, sin Nuxt, instalado por npm, con el tema propio por design tokens en `apps/web/src/theme`. Tailwind v4 se mantiene para layout y espaciado. Los íconos son Lucide, empaquetados en el build: nunca se piden en runtime a otro dominio, para mantener una CSP estricta.
 
@@ -509,10 +509,10 @@ inventarius/
 ### 11.1 Observabilidad
 
 - **Logs**: JSON con pino; cada línea con `reqId`, usuario (id, no email), ruta, status y duración. Nivel configurable por entorno. En producción van a stdout y Docker los rota (`max-size`, `max-file`).
-- **Health**: `GET /api/health/live` (proceso vivo) y `GET /api/health/ready` (BD y cola disponibles). Los usa Docker (healthcheck) y Uptime Kuma.
+- **Health**: `GET /api/health/live` (proceso vivo) y `GET /api/health/ready` (BD y cola disponibles). Los usa Docker (healthcheck) y el monitoreo externo.
 - **Métricas** Prometheus en `/api/metrics`, accesible solo desde la red interna o con token: latencia y conteo por ruta, errores, conexiones a BD, tamaño de cola, jobs LNS por resultado y proveedor, logins fallidos.
 - **Sobrecarga**: `@fastify/under-pressure` responde `503` si el event loop o la memoria se degradan.
-- **Post-MVP**: trazas OpenTelemetry, panel Grafana o integración con el Zabbix previsto para el homelab, captura de errores del frontend (GlitchTip).
+- **Post-MVP**: trazas OpenTelemetry, panel Grafana o integración con el monitoreo centralizado previsto, captura de errores del frontend (GlitchTip).
 
 ### 11.2 Pruebas
 
@@ -547,7 +547,7 @@ flowchart LR
 ```
 
 - Despliegue: el servidor hace `pull` de una versión etiquetada (nunca `latest`), corre migraciones como paso separado y reinicia. Rollback = volver a la versión anterior (las migraciones se escriben compatibles hacia atrás una versión).
-- Este flujo reemplaza, para esta app, el patrón `git fetch` + `reset --hard` de supporti-web: con backend y BD conviene desplegar imágenes construidas y probadas en CI.
+- Este flujo reemplaza, para esta app, el patrón `git fetch` + `reset --hard` de otros sitios estáticos del mismo operador: con backend y BD conviene desplegar imágenes construidas y probadas en CI.
 
 ## 12. Entornos
 
@@ -652,22 +652,22 @@ Además, `.claude/settings.json` del repo restringe comandos: permite `pnpm`, `d
 | # | Decisión | Propuesta por defecto |
 | --- | --- | --- |
 | D1 | Node 26 LTS o 24 LTS | 26; si una dependencia no compila, 24 y se registra en ADR |
-| D2 | Cluster TTN, plan de frecuencias y versión LoRaWAN de los equipos reales (SDM530-LR, medidores de agua) | Tomar los valores que ya usa Zensi en TTN; quedan como defaults del perfil, no en código |
+| D2 | Cluster TTN, plan de frecuencias y versión LoRaWAN de los equipos reales (SDM530-LR, medidores de agua) | Tomar los valores que ya usa el cliente en TTN; quedan como defaults del perfil, no en código |
 | D3 | ¿Hay un ChirpStack disponible para pruebas reales o solo el de Docker en la VM? | Docker en la VM para el MVP |
 | D4 | Cloudflare Access delante de la app durante el MVP | Sí |
 | D5 | 2FA TOTP dentro del MVP o justo después | Justo después (Should) |
 | D6 | Formato de etiqueta de activo | Prefijo configurable + correlativo (ej. `INV-000123`) |
-| D7 | IDs de Proxmox e IPs fijas de las dos VMs | Definir en la sesión de infraestructura y anotarlo en el documento del homelab |
+| D7 | Identificadores e IPs fijas de las dos VMs | Definir en la sesión de infraestructura y anotarlo en la documentación privada de infraestructura |
 | D8 | Nombre y visibilidad del repo | `cvrsed/inventarius`, privado |
 
 ### 15.2 Riesgos
 
 | Riesgo | Mitigación |
 | --- | --- |
-| Cargar AppKeys reales de dispositivos de clientes de Zensi en un servidor personal | Hasta acordarlo con Zensi, usar solo dispositivos y aplicaciones de prueba |
+| Cargar AppKeys reales de dispositivos de clientes del cliente en un servidor personal | Hasta acordarlo con el cliente, usar solo dispositivos y aplicaciones de prueba |
 | Diferencias de API entre versiones de ChirpStack (campos de claves en 1.0.x vs 1.1) | Prueba de integración contra la versión exacta que se use; versión del LNS anotada en el perfil |
 | Una actualización de Nuxt UI rompe personalizaciones del tema | Personalizar solo por design tokens, nunca copiando componentes; actualizaciones por Renovate con e2e y axe en CI |
 | La librería de UI cambia a una licencia con clave o de pago (ya ocurrió con PrimeVue 5) | Solo dependencias MIT/ISC/Apache en la UI; verificar la licencia al subir versiones mayores; la UI usa componentes `U*` en pocos lugares y la lógica no depende de ella (ADR 0004, reversibilidad) |
 | Claude Code se sale del alcance o acumula deuda | Fases cortas, PR por fase, DoD, revisión humana y snapshots de la VM |
-| Homelab sin redundancia (un solo host, corte de luz o falla de disco) | Aceptado en el MVP; respaldos diarios fuera de la VM y portabilidad probada |
+| Infraestructura propia sin redundancia (un solo host, corte de luz o falla de disco) | Aceptado en el MVP; respaldos diarios fuera de la VM y portabilidad probada |
 | Pérdida de `APP_ENCRYPTION_KEY` | Copia en gestor de contraseñas; procedimiento de rotación documentado |

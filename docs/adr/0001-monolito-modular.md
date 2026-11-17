@@ -6,7 +6,7 @@
 ## Contexto
 
 Inventarius es una aplicación de inventario con una integración externa (LNS LoRaWAN) y trabajo en segundo plano.
-El equipo es pequeño, el despliegue inicial es un homelab (una VM) y debe poder migrarse a otra infraestructura
+El equipo es pequeño, el despliegue inicial es una sola VM y debe poder migrarse a otra infraestructura
 cambiando solo configuración (RNF-08).
 
 ## Decisión

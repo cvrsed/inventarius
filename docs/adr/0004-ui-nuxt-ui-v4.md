@@ -10,7 +10,7 @@ El ADR 0003 eligió PrimeVue 4 en modo styled. Desde la versión 5, PrimeVue y t
 MIT a la «PrimeUI License»: exigen una clave de licencia, y la versión gratuita (Community) solo cubre organizaciones
 con menos de USD 1 M de ingresos, menos de 5 desarrolladores y menos de 10 empleados, con renovación anual. La rama 4.x
 (MIT) queda sin evolución. Eso choca con RNF-08 (portabilidad a otras organizaciones): Inventarius debe poder
-instalarlo cualquier empresa sin condiciones de licencia de un tercero. La decisión de migrar es de Rodrigo.
+instalarlo cualquier empresa sin condiciones de licencia de un tercero. La decisión de migrar es del responsable del proyecto.
 
 ## Decisión
 
