@@ -8,9 +8,26 @@ const MISSING = '—';
 let timezone = DEFAULT_TIMEZONE;
 const formatters = new Map<string, Intl.DateTimeFormat>();
 
+const FALLBACK_CURRENCY = 'CLP';
+let defaultCurrency = FALLBACK_CURRENCY;
+
 /** Fija los ajustes de formato; se llama al cargar la sesión. */
-export function setFormatSettings(settings: { timezone: string }): void {
+export function setFormatSettings(settings: { timezone: string; defaultCurrency?: string }): void {
   timezone = isValidTimezone(settings.timezone) ? settings.timezone : DEFAULT_TIMEZONE;
+  defaultCurrency = settings.defaultCurrency ?? FALLBACK_CURRENCY;
+}
+
+/** Moneda que se propone al registrar un costo (configurable en la instalación). */
+export const getDefaultCurrency = (): string => defaultCurrency;
+
+/** `$1.200` (CLP) o `US$99,50`: símbolo y decimales según la moneda, separadores de es-CL. */
+export function formatMoney(amount: number | null | undefined, currency: string): string {
+  if (amount === null || amount === undefined) return MISSING;
+  try {
+    return new Intl.NumberFormat('es-CL', { style: 'currency', currency }).format(amount);
+  } catch {
+    return `${amount} ${currency}`;
+  }
 }
 
 function isValidTimezone(tz: string): boolean {

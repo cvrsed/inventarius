@@ -52,6 +52,7 @@ export interface AssetRow {
   assignedLocationName: string | null;
   purchaseDate: string | null;
   purchaseCost: string | null;
+  purchaseCurrency: string;
   supplier: string | null;
   warrantyMonths: number | null;
   notes: string | null;
@@ -76,6 +77,7 @@ export type AssetChanges = Partial<
     | 'locationId'
     | 'purchaseDate'
     | 'purchaseCost'
+    | 'purchaseCurrency'
     | 'supplier'
     | 'warrantyMonths'
     | 'notes'
@@ -127,6 +129,7 @@ export class AssetsRepository {
         assignedLocationName: assignedLocation.name,
         purchaseDate: assets.purchaseDate,
         purchaseCost: assets.purchaseCost,
+        purchaseCurrency: assets.purchaseCurrency,
         supplier: assets.supplier,
         warrantyMonths: assets.warrantyMonths,
         notes: assets.notes,

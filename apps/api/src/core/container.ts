@@ -85,6 +85,7 @@ export function buildServices(deps: ContainerDeps): Services {
       search: (q, limit) => users.searchAssignable(q, limit),
     },
     config.assetTagPrefix,
+    config.defaultCurrency,
   );
   return { audit, rbac, users, auth, catalog, assets };
 }

@@ -6,11 +6,13 @@ import UInput from '@nuxt/ui/components/Input.vue';
 import UTextarea from '@nuxt/ui/components/Textarea.vue';
 import { useToast } from '@nuxt/ui/composables/useToast';
 import { computed, ref, watch } from 'vue';
+import { CURRENCY_OPTIONS } from '@inventarius/shared';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { errorMessage } from '@/features/auth/errors';
 import { fetchOptions } from '@/features/catalog/api';
 import { ApiError } from '@/shared/api/http';
+import SearchSelect from '@/shared/ui/SearchSelect.vue';
 import RemoteSelect, { type RemoteOption } from '@/shared/ui/RemoteSelect.vue';
 import { useAsset, useAssetMutations } from './api';
 import { emptyAssetForm, formFromAsset, toAssetPayload, type AssetForm } from './form';
@@ -248,6 +250,19 @@ async function submit(): Promise<void> {
             :model-value="form.purchaseCost"
             class="w-full"
             @update:model-value="(v: string | number) => setText('purchaseCost', v)"
+          />
+        </UFormField>
+        <UFormField
+          :label="t('assets.fields.purchaseCurrency')"
+          name="a-currency"
+          :error="fieldErrors['purchaseCurrency']"
+        >
+          <SearchSelect
+            id="a-currency"
+            :model-value="form.purchaseCurrency"
+            :items="CURRENCY_OPTIONS"
+            :placeholder="t('assets.placeholders.currency')"
+            @update:model-value="(v: string) => set('purchaseCurrency', v)"
           />
         </UFormField>
         <UFormField :label="t('assets.fields.supplier')" name="a-supplier">

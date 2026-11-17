@@ -241,6 +241,7 @@ export const assets = pgTable(
     }),
     purchaseDate: date('purchase_date', { mode: 'string' }),
     purchaseCost: numeric('purchase_cost', { precision: 12, scale: 2 }),
+    purchaseCurrency: text('purchase_currency').notNull().default('CLP'),
     supplier: text('supplier'),
     warrantyMonths: integer('warranty_months'),
     notes: text('notes'),

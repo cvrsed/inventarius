@@ -41,6 +41,14 @@ describe('loadConfig', () => {
     );
   });
 
+  it('la moneda por defecto es CLP, configurable y validada', () => {
+    expect(loadConfig(valid).defaultCurrency).toBe('CLP');
+    expect(loadConfig({ ...valid, DEFAULT_CURRENCY: 'USD' }).defaultCurrency).toBe('USD');
+    expect(() => loadConfig({ ...valid, DEFAULT_CURRENCY: 'ZZZ' })).toThrowError(
+      /DEFAULT_CURRENCY/,
+    );
+  });
+
   it('marca isProduction según NODE_ENV', () => {
     expect(loadConfig({ ...valid, NODE_ENV: 'production' }).isProduction).toBe(true);
   });

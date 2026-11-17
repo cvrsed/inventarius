@@ -41,7 +41,7 @@ describe('useAuthStore', () => {
   it('load() toma la zona horaria de los ajustes; si fallan, la sesión sigue', async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce(json(user))
-      .mockResolvedValueOnce(json({ timezone: 'UTC' }));
+      .mockResolvedValueOnce(json({ timezone: 'UTC', defaultCurrency: 'CLP' }));
     await useAuthStore().load();
     expect(formatDateTime('2026-06-15T15:05:00.000Z')).toBe('15-06-2026 15:05');
 
@@ -77,7 +77,7 @@ describe('useAuthStore', () => {
   it('logout() limpia el usuario', async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce(json(user))
-      .mockResolvedValueOnce(json({ timezone: 'America/Santiago' }))
+      .mockResolvedValueOnce(json({ timezone: 'America/Santiago', defaultCurrency: 'CLP' }))
       .mockResolvedValueOnce(json({ token: 't' }))
       .mockResolvedValueOnce(new Response(null, { status: 204 }));
     const store = useAuthStore();

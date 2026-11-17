@@ -22,6 +22,7 @@ describe('formulario de activo', () => {
       locationId: null,
       purchaseDate: null,
       purchaseCost: null,
+      purchaseCurrency: 'CLP',
       supplier: null,
       warrantyMonths: null,
       notes: null,
@@ -37,11 +38,28 @@ describe('formulario de activo', () => {
         model: option('m1', 'M'),
         status: option('s1', 'S'),
         purchaseCost: '1234,5',
+        purchaseCurrency: 'CLP',
         warrantyMonths: '24',
       },
       'create',
     );
     expect(payload).toMatchObject({ assetTag: 'LAB-1', purchaseCost: 1234.5, warrantyMonths: 24 });
+  });
+
+  it('la moneda parte en la de la instalación y viaja con el costo', () => {
+    expect(emptyAssetForm().purchaseCurrency).toBe('CLP');
+    expect(emptyAssetForm('USD').purchaseCurrency).toBe('USD');
+    const form = {
+      ...emptyAssetForm('USD'),
+      name: 'x',
+      model: option('m1', 'M'),
+      status: option('s1', 'S'),
+      purchaseCost: '10,5',
+    };
+    expect(toAssetPayload(form, 'create')).toMatchObject({
+      purchaseCost: 10.5,
+      purchaseCurrency: 'USD',
+    });
   });
 
   it('la edición manda la etiqueta y omite el estado si no cambió', () => {
@@ -68,6 +86,7 @@ describe('formulario de activo', () => {
       location: option('l1', 'Sala'),
       purchaseDate: '2026-01-31',
       purchaseCost: 1500,
+      purchaseCurrency: 'CLP',
       supplier: null,
       warrantyMonths: 12,
       notes: 'nota',
@@ -76,6 +95,7 @@ describe('formulario de activo', () => {
       assetTag: 'INV-000009',
       serial: '',
       purchaseCost: '1500',
+      purchaseCurrency: 'CLP',
       warrantyMonths: '12',
       location: { id: 'l1', name: 'Sala' },
     });
@@ -89,6 +109,7 @@ describe('formulario de activo', () => {
         model: option('m', 'M'),
         status: option('s', 'S'),
         purchaseCost: 'abc',
+        purchaseCurrency: 'CLP',
       },
       'create',
     );

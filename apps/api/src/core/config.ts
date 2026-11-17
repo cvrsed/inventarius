@@ -1,3 +1,4 @@
+import { currencySchema, type Currency } from '@inventarius/shared';
 import { z } from 'zod';
 
 const envSchema = z.object({
@@ -42,6 +43,8 @@ const envSchema = z.object({
     .string()
     .regex(/^[A-Za-z0-9]{1,10}$/, 'letras y números, hasta 10 caracteres')
     .default('INV'),
+  /** Moneda que se propone para el costo de compra de los activos. */
+  DEFAULT_CURRENCY: currencySchema.default('CLP'),
   METRICS_TOKEN: z
     .string()
     .optional()
@@ -60,6 +63,7 @@ export interface AppConfig {
   migrationDatabaseUrl: string | undefined;
   metricsToken: string | undefined;
   assetTagPrefix: string;
+  defaultCurrency: Currency;
   session: {
     idleTimeoutSeconds: number;
     absoluteTimeoutSeconds: number;
@@ -101,6 +105,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     migrationDatabaseUrl: e.MIGRATION_DATABASE_URL,
     metricsToken: e.METRICS_TOKEN,
     assetTagPrefix: e.ASSET_TAG_PREFIX,
+    defaultCurrency: e.DEFAULT_CURRENCY,
     session: {
       idleTimeoutSeconds: e.SESSION_IDLE_TIMEOUT_SECONDS,
       absoluteTimeoutSeconds: e.SESSION_ABSOLUTE_TIMEOUT_SECONDS,

@@ -5,7 +5,7 @@ import UButton from '@nuxt/ui/components/Button.vue';
 import { useToast } from '@nuxt/ui/composables/useToast';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { formatDateOnly, formatDateTime } from '@/shared/format/format';
+import { formatDateOnly, formatDateTime, formatMoney } from '@/shared/format/format';
 import { useRoute } from 'vue-router';
 import { errorMessage } from '@/features/auth/errors';
 import { useAuthStore } from '@/features/auth/useAuthStore';
@@ -77,7 +77,7 @@ const rows = computed(() => {
     [t('assets.fields.purchaseDate'), a.purchaseDate ? formatDateOnly(a.purchaseDate) : null],
     [
       t('assets.fields.purchaseCost'),
-      a.purchaseCost === null ? null : `$${a.purchaseCost.toLocaleString('es-CL')}`,
+      a.purchaseCost === null ? null : formatMoney(a.purchaseCost, a.purchaseCurrency),
     ],
     [t('assets.fields.supplier'), a.supplier],
     [t('assets.fields.warrantyEndsOn'), a.warrantyEndsOn ? formatDateOnly(a.warrantyEndsOn) : null],

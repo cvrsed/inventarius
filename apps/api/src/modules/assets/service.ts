@@ -8,6 +8,7 @@ import {
   type CheckinRequest,
   type CheckoutRequest,
   type CreateAssetInput,
+  type Currency,
   type StatusKind,
   type UpdateAssetInput,
 } from '@inventarius/shared';
@@ -62,6 +63,7 @@ function snapshot(r: AssetRow): Record<string, unknown> {
     location: r.locationName,
     purchaseDate: r.purchaseDate,
     purchaseCost: r.purchaseCost === null ? null : Number(r.purchaseCost),
+    purchaseCurrency: r.purchaseCurrency,
     supplier: r.supplier,
     warrantyMonths: r.warrantyMonths,
     notes: r.notes,
@@ -95,6 +97,7 @@ export function toDto(r: AssetRow): AssetDto {
     manufacturer: { id: r.manufacturerId, name: r.manufacturerName },
     purchaseDate: r.purchaseDate,
     purchaseCost: r.purchaseCost === null ? null : Number(r.purchaseCost),
+    purchaseCurrency: r.purchaseCurrency as Currency,
     supplier: r.supplier,
     warrantyMonths: r.warrantyMonths,
     warrantyEndsOn: warrantyEndsOn(r.purchaseDate, r.warrantyMonths),
@@ -122,6 +125,7 @@ export class AssetsService {
     private readonly catalog: CatalogService,
     private readonly people: AssigneeDirectory,
     private readonly tagPrefix: string,
+    private readonly defaultCurrency: Currency,
   ) {}
 
   async list(
@@ -194,6 +198,7 @@ export class AssetsService {
       locationId: input.locationId,
       purchaseDate: input.purchaseDate,
       purchaseCost: money(input.purchaseCost) ?? null,
+      purchaseCurrency: input.purchaseCurrency ?? this.defaultCurrency,
       supplier: input.supplier,
       warrantyMonths: input.warrantyMonths,
       notes: input.notes,
@@ -398,6 +403,7 @@ const EXPORT_HEADERS = [
   'Asignado a',
   'Fecha de compra',
   'Costo',
+  'Moneda',
   'Proveedor',
   'Garantía (meses)',
   'Fin de garantía',
@@ -419,6 +425,7 @@ function exportCells(r: AssetRow) {
     assigneeName(r),
     r.purchaseDate,
     r.purchaseCost,
+    r.purchaseCurrency,
     r.supplier,
     r.warrantyMonths,
     warrantyEndsOn(r.purchaseDate, r.warrantyMonths),

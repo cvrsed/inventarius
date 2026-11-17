@@ -260,6 +260,7 @@ export const messages = {
     deletedBadge: 'Dado de baja',
     unassigned: 'Sin asignar',
     noLocation: 'Sin ubicación',
+    placeholders: { currency: 'Seleccione moneda' },
     fields: {
       assetTag: 'Etiqueta',
       assetTagHint: 'Déjala vacía para generarla automáticamente.',
@@ -270,6 +271,7 @@ export const messages = {
       serial: 'Número de serie',
       purchaseDate: 'Fecha de compra',
       purchaseCost: 'Costo de compra',
+      purchaseCurrency: 'Moneda',
       supplier: 'Proveedor',
       warrantyMonths: 'Garantía (meses)',
       warrantyEndsOn: 'Fin de garantía',

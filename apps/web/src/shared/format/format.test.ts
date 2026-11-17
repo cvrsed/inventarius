@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { formatDate, formatDateTime, formatDateOnly, setFormatSettings } from './format';
+import {
+  formatDate,
+  formatDateOnly,
+  formatDateTime,
+  formatMoney,
+  getDefaultCurrency,
+  setFormatSettings,
+} from './format';
 
 describe('formato de fechas (dd-mm-aaaa HH:mm, 24 h)', () => {
   beforeEach(() => setFormatSettings({ timezone: 'America/Santiago' }));
@@ -30,6 +37,19 @@ describe('formato de fechas (dd-mm-aaaa HH:mm, 24 h)', () => {
   it('una fecha sin hora (AAAA-MM-DD) no se desplaza por zona horaria', () => {
     setFormatSettings({ timezone: 'Pacific/Kiritimati' });
     expect(formatDateOnly('2026-03-05')).toBe('05-03-2026');
+  });
+
+  it('formatea el costo con su moneda y separadores de es-CL', () => {
+    expect(formatMoney(499990, 'CLP').replace(/\s/g, '')).toBe('$499.990');
+    expect(formatMoney(99.5, 'USD').replace(/\s/g, '')).toBe('US$99,50');
+    expect(formatMoney(null, 'CLP')).toBe('—');
+  });
+
+  it('la moneda por defecto sale de los ajustes (CLP si faltan)', () => {
+    setFormatSettings({ timezone: 'UTC', defaultCurrency: 'USD' });
+    expect(getDefaultCurrency()).toBe('USD');
+    setFormatSettings({ timezone: 'UTC' });
+    expect(getDefaultCurrency()).toBe('CLP');
   });
 
   it('valores vacíos o inválidos se muestran como guion', () => {

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { categoryExtensionSchema, refSchema, statusKindSchema } from './catalog.js';
+import { currencySchema } from './currency.js';
 import { pageQuerySchema } from './identity.js';
 
 const dateOnly = z.iso.date();
@@ -87,6 +88,7 @@ export const assetSchema = assetListItemSchema.extend({
   manufacturer: refSchema,
   purchaseDate: dateOnly.nullable(),
   purchaseCost: z.number().nullable(),
+  purchaseCurrency: currencySchema,
   supplier: z.string().nullable(),
   warrantyMonths: z.number().int().nullable(),
   notes: z.string().nullable(),
@@ -113,6 +115,7 @@ const assetEditable = {
   locationId: z.uuid().nullable(),
   purchaseDate: dateOnly.nullable(),
   purchaseCost: z.number().min(0).max(9_999_999_999.99).multipleOf(0.01).nullable(),
+  purchaseCurrency: currencySchema,
   supplier: text(120).nullable(),
   warrantyMonths: z.number().int().min(0).max(600).nullable(),
   notes: text(2000).nullable(),
@@ -128,6 +131,8 @@ export const createAssetSchema = z.object({
   locationId: assetEditable.locationId.default(null),
   purchaseDate: assetEditable.purchaseDate.default(null),
   purchaseCost: assetEditable.purchaseCost.default(null),
+  /** Si falta, se usa la moneda por defecto de la instalación. */
+  purchaseCurrency: assetEditable.purchaseCurrency.optional(),
   supplier: assetEditable.supplier.default(null),
   warrantyMonths: assetEditable.warrantyMonths.default(null),
   notes: assetEditable.notes.default(null),

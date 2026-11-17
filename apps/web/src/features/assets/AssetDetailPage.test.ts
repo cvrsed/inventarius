@@ -34,6 +34,7 @@ const baseAsset = {
   deleted: false,
   purchaseDate: '2026-01-31',
   purchaseCost: 499990,
+  purchaseCurrency: 'CLP',
   supplier: null,
   warrantyMonths: 12,
   warrantyEndsOn: '2027-01-31',
@@ -106,6 +107,13 @@ describe('AssetDetailPage (RF-41)', () => {
     expect(w.text()).toContain('Lenovo ThinkPad');
     expect(w.text()).toContain('Activo creado');
     expect(w.text()).toContain('31-01-2027');
+  });
+
+  it('el costo se muestra con su moneda', async () => {
+    const clp = await mountAsset({}, ['asset:read']);
+    expect(clp.text().replace(/\s/g, '')).toContain('$499.990');
+    const usd = await mountAsset({ purchaseCost: 99.5, purchaseCurrency: 'USD' }, ['asset:read']);
+    expect(usd.text().replace(/\s/g, '')).toContain('US$99,50');
   });
 
   it('un lector no ve ninguna acción de escritura', async () => {

@@ -11,6 +11,9 @@ export const settingsRoutes: FastifyPluginAsyncZod<{ config: AppConfig }> = asyn
       ...authenticatedRoute({ allowPendingPasswordChange: true }),
       schema: { tags: ['settings'], response: { 200: appSettingsSchema } },
     },
-    async () => ({ timezone: opts.config.timezone }),
+    async () => ({
+      timezone: opts.config.timezone,
+      defaultCurrency: opts.config.defaultCurrency,
+    }),
   );
 };

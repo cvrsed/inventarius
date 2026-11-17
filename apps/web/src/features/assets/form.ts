@@ -1,4 +1,5 @@
 import type { AssetDto } from '@inventarius/shared';
+import { getDefaultCurrency } from '@/shared/format/format';
 import type { RemoteOption } from '@/shared/ui/RemoteSelect.vue';
 
 /** Campos del formulario de activo: textos tal como se escriben y referencias como `{ id, name }`. */
@@ -11,12 +12,13 @@ export interface AssetForm {
   serial: string;
   purchaseDate: string;
   purchaseCost: string;
+  purchaseCurrency: string;
   supplier: string;
   warrantyMonths: string;
   notes: string;
 }
 
-export const emptyAssetForm = (): AssetForm => ({
+export const emptyAssetForm = (currency = getDefaultCurrency()): AssetForm => ({
   assetTag: '',
   name: '',
   model: null,
@@ -25,6 +27,7 @@ export const emptyAssetForm = (): AssetForm => ({
   serial: '',
   purchaseDate: '',
   purchaseCost: '',
+  purchaseCurrency: currency,
   supplier: '',
   warrantyMonths: '',
   notes: '',
@@ -40,6 +43,7 @@ type Loaded = Pick<
   | 'location'
   | 'purchaseDate'
   | 'purchaseCost'
+  | 'purchaseCurrency'
   | 'supplier'
   | 'warrantyMonths'
   | 'notes'
@@ -55,6 +59,7 @@ export function formFromAsset(a: Loaded): AssetForm {
     serial: a.serial ?? '',
     purchaseDate: a.purchaseDate ?? '',
     purchaseCost: a.purchaseCost === null ? '' : String(a.purchaseCost),
+    purchaseCurrency: a.purchaseCurrency,
     supplier: a.supplier ?? '',
     warrantyMonths: a.warrantyMonths === null ? '' : String(a.warrantyMonths),
     notes: a.notes ?? '',
@@ -91,6 +96,7 @@ export function toAssetPayload(
     locationId: f.location?.id ?? null,
     purchaseDate: orNull(f.purchaseDate),
     purchaseCost: toNumber(f.purchaseCost),
+    purchaseCurrency: f.purchaseCurrency,
     supplier: orNull(f.supplier),
     warrantyMonths: warranty === null ? null : Math.trunc(warranty),
     notes: orNull(f.notes),

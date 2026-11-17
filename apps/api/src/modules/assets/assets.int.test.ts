@@ -40,7 +40,7 @@ let seq = 0;
 /** Crea un activo mínimo con valores únicos. */
 async function newAsset(extra: Record<string, unknown> = {}, client = operator) {
   seq += 1;
-  return post<{ assetTag: string }>(client, 'assets', {
+  return post<{ assetTag: string; id: string; updatedAt: string }>(client, 'assets', {
     name: `Sensor ${seq}`,
     modelId: ids.model,
     statusId: ids.available,
@@ -151,6 +151,28 @@ describe('alta de activos (RF-20)', () => {
       assignedUser: null,
       deleted: false,
     });
+  });
+
+  it('el costo lleva moneda: CLP por defecto y editable', async () => {
+    const withCost = await newAsset({ purchaseCost: 1200 });
+    expect(withCost).toMatchObject({ purchaseCost: 1200, purchaseCurrency: 'CLP' });
+    const usd = await newAsset({ purchaseCost: 99.5, purchaseCurrency: 'USD' });
+    expect(usd).toMatchObject({ purchaseCost: 99.5, purchaseCurrency: 'USD' });
+    const patched = await operator.patch(
+      `${base}/assets/${usd.id}`,
+      { purchaseCurrency: 'EUR' },
+      { 'if-match': `"${usd.updatedAt}"` },
+    );
+    expect(patched.statusCode, patched.body).toBe(200);
+    expect(patched.json().purchaseCurrency).toBe('EUR');
+    const bad = await operator.post(`${base}/assets`, {
+      name: 'Moneda rara',
+      modelId: ids.model,
+      statusId: ids.available,
+      purchaseCost: 1,
+      purchaseCurrency: 'XXX',
+    });
+    expect(bad.statusCode).toBe(400);
   });
 
   it('solo Administrador y Operador escriben; Técnico y Lector no (403)', async () => {

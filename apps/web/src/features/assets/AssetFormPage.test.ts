@@ -28,6 +28,7 @@ const existing = {
   deleted: false,
   purchaseDate: '2026-01-31',
   purchaseCost: 1500,
+  purchaseCurrency: 'CLP',
   supplier: null,
   warrantyMonths: 12,
   warrantyEndsOn: '2027-01-31',

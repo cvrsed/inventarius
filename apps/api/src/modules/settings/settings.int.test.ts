@@ -18,6 +18,6 @@ describe('GET /settings', () => {
     await client.login('lector@ejemplo.cl');
     const res = await client.get('/api/v1/settings');
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ timezone: 'America/Santiago' });
+    expect(res.json()).toEqual({ timezone: 'America/Santiago', defaultCurrency: 'CLP' });
   });
 });
