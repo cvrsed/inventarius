@@ -8,6 +8,8 @@ name: inventarius-e2e
 
 x-app-env: &app-env
   NODE_ENV: production
+  # Secreto de firma de los tokens CSRF (obligatorio en producción); valor ficticio solo para estas pruebas.
+  CSRF_SECRET: e2e-csrf-secret-solo-para-pruebas-no-usar-en-produccion
   LOG_LEVEL: warn
   # Sin HTTPS dentro de la red de Compose: la cookie no puede ser Secure/__Host- aquí.
   SESSION_COOKIE_SECURE: 'false'

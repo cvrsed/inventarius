@@ -1,4 +1,5 @@
 import { currencySchema, type Currency } from '@inventarius/shared';
+import { randomBytes } from 'node:crypto';
 import { isIP } from 'node:net';
 import type { DbTimeouts } from './db/timeouts.js';
 import { z } from 'zod';
@@ -60,6 +61,14 @@ const envSchema = z.object({
   DB_IDLE_IN_TRANSACTION_TIMEOUT_MS: z.coerce.number().int().min(0).default(30_000),
   /** Tiempo máximo del apagado ordenado de la API y del worker; pasado ese tope el proceso termina igual. */
   SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
+  /**
+   * Secreto con el que se firman los tokens CSRF (HMAC). Obligatorio en producción (debe ser el mismo en todas las
+   * instancias); fuera de ella, si falta, se genera uno aleatorio por proceso. Mínimo 32 caracteres.
+   */
+  CSRF_SECRET: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.string().min(32, 'mínimo 32 caracteres').optional(),
+  ),
   DATABASE_URL: z.string().min(1),
   MIGRATION_DATABASE_URL: z.string().min(1).optional(),
   SESSION_IDLE_TIMEOUT_SECONDS: z.coerce
@@ -103,6 +112,8 @@ export interface AppConfig {
   /** Proxies de confianza para `X-Forwarded-For`; vacío = no confiar en ninguno. */
   trustedProxies: string[];
   databaseUrl: string;
+  /** Secreto de firma de los tokens CSRF. */
+  csrfSecret: string;
   /** Topes de la conexión a la BD de la API, el worker y el CLI (ms; 0 = sin tope). */
   db: DbTimeouts;
   shutdownTimeoutMs: number;
@@ -140,6 +151,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     throw new Error(`Configuración inválida: ${detail}`);
   }
   const e = parsed.data;
+  if (e.NODE_ENV === 'production' && !e.CSRF_SECRET) {
+    throw new Error(
+      'Configuración inválida: CSRF_SECRET: obligatorio en producción (mínimo 32 caracteres)',
+    );
+  }
   return {
     nodeEnv: e.NODE_ENV,
     isProduction: e.NODE_ENV === 'production',
@@ -149,6 +165,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     timezone: e.APP_TIMEZONE,
     trustedProxies: e.TRUSTED_PROXIES,
     databaseUrl: e.DATABASE_URL,
+    csrfSecret: e.CSRF_SECRET ?? randomBytes(32).toString('hex'),
     db: {
       connectionTimeoutMs: e.DB_CONNECTION_TIMEOUT_MS,
       statementTimeoutMs: e.DB_STATEMENT_TIMEOUT_MS,

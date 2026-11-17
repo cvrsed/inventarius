@@ -56,6 +56,20 @@ describe('loadConfig', () => {
     );
   });
 
+  it('CSRF_SECRET: obligatorio en producción, mínimo 32 caracteres, aleatorio si falta en otros entornos [P34]', () => {
+    const secret = 's'.repeat(32);
+    expect(loadConfig({ ...valid, CSRF_SECRET: secret }).csrfSecret).toBe(secret);
+    expect(() => loadConfig({ ...valid, NODE_ENV: 'production' })).toThrowError(/CSRF_SECRET/);
+    expect(loadConfig({ ...valid, NODE_ENV: 'production', CSRF_SECRET: secret }).csrfSecret).toBe(
+      secret,
+    );
+    expect(() => loadConfig({ ...valid, CSRF_SECRET: 'corto' })).toThrowError(/CSRF_SECRET/);
+    expect(loadConfig({ ...valid, CSRF_SECRET: '' }).csrfSecret).toHaveLength(64); // vacío = sin definir
+    const a = loadConfig(valid).csrfSecret;
+    expect(a).toHaveLength(64);
+    expect(loadConfig(valid).csrfSecret).not.toBe(a);
+  });
+
   it('falla de forma legible si falta DATABASE_URL', () => {
     expect(() => loadConfig({})).toThrowError(/DATABASE_URL/);
   });
@@ -91,7 +105,9 @@ describe('loadConfig', () => {
   });
 
   it('marca isProduction según NODE_ENV', () => {
-    expect(loadConfig({ ...valid, NODE_ENV: 'production' }).isProduction).toBe(true);
+    expect(
+      loadConfig({ ...valid, NODE_ENV: 'production', CSRF_SECRET: 'c'.repeat(32) }).isProduction,
+    ).toBe(true);
   });
 
   it('trata METRICS_TOKEN vacío como ausente', () => {
@@ -109,10 +125,17 @@ describe('loadConfig', () => {
   });
 
   it('la cookie es Secure por defecto en producción y se puede forzar', () => {
-    expect(loadConfig({ ...valid, NODE_ENV: 'production' }).session.cookieSecure).toBe(true);
     expect(
-      loadConfig({ ...valid, NODE_ENV: 'production', SESSION_COOKIE_SECURE: 'false' }).session
+      loadConfig({ ...valid, NODE_ENV: 'production', CSRF_SECRET: 'c'.repeat(32) }).session
         .cookieSecure,
+    ).toBe(true);
+    expect(
+      loadConfig({
+        ...valid,
+        NODE_ENV: 'production',
+        CSRF_SECRET: 'c'.repeat(32),
+        SESSION_COOKIE_SECURE: 'false',
+      }).session.cookieSecure,
     ).toBe(false);
   });
 

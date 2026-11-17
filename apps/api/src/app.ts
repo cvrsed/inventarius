@@ -1,5 +1,4 @@
 import fastifyCookie from '@fastify/cookie';
-import fastifyCsrf from '@fastify/csrf-protection';
 import fastifyHelmet from '@fastify/helmet';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fastifySwagger from '@fastify/swagger';
@@ -19,6 +18,7 @@ import { buildServices } from './core/container.js';
 import type { Executor } from './core/db/executor.js';
 import { TooManyRequestsError } from './core/errors.js';
 import { cookieNames } from './modules/auth/cookies.js';
+import { csrfTokenValid } from './modules/auth/csrf.js';
 import type { PasswordHasher } from './modules/auth/password.js';
 import { auditRoutes } from './modules/audit/routes.js';
 import { authRoutes } from './modules/auth/routes.js';
@@ -30,6 +30,7 @@ import { settingsRoutes } from './modules/settings/routes.js';
 import { usersRoutes } from './modules/users/routes.js';
 import {
   DomainError,
+  ForbiddenError,
   NotFoundError,
   badRequestProblem,
   internalProblem,
@@ -139,20 +140,6 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     allowList: (req) => req.url.startsWith('/api/health') || req.url.startsWith('/api/metrics'),
   });
   const names = cookieNames(config.session.cookieSecure);
-  await app.register(fastifyCsrf, {
-    sessionPlugin: '@fastify/cookie',
-    cookieKey: names.csrf,
-    cookieOpts: {
-      httpOnly: true,
-      secure: config.session.cookieSecure,
-      sameSite: 'strict',
-      path: '/',
-    },
-    getToken: (req) => {
-      const header = req.headers['x-csrf-token'];
-      return typeof header === 'string' ? header : undefined;
-    },
-  });
   app.decorateRequest('auth', null);
   app.decorate('routeAccess', []);
   await app.register(fastifyUnderPressure, {
@@ -194,9 +181,21 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
               req.auth = await services.auth.resolve(req.cookies[names.session]);
             });
             v1.addHook('onRequest', accessHook);
-            v1.addHook('preHandler', (req, reply, done) => {
-              if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return done();
-              app.csrfProtection(req, reply, done);
+            // CSRF firmado y ligado a la sesión (o, antes del login, a la cookie anónima): todo método no seguro.
+            // Va en `onRequest`, tras resolver la sesión y el acceso y antes de validar el cuerpo.
+            v1.addHook('onRequest', async (req) => {
+              if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return;
+              const header = req.headers['x-csrf-token'];
+              const binding = req.auth?.sessionId ?? req.cookies[names.csrf];
+              if (
+                !csrfTokenValid(
+                  config.csrfSecret,
+                  binding,
+                  typeof header === 'string' ? header : undefined,
+                )
+              ) {
+                throw new ForbiddenError('Token CSRF inválido o ausente');
+              }
             });
             await v1.register(authRoutes, { auth: services.auth, config });
             await v1.register(usersRoutes, { users: services.users });
