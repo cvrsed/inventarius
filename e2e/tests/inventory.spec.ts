@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import {
   ADMIN,
+  apiPatchAsset,
   createAssetViaApi,
   createCatalogFixture,
   eachTheme,
@@ -330,6 +331,25 @@ test.describe('activos: CRUD completo (RF-20 a RF-25)', () => {
     const history = page.getByRole('region', { name: 'Historial' });
     await expect(history.getByText('Asignado a Admin E2E')).toBeVisible();
     await expect(history.getByText('Devuelto')).toBeVisible();
+  });
+
+  test('el historial muestra 10 movimientos y «Ver más» trae el resto, sin scroll interno', async ({
+    page,
+  }) => {
+    const fixture = await createCatalogFixture(page.request);
+    const asset = await createAssetViaApi(page.request, fixture);
+    for (let i = 1; i <= 11; i += 1) {
+      await apiPatchAsset(page.request, asset.id, { notes: `Cambio ${i}` });
+    }
+    await page.goto(`/activos/${asset.id}`);
+    const history = page.getByRole('region', { name: 'Historial' });
+    await expect(history.locator('ol > li')).toHaveCount(10);
+    const overflow = await history.evaluate((el) => getComputedStyle(el).overflowY);
+    expect(overflow).toBe('visible');
+    await history.getByRole('button', { name: 'Ver más' }).click();
+    await expect(history.locator('ol > li')).toHaveCount(12); // 11 cambios + el alta
+    await expect(history.getByRole('button', { name: 'Ver más' })).toHaveCount(0);
+    await expectNoA11yViolations(page);
   });
 
   test('dar de baja con motivo, verlo en la papelera y restaurarlo', async ({ page }) => {

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import UBadge from '@nuxt/ui/components/Badge.vue';
 import UIcon from '@nuxt/ui/components/Icon.vue';
-import UPagination from '@nuxt/ui/components/Pagination.vue';
-import { computed, ref, toRef } from 'vue';
+import UButton from '@nuxt/ui/components/Button.vue';
+import { computed, toRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { formatDateTime } from '@/shared/format/format';
 import { useAssetHistory } from './api';
@@ -10,8 +10,8 @@ import { describeEntry } from './history';
 
 const props = defineProps<{ assetId: string }>();
 const { t, te } = useI18n();
-const page = ref(1);
-const { data, isPending, isError } = useAssetHistory(toRef(props, 'assetId'), page);
+const { data, isPending, isError, hasNextPage, isFetchingNextPage, fetchNextPage } =
+  useAssetHistory(toRef(props, 'assetId'));
 
 const ICONS = {
   create: 'i-lucide-plus',
@@ -23,7 +23,10 @@ const ICONS = {
 } as const;
 
 const items = computed(() =>
-  (data.value?.data ?? []).map((entry) => ({ entry, view: describeEntry(entry) })),
+  (data.value?.pages.flatMap((p) => p.data) ?? []).map((entry) => ({
+    entry,
+    view: describeEntry(entry),
+  })),
 );
 const fieldLabel = (f: string) =>
   te(`assets.history.fields.${f}`) ? t(`assets.history.fields.${f}`) : f;
@@ -64,13 +67,14 @@ const show = (v: unknown) => (v === null || v === '' ? t('assets.history.empty_v
         </div>
       </li>
     </ol>
-    <UPagination
-      v-if="(data?.meta.total ?? 0) > 10"
-      v-model:page="page"
-      :items-per-page="10"
-      :total="data?.meta.total ?? 0"
-      :sibling-count="1"
-      class="max-w-full overflow-x-auto"
+    <UButton
+      v-if="hasNextPage"
+      :label="t('assets.history.more')"
+      :loading="isFetchingNextPage"
+      color="neutral"
+      variant="subtle"
+      class="self-start"
+      @click="fetchNextPage()"
     />
   </section>
 </template>

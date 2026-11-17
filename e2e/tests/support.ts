@@ -24,6 +24,23 @@ export async function expectNoA11yViolations(page: Page): Promise<void> {
 export const uniqueEmail = (prefix: string): string =>
   `${prefix}-${randomUUID().slice(0, 8)}@e2e.test`;
 
+/** PATCH con `If-Match` tomado del activo actual; devuelve el activo actualizado. */
+export async function apiPatchAsset(
+  request: APIRequestContext,
+  id: string,
+  data: Record<string, unknown>,
+): Promise<{ updatedAt: string }> {
+  const current = (await (await request.get(`/api/v1/assets/${id}`)).json()) as {
+    updatedAt: string;
+  };
+  const res = await request.patch(`/api/v1/assets/${id}`, {
+    data,
+    headers: { 'x-csrf-token': await csrf(request), 'if-match': `"${current.updatedAt}"` },
+  });
+  expect(res.status(), await res.text()).toBe(200);
+  return (await res.json()) as { updatedAt: string };
+}
+
 /** Token CSRF y cookie de secreto en el contexto de la petición. */
 async function csrf(request: APIRequestContext): Promise<string> {
   const res = await request.get('/api/v1/auth/csrf');

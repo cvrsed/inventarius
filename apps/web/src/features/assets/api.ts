@@ -1,4 +1,10 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/vue-query';
 import {
   assetListItemSchema,
   assetSchema,
@@ -71,18 +77,21 @@ export function useAsset(id: Ref<string>) {
   });
 }
 
-export function useAssetHistory(id: Ref<string>, page: Ref<number>) {
-  return useQuery({
-    queryKey: computed(() => ['asset', id.value, 'history', page.value] as const),
-    queryFn: ({ signal }) =>
+const HISTORY_PAGE_SIZE = 10;
+
+/** Historial del activo de a 10 movimientos; «Ver más» pide la página siguiente a la API. */
+export function useAssetHistory(id: Ref<string>) {
+  return useInfiniteQuery({
+    queryKey: computed(() => ['asset', id.value, 'history'] as const),
+    initialPageParam: 1,
+    queryFn: ({ pageParam, signal }) =>
       api(
-        `/api/v1/assets/${id.value}/history?page=${page.value}&pageSize=10`,
+        `/api/v1/assets/${id.value}/history?page=${pageParam}&pageSize=${HISTORY_PAGE_SIZE}`,
         pageOf(auditEntrySchema),
-        {
-          signal,
-        },
+        { signal },
       ),
-    placeholderData: keepPreviousData,
+    getNextPageParam: (last) =>
+      last.meta.page * last.meta.pageSize < last.meta.total ? last.meta.page + 1 : undefined,
   });
 }
 

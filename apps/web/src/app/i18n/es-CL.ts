@@ -361,6 +361,7 @@ export const messages = {
     history: {
       title: 'Historial',
       empty: 'Sin movimientos todavía',
+      more: 'Ver más',
       by: 'por {name}',
       actions: {
         create: 'Activo creado',

@@ -8,7 +8,7 @@ afterEach(() => vi.unstubAllGlobals());
 const ID = '018f0000-0000-7000-8000-000000000001';
 const entry = (n: number, action: string, diff: Record<string, unknown> | null) => ({
   id: String(n),
-  at: `2026-11-16T12:0${n}:00.000Z`,
+  at: `2026-11-16T12:${String(n).padStart(2, '0')}:00.000Z`,
   actorId: null,
   actorName: 'Olga',
   actorLabel: null,
@@ -49,6 +49,36 @@ describe('AssetHistory (RF-24)', () => {
     expect(text).toContain('sale a terreno');
     expect(text).toContain('(vacío)'); // serie: de nada a S1
     expect(w.findAll('ol > li')).toHaveLength(3);
+  });
+
+  it('muestra 10 movimientos y «Ver más» pide la página siguiente a la API', async () => {
+    const all = Array.from({ length: 13 }, (_, i) =>
+      entry(i + 1, 'asset.update', { after: { name: `N${i}` } }),
+    );
+    const fetchMock = mockApi({
+      [`GET /api/v1/assets/${ID}/history`]: (_init, url) => {
+        const page = Number(new URL(url, 'http://x').searchParams.get('page'));
+        return {
+          data: all.slice((page - 1) * 10, page * 10),
+          meta: { page, pageSize: 10, total: 13 },
+        };
+      },
+    });
+    const w = mount(AssetHistory, { props: { assetId: ID }, global: pagePlugins() });
+    await flushPromises();
+    expect(w.findAll('ol > li')).toHaveLength(10);
+    const more = w.findAll('button').find((b) => b.text() === 'Ver más')!;
+    await more.trigger('click');
+    await flushPromises();
+    expect(w.findAll('ol > li')).toHaveLength(13);
+    expect(w.findAll('button').some((b) => b.text() === 'Ver más')).toBe(false);
+    expect(
+      fetchMock.mock.calls.map((c) => String(c[0])).filter((u) => u.includes('history')),
+    ).toEqual([
+      expect.stringContaining('page=1&pageSize=10'),
+      expect.stringContaining('page=2&pageSize=10'),
+    ]);
+    expect(w.find('[class*="overflow-y"]').exists()).toBe(false); // sin scroll interno
   });
 
   it('estado vacío', async () => {
