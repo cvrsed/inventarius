@@ -35,10 +35,19 @@ export const catalogListQuerySchema = pageQuerySchema.extend({
     .transform((v) => v === 'true')
     .optional(),
   sort: z.string().max(40).optional(),
+  /** Con `true` cada registro trae `inUse` (si otros registros dependen de él); cuesta una consulta por fila. */
+  withUsage: z
+    .enum(['true', 'false'])
+    .transform((v) => v === 'true')
+    .optional(),
 });
 export type CatalogListQuery = z.infer<typeof catalogListQuerySchema>;
 
-const versioned = { updatedAt: z.iso.datetime() };
+const versioned = {
+  updatedAt: z.iso.datetime(),
+  /** Solo en listados con `withUsage=true`: si está en uso no se puede borrar (RF-14). */
+  inUse: z.boolean().optional(),
+};
 
 // --- Categorías (RF-10) ---
 export const categorySchema = z.object({

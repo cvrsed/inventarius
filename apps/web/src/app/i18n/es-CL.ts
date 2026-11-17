@@ -202,6 +202,8 @@ export const messages = {
       undeployable: 'No desplegable',
       archived: 'Archivado',
     },
+    inUseReason:
+      'No se puede eliminar porque está en uso. Desactívalo para que ya no se pueda elegir.',
     system: 'Del sistema',
     systemHint: 'Lo usa el sistema al asignar activos; no se puede modificar ni borrar.',
     loraHint: 'Valores por defecto al registrar dispositivos de este modelo (fase LoRaWAN).',

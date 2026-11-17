@@ -67,7 +67,8 @@ describe('CatalogPage (RF-10 a RF-14)', () => {
     expect(wrapper.text()).toContain('Desplegable');
     expect(wrapper.text()).toContain('Del sistema');
     expect(wrapper.find('button[aria-label="Eliminar Disponible"]').exists()).toBe(true);
-    expect(wrapper.find('button[aria-label="Eliminar Asignado"]').exists()).toBe(false);
+    const blocked = wrapper.get('button[aria-label="Eliminar Asignado"]');
+    expect(blocked.attributes('disabled')).toBeDefined();
     expect(wrapper.find('button[aria-label="Desactivar Asignado"]').exists()).toBe(false);
   });
 
@@ -148,6 +149,26 @@ describe('CatalogPage (RF-10 a RF-14)', () => {
     const call = fetchMock.mock.calls.find((c) => c[1]?.method === 'PATCH')!;
     expect(JSON.parse(String(call[1]!.body))).toEqual({ active: false });
     expect((call[1]!.headers as Record<string, string>)['if-match']).toBe(`"${item.updatedAt}"`);
+  });
+
+  it('eliminar queda deshabilitado con el motivo cuando el registro está en uso', async () => {
+    const { wrapper, fetchMock } = await mountSection(
+      'statuses',
+      [
+        status({ name: 'En uso', inUse: true }),
+        status({ id: '018f0000-0000-7000-8000-000000000009', name: 'Libre', inUse: false }),
+      ],
+      ['asset:read', 'catalog:write'],
+    );
+    expect(
+      String(fetchMock.mock.calls.find((c) => String(c[0]).includes('status-labels'))![0]),
+    ).toContain('withUsage=true');
+    const inUse = wrapper.get('button[aria-label="Eliminar En uso"]');
+    expect(inUse.attributes('disabled')).toBeDefined();
+    expect(wrapper.text()).toContain('No se puede eliminar porque está en uso');
+    expect(
+      wrapper.get('button[aria-label="Eliminar Libre"]').attributes('disabled'),
+    ).toBeUndefined();
   });
 
   it('eliminar pide confirmación y luego llama a DELETE', async () => {

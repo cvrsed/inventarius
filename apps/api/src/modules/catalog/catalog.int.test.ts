@@ -209,6 +209,18 @@ describe('modelos (RF-11)', () => {
     expect(delM.json().detail).toMatch(/desact/i);
     expect((await operator.delete(`${base}/categories/${plainCategoryId}`)).statusCode).toBe(409);
   });
+
+  it('con withUsage=true el listado dice qué registros están en uso; sin él no calcula nada', async () => {
+    const free = await create(operator, 'manufacturers', { name: 'Fabricante sin modelos' });
+    const withUsage = await reader.get(`${base}/manufacturers?withUsage=true&pageSize=100`);
+    const byId = new Map(
+      (withUsage.json().data as { id: string; inUse?: boolean }[]).map((m) => [m.id, m.inUse]),
+    );
+    expect(byId.get(manufacturerId)).toBe(true);
+    expect(byId.get(free.id)).toBe(false);
+    const plain = await reader.get(`${base}/manufacturers?pageSize=100`);
+    expect(plain.json().data[0]).not.toHaveProperty('inUse');
+  });
 });
 
 describe('ubicaciones jerárquicas (RF-12)', () => {

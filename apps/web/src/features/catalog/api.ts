@@ -59,7 +59,7 @@ export function useCatalogList(section: Ref<Section>, query: Ref<CatalogQuery>) 
       const { page, pageSize, q, active } = query.value;
       const path = PATHS[section.value];
       return api(
-        `/api/v1/${path}?${qs({ page, pageSize, q, active })}`,
+        `/api/v1/${path}?${qs({ page, pageSize, q, active, withUsage: 'true' })}`,
         pageOf(SCHEMAS[section.value]),
         { signal },
       );

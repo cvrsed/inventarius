@@ -51,7 +51,7 @@ export class CatalogEntity<
   Dto,
   Create,
   Patch,
-  Query extends { page: number; pageSize: number },
+  Query extends { page: number; pageSize: number; withUsage?: boolean | undefined },
 > {
   constructor(
     private readonly def: EntityDef<Row, Dto, Create, Patch, Query>,
@@ -61,8 +61,14 @@ export class CatalogEntity<
 
   async list(query: Query) {
     const { rows, total } = await this.def.list(this.db, query);
+    const usage = query.withUsage
+      ? await Promise.all(rows.map((r) => this.def.inUse(this.db, r.id)))
+      : null;
     return {
-      data: rows.map((r) => this.def.toDto(r)),
+      data: rows.map((r, i) => ({
+        ...this.def.toDto(r),
+        ...(usage ? { inUse: usage[i]! } : {}),
+      })),
       meta: { page: query.page, pageSize: query.pageSize, total },
     };
   }

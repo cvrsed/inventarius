@@ -6,6 +6,7 @@ import UButton from '@nuxt/ui/components/Button.vue';
 import UTable from '@nuxt/ui/components/Table.vue';
 import { useToast } from '@nuxt/ui/composables/useToast';
 import { computed, ref } from 'vue';
+import IconAction from '@/shared/ui/IconAction.vue';
 import { useI18n } from 'vue-i18n';
 import { errorMessage } from '@/features/auth/errors';
 import { useConfirm } from '@/shared/ui/useConfirm';
@@ -95,19 +96,18 @@ function askDelete(role: RoleDto): void {
       <template #permissions-cell="{ row }">{{ row.original.permissions.length }}</template>
       <template #actions-cell="{ row }">
         <span class="flex gap-1">
-          <UButton
+          <IconAction
             icon="i-lucide-pencil"
-            :aria-label="`${t('common.edit')} ${row.original.name}`"
-            color="neutral"
-            variant="ghost"
+            :label="t('common.edit')"
+            :target="row.original.name"
             @click="open(row.original)"
           />
-          <UButton
+          <IconAction
             v-if="!row.original.isSystem"
             icon="i-lucide-trash-2"
-            :aria-label="`${t('common.delete')} ${row.original.name}`"
+            :label="t('common.delete')"
+            :target="row.original.name"
             color="error"
-            variant="ghost"
             @click="askDelete(row.original)"
           />
         </span>

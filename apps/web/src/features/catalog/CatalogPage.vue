@@ -12,6 +12,7 @@ import { errorMessage } from '@/features/auth/errors';
 import { useAuthStore } from '@/features/auth/useAuthStore';
 import { useListQuery } from '@/shared/list/useListQuery';
 import AppSelect from '@/shared/ui/AppSelect.vue';
+import IconAction from '@/shared/ui/IconAction.vue';
 import PagedFooter from '@/shared/ui/PagedFooter.vue';
 import { useConfirm } from '@/shared/ui/useConfirm';
 import { useCatalogList, useCatalogMutations, type CatalogItem } from './api';
@@ -61,6 +62,11 @@ const openForm = (item: CatalogItem | null) => {
 };
 
 const isSystem = (i: CatalogItem) => 'isSystem' in i && i.isSystem;
+/** Motivo por el que no se puede eliminar (RF-14), o `undefined` si se puede intentar. */
+const deleteBlockedReason = (i: CatalogItem): string | undefined => {
+  if (isSystem(i)) return t('catalog.systemHint');
+  return i.inUse ? t('catalog.inUseReason') : undefined;
+};
 
 async function run(action: () => Promise<unknown>, okKey: string): Promise<void> {
   try {
@@ -190,27 +196,24 @@ const toggleActive = (item: CatalogItem) =>
       </template>
       <template #actions-cell="{ row }">
         <span v-if="canWrite" class="flex gap-1">
-          <UButton
+          <IconAction
             icon="i-lucide-pencil"
-            :aria-label="`${t('common.edit')} ${displayCells(section, row.original).title}`"
-            color="neutral"
-            variant="ghost"
+            :label="t('common.edit')"
+            :target="displayCells(section, row.original).title"
             @click="openForm(row.original)"
           />
-          <UButton
+          <IconAction
             v-if="!isSystem(row.original)"
             :icon="row.original.active ? 'i-lucide-eye-off' : 'i-lucide-eye'"
-            :aria-label="`${row.original.active ? t('catalog.deactivate') : t('catalog.activate')} ${displayCells(section, row.original).title}`"
-            color="neutral"
-            variant="ghost"
+            :label="row.original.active ? t('catalog.deactivate') : t('catalog.activate')"
+            :target="displayCells(section, row.original).title"
             @click="toggleActive(row.original)"
           />
-          <UButton
-            v-if="!isSystem(row.original)"
+          <IconAction
             icon="i-lucide-trash-2"
-            :aria-label="`${t('common.delete')} ${displayCells(section, row.original).title}`"
-            color="neutral"
-            variant="ghost"
+            :label="t('common.delete')"
+            :target="displayCells(section, row.original).title"
+            :disabled-reason="deleteBlockedReason(row.original)"
             @click="askDelete(row.original)"
           />
         </span>

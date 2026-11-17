@@ -6,6 +6,7 @@ import UFormField from '@nuxt/ui/components/FormField.vue';
 import UInput from '@nuxt/ui/components/Input.vue';
 import UTable from '@nuxt/ui/components/Table.vue';
 import { computed, ref } from 'vue';
+import IconAction from '@/shared/ui/IconAction.vue';
 import { useI18n } from 'vue-i18n';
 import AppSelect from '@/shared/ui/AppSelect.vue';
 import PagedFooter from '@/shared/ui/PagedFooter.vue';
@@ -158,11 +159,10 @@ const pretty = (value: unknown) => JSON.stringify(value, null, 2);
     >
       <template #empty>{{ t('audit.empty') }}</template>
       <template #expand-cell="{ row }">
-        <UButton
-          color="neutral"
-          variant="ghost"
+        <IconAction
           :icon="row.getIsExpanded() ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'"
-          :aria-label="`${t('audit.detail')}: ${actionLabel(row.original.action)}`"
+          :label="t('audit.detail')"
+          :target="actionLabel(row.original.action)"
           :aria-expanded="row.getIsExpanded()"
           @click="row.toggleExpanded()"
         />

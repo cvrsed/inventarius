@@ -7,6 +7,7 @@ import UInput from '@nuxt/ui/components/Input.vue';
 import UTable from '@nuxt/ui/components/Table.vue';
 import { useToast } from '@nuxt/ui/composables/useToast';
 import { computed, ref, watchEffect } from 'vue';
+import IconAction from '@/shared/ui/IconAction.vue';
 import { useI18n } from 'vue-i18n';
 import { errorMessage } from '@/features/auth/errors';
 import PagedFooter from '@/shared/ui/PagedFooter.vue';
@@ -137,18 +138,16 @@ function askReset(user: UserDto): void {
       </template>
       <template #actions-cell="{ row }">
         <span class="flex gap-1">
-          <UButton
+          <IconAction
             icon="i-lucide-pencil"
-            :aria-label="`${t('common.edit')} ${row.original.name}`"
-            color="neutral"
-            variant="ghost"
+            :label="t('common.edit')"
+            :target="row.original.name"
             @click="openEdit(row.original)"
           />
-          <UButton
+          <IconAction
             icon="i-lucide-key-round"
-            :aria-label="`${t('users.reset')} ${row.original.name}`"
-            color="neutral"
-            variant="ghost"
+            :label="t('users.reset')"
+            :target="row.original.name"
             @click="askReset(row.original)"
           />
         </span>
