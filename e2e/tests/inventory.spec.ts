@@ -537,6 +537,10 @@ test.describe('listado de activos (RF-22, RF-26, RF-40)', () => {
       await expect(page.getByRole('table')).toBeVisible();
     }
 
+    // Modelo está tras «Más filtros»; a la vista solo hay Estado, Categoría y Ubicación base [P22].
+    await expect(page.getByRole('button', { name: /^Categoría/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Modelo/ })).toBeHidden();
+    await page.getByRole('button', { name: 'Más filtros' }).click();
     await page.getByRole('button', { name: /^Modelo/ }).click();
     await expect(page.getByRole('listbox')).toBeVisible();
     await expectNoA11yViolations(page); // filtro con búsqueda ABIERTO

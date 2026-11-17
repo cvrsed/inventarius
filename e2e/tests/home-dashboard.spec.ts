@@ -46,6 +46,11 @@ test.describe('Inicio con resumen (RF-28)', () => {
     await expect(page).toHaveURL(/statusKind=deployable/);
     await expect(page).toHaveURL(/assigned=no/);
     await expect(page.getByRole('heading', { level: 1, name: 'Activos' })).toBeVisible();
+    // Llegar desde el Inicio abre «Más filtros» porque el grupo de estados está ahí [P22].
+    await expect(page.getByRole('button', { name: 'Más filtros' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
     await expect(page.locator('#filter-status-kind')).toContainText('Estados asignables');
   });
 

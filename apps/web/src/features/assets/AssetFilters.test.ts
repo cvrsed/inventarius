@@ -33,22 +33,56 @@ function mountFilters(state: Partial<typeof ASSET_LIST_DEFAULTS> = {}) {
 }
 
 describe('AssetFilters (RF-22)', () => {
-  it('ofrece los seis filtros con su rótulo', () => {
-    const text = mountFilters().text();
-    for (const label of [
-      'Estado',
-      'Categoría',
-      'Modelo',
-      'Ubicación',
-      'Asignado a',
-      'Dados de baja',
-    ]) {
-      expect(text).toContain(label);
+  const more = (w: VueWrapper) => w.get('#asset-more-filters');
+  const toggle = (w: VueWrapper) => w.findAll('button').find((b) => b.text() === 'Más filtros')!;
+
+  it('a la vista van Estado, Categoría y Ubicación base; el resto queda tras «Más filtros»', () => {
+    const w = mountFilters();
+    const visible = w.get('div.grid').text();
+    for (const label of ['Estado', 'Categoría', 'Ubicación base']) expect(visible).toContain(label);
+    expect(more(w).isVisible()).toBe(false);
+    expect(toggle(w).attributes('aria-expanded')).toBe('false');
+    for (const label of ['Modelo', 'Ubicación', 'Asignado a', 'Dados de baja']) {
+      expect(more(w).text()).toContain(label);
     }
   });
 
-  it('sin filtros activos no ofrece limpiar', () => {
-    expect(mountFilters().text()).not.toContain('Limpiar filtros');
+  it('«Más filtros» abre y cierra el resto', async () => {
+    const w = mountFilters();
+    await toggle(w).trigger('click');
+    expect(more(w).isVisible()).toBe(true);
+    expect(toggle(w).attributes('aria-expanded')).toBe('true');
+    await toggle(w).trigger('click');
+    expect(more(w).isVisible()).toBe(false);
+  });
+
+  it.each([
+    ['modelId', { modelId: STATUS }],
+    ['statusKind', { statusKind: 'deployable' }],
+    ['assigned', { assigned: 'no' }],
+    ['overdue', { overdue: 'true' }],
+    ['deleted', { deleted: 'include' }],
+  ])('se abre solo si hay un filtro de «Más filtros» activo (%s)', (_name, patch) => {
+    const w = mountFilters(patch);
+    expect(more(w).isVisible()).toBe(true);
+  });
+
+  it('un filtro visible activo no abre «Más filtros»', () => {
+    const w = mountFilters({ statusId: STATUS });
+    expect(more(w).isVisible()).toBe(false);
+  });
+
+  it('el filtro por grupo de estados se lee en español, sin jerga', () => {
+    const w = mountFilters({ statusKind: 'deployable' });
+    expect(w.get('#filter-status-kind').text()).toBe('Estados asignables');
+    expect(w.text()).not.toMatch(/desplegable/i);
+  });
+
+  it('sin filtros activos «Limpiar filtros» está deshabilitado', () => {
+    const clear = mountFilters()
+      .findAll('button')
+      .find((b) => b.text().includes('Limpiar filtros'))!;
+    expect(clear.attributes('disabled')).toBeDefined();
   });
 
   it('con un filtro de la URL muestra su nombre y permite limpiar', async () => {

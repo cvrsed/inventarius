@@ -250,6 +250,7 @@ export const messages = {
     export: 'Exportar CSV',
     search: 'Buscar por etiqueta, nombre o serie',
     filters: 'Filtros',
+    moreFilters: 'Más filtros',
     filterStatus: 'Estado',
     filterCategory: 'Categoría',
     filterModel: 'Modelo',
