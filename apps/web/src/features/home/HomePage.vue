@@ -11,6 +11,7 @@ import { formatDateOnly, formatDateTime } from '@/shared/format/format';
 import { useDashboard } from './api';
 import HomeBars, { type BarItem } from './HomeBars.vue';
 import HomeTile from './HomeTile.vue';
+import { statusBarClass } from '@/features/assets/status';
 import { hasNoAssets, isFieldTech, links } from './summary';
 
 const { t, te } = useI18n();
@@ -23,12 +24,13 @@ const tech = computed(() => isFieldTech(auth.can));
 const isAdmin = computed(() => auth.can('role:manage'));
 const empty = computed(() => hasNoAssets(data.value));
 
-const kindBars = computed<BarItem[]>(() =>
-  (data.value?.byStatusKind ?? []).map((k) => ({
-    key: k.kind,
-    label: t(`catalog.kinds.${k.kind}`),
-    count: k.count,
-    to: links.statusKind(k.kind),
+const statusBars = computed<BarItem[]>(() =>
+  (data.value?.byStatus ?? []).map((s) => ({
+    key: s.id,
+    label: s.name,
+    count: s.count,
+    to: links.status(s.id),
+    barClass: statusBarClass(s.kind),
   })),
 );
 const categoryBars = computed<BarItem[]>(() =>
@@ -148,7 +150,7 @@ const actionLabel = (action: string) =>
               <h2 id="kind-title" class="m-0 text-lg font-semibold text-highlighted">
                 {{ t('home.byStatus') }}
               </h2>
-              <HomeBars :items="kindBars" :empty-text="t('home.noData')" />
+              <HomeBars :items="statusBars" :empty-text="t('home.noData')" />
             </section>
             <section aria-labelledby="category-title" class="flex flex-col gap-2">
               <h2 id="category-title" class="m-0 text-lg font-semibold text-highlighted">

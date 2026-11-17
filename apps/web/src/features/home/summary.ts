@@ -1,4 +1,4 @@
-import type { DashboardSummary, Permission, StatusKind } from '@inventarius/shared';
+import type { DashboardSummary, Permission } from '@inventarius/shared';
 import type { RouteLocationRaw } from 'vue-router';
 
 /** Enlace al listado de activos con un filtro aplicado (los mismos nombres que usa la URL del listado). */
@@ -13,7 +13,7 @@ export const links = {
   available: () => toAssets({ statusKind: 'deployable', assigned: 'no' }),
   assigned: () => toAssets({ assigned: 'yes' }),
   pendingSetup: () => toAssets({ statusKind: 'pending' }),
-  statusKind: (kind: StatusKind) => toAssets({ statusKind: kind }),
+  status: (id: string) => toAssets({ statusId: id }),
   category: (id: string) => toAssets({ categoryId: id }),
   warehouse: (id: string) =>
     toAssets({ baseLocationId: id, statusKind: 'deployable', assigned: 'no' }),

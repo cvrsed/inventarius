@@ -75,7 +75,7 @@ const statusKindItems = computed(() => [
   { value: '', label: t('common.all') },
   ...(['deployable', 'pending', 'undeployable', 'archived'] as const).map((value) => ({
     value,
-    label: t(`catalog.kinds.${value}`),
+    label: t(`assets.statusKindOptions.${value}`),
   })),
 ]);
 const assignedItems = computed(() => [

@@ -7,6 +7,8 @@ export interface BarItem {
   label: string;
   count: number;
   to: RouteLocationRaw;
+  /** Clase de color de la barra; por defecto el color primario. */
+  barClass?: string;
 }
 
 /** Barras horizontales hechas con CSS (sin librería de gráficos); cada fila enlaza al listado filtrado. */
@@ -29,7 +31,8 @@ const width = (count: number) => `${Math.round((count / max.value) * 100)}%`;
         </span>
         <span class="h-2 w-full overflow-hidden rounded-full bg-accented" aria-hidden="true">
           <span
-            class="block h-full rounded-full bg-primary"
+            class="block h-full rounded-full"
+            :class="item.barClass ?? 'bg-primary'"
             data-bar
             :style="{ width: width(item.count) }"
           />

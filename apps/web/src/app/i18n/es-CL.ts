@@ -214,7 +214,8 @@ export const messages = {
         'Ficha técnica reutilizable: fabricante, categoría y, si es LoRaWAN, sus parámetros de red.',
       locations:
         'Lugares donde pueden estar los activos: bodegas, sitios de clientes y oficinas, en jerarquía.',
-      statuses: 'Situación en que se encuentra un activo; solo los desplegables se pueden asignar.',
+      statuses:
+        'Situación en que se encuentra un activo; solo los estados asignables permiten asignar el activo.',
     },
     extensions: { none: 'Ninguna', lorawan: 'LoRaWAN' },
     locationTypes: {
@@ -224,9 +225,9 @@ export const messages = {
       other: 'Otro',
     },
     kinds: {
-      deployable: 'Desplegable',
+      deployable: 'Asignable',
       pending: 'Pendiente',
-      undeployable: 'No desplegable',
+      undeployable: 'No asignable',
       archived: 'Archivado',
     },
     inUseReason:
@@ -256,7 +257,13 @@ export const messages = {
     filterAssignee: 'Asignado a',
     filterDeleted: 'Dados de baja',
     filterBaseLocation: 'Ubicación base',
-    filterStatusKind: 'Tipo de estado',
+    filterStatusKind: 'Grupo de estados',
+    statusKindOptions: {
+      deployable: 'Estados asignables',
+      pending: 'Estados pendientes',
+      undeployable: 'Estados no asignables',
+      archived: 'Estados archivados',
+    },
     filterAssigned: 'Asignación',
     assignedOptions: { yes: 'Asignados', no: 'Sin asignar' },
     filterOverdue: 'Devolución',

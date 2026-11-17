@@ -38,13 +38,18 @@ export class DashboardRepository {
     return row!;
   }
 
-  byStatusKind(exec: Executor) {
+  byStatus(exec: Executor) {
     return exec
-      .select({ kind: statusLabels.kind, count: count() })
+      .select({
+        id: statusLabels.id,
+        name: statusLabels.name,
+        kind: statusLabels.kind,
+        count: count(),
+      })
       .from(assets)
       .innerJoin(statusLabels, eq(statusLabels.id, assets.statusId))
       .where(vigente)
-      .groupBy(statusLabels.kind);
+      .groupBy(statusLabels.id, statusLabels.name, statusLabels.kind);
   }
 
   byCategory(exec: Executor, limit: number) {

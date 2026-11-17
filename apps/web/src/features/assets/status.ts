@@ -8,3 +8,13 @@ export function statusColor(kind: StatusKind): BadgeColor {
     kind
   ] as BadgeColor;
 }
+
+/** Color de la barra del Inicio según el tipo de estado (mismo criterio que el badge). */
+export function statusBarClass(kind: StatusKind): string {
+  return {
+    deployable: 'bg-success',
+    pending: 'bg-warning',
+    undeployable: 'bg-error',
+    archived: 'bg-neutral',
+  }[kind];
+}

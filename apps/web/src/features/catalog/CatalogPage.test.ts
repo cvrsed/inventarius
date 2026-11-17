@@ -64,7 +64,7 @@ describe('CatalogPage (RF-10 a RF-14)', () => {
       ],
       ['asset:read', 'catalog:write'],
     );
-    expect(wrapper.text()).toContain('Desplegable');
+    expect(wrapper.text()).toContain('Asignable');
     expect(wrapper.text()).toContain('Del sistema');
     expect(wrapper.find('button[aria-label="Eliminar Disponible"]').exists()).toBe(true);
     const blocked = wrapper.get('button[aria-label="Eliminar Asignado"]');

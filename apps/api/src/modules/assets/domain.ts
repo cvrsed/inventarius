@@ -23,12 +23,12 @@ interface AssetState {
   assigned: boolean;
 }
 
-/** RF-23: solo se asigna un activo vigente, libre y en estado desplegable. */
+/** RF-23: solo se asigna un activo vigente, libre y en estado asignable. */
 export function assertCanCheckout(a: AssetState & { statusKind: StatusKind }): void {
   if (a.deleted) throw new ConflictError('El activo está dado de baja');
   if (a.assigned) throw new ConflictError('El activo ya está asignado; devuélvelo antes');
   if (a.statusKind !== 'deployable') {
-    throw new ValidationError('Solo se pueden asignar activos en un estado desplegable', {
+    throw new ValidationError('Solo se pueden asignar activos en un estado asignable', {
       statusId: ['El estado actual no permite asignar el activo'],
     });
   }

@@ -80,10 +80,18 @@ describe('GET /dashboard (RF-28)', () => {
     await admin.post(`${base}/assets/${a.id}/checkout`, { userId: techId });
     const s = await summary();
     expect(s.totals).toEqual({ total: 5, available: 2, assigned: 1, pendingSetup: 1 });
-    const kinds = Object.fromEntries(
-      s.byStatusKind.map((k: { kind: string; count: number }) => [k.kind, k.count]),
-    );
+    // Cada estado aparece con su nombre real y su tipo; no hay filas por tipo.
+    const kinds: Record<string, number> = {};
+    for (const st of s.byStatus as { kind: string; count: number }[]) {
+      kinds[st.kind] = (kinds[st.kind] ?? 0) + st.count;
+    }
     expect(kinds).toMatchObject({ deployable: 3, undeployable: 1, pending: 1 });
+    expect(s.byStatus).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'Disponible', kind: 'deployable' }),
+        expect.objectContaining({ name: 'Pendiente de configuración', kind: 'pending' }),
+      ]),
+    );
     expect(s.byCategory).toEqual([{ id: ids.cat, name: 'Notebooks', count: 5 }]);
     // Stock = disponibles (sin asignar) por bodega base.
     expect(s.stockByWarehouse).toEqual(
@@ -105,7 +113,10 @@ describe('GET /dashboard (RF-28)', () => {
     expect(renamed.statusCode).toBe(200);
     const after = await summary();
     expect(after.totals).toEqual(before.totals);
-    expect(after.byStatusKind).toEqual(before.byStatusKind);
+    // El desglose muestra el nombre nuevo, con los mismos conteos y tipos.
+    const strip = (r: { byStatus: { kind: string; count: number }[] }) =>
+      r.byStatus.map((x) => [x.kind, x.count]);
+    expect(strip(after)).toEqual(strip(before));
   });
 
   it('los dados de baja no cuentan', async () => {

@@ -5,7 +5,7 @@ const countRef = z.object({ id: z.uuid(), name: z.string(), count: z.number().in
 
 /**
  * Resumen del Inicio (RF-28). Todo son conteos agregados en el servidor: la web no recibe activos.
- * Los estados se agrupan por su **tipo**, nunca por su nombre.
+ * Los totales se calculan por **tipo** de estado (nunca por nombre); el desglose muestra cada estado.
  */
 export const dashboardSummarySchema = z.object({
   totals: z.object({
@@ -18,7 +18,10 @@ export const dashboardSummarySchema = z.object({
     /** Tipo de estado «pendiente» (p. ej. «Pendiente de configuración»). */
     pendingSetup: z.number().int(),
   }),
-  byStatusKind: z.array(z.object({ kind: statusKindSchema, count: z.number().int() })),
+  /** Cada estado en uso con su nombre real; el tipo solo sirve para ordenar y colorear. */
+  byStatus: z.array(
+    z.object({ id: z.uuid(), name: z.string(), kind: statusKindSchema, count: z.number().int() }),
+  ),
   byCategory: z.array(countRef),
   /** Disponibles por bodega base. */
   stockByWarehouse: z.array(countRef),

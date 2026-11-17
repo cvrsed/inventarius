@@ -10,11 +10,10 @@ afterEach(() => vi.unstubAllGlobals());
 const uuid = (n: number) => `018f0000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 const summary = (over: Partial<DashboardSummary> = {}): DashboardSummary => ({
   totals: { total: 12, available: 5, assigned: 4, pendingSetup: 3 },
-  byStatusKind: [
-    { kind: 'deployable', count: 9 },
-    { kind: 'pending', count: 3 },
-    { kind: 'undeployable', count: 0 },
-    { kind: 'archived', count: 0 },
+  byStatus: [
+    { id: uuid(7), name: 'Disponible', kind: 'deployable', count: 6 },
+    { id: uuid(8), name: 'Asignado', kind: 'deployable', count: 3 },
+    { id: uuid(9), name: 'Pendiente de configuración', kind: 'pending', count: 3 },
   ],
   byCategory: [{ id: uuid(1), name: 'Medidores', count: 8 }],
   stockByWarehouse: [{ id: uuid(2), name: 'Bodega Norte', count: 5 }],
@@ -109,13 +108,29 @@ describe('HomePage (RF-28)', () => {
     expect(pending.classes()).toContain('border-primary');
   });
 
-  it('barras por estado (tipo), categoría y bodega enlazan con su filtro', async () => {
+  it('«Activos por estado» muestra cada estado con su nombre y color, sin jerga de tipos', async () => {
+    const { w } = await mountHome(summary(), ADMIN);
+    const section = w.get('[aria-labelledby="kind-title"]');
+    const text = section.text();
+    expect(text).toContain('Disponible');
+    expect(text).toContain('Asignado');
+    expect(text).toContain('Pendiente de configuración');
+    expect(w.text()).not.toMatch(/desplegable/i);
+    const bars = section.findAll('[data-bar]');
+    expect(bars.map((b) => b.classes().find((c) => c.startsWith('bg-')))).toEqual([
+      'bg-success',
+      'bg-success',
+      'bg-warning',
+    ]);
+  });
+
+  it('barras por estado, categoría y bodega enlazan con su filtro', async () => {
     const { w } = await mountHome(summary(), ADMIN);
     const links = hrefs(w);
-    expect(links).toContain('/activos?statusKind=deployable');
+    expect(links).toContain(`/activos?statusId=${uuid(7)}`);
     expect(links).toContain(`/activos?categoryId=${uuid(1)}`);
     expect(links).toContain(`/activos?baseLocationId=${uuid(2)}&statusKind=deployable&assigned=no`);
-    expect(w.findAll('[data-bar]').length).toBeGreaterThanOrEqual(6);
+    expect(w.findAll('[data-bar]').length).toBeGreaterThanOrEqual(5);
     const widths = w.findAll('[data-bar]').map((b) => b.attributes('style'));
     expect(widths.some((s) => s?.includes('width: 100%'))).toBe(true);
   });

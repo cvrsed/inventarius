@@ -7,7 +7,7 @@ const TOP = 10;
 const OVERDUE_LISTED = 5;
 const RECENT = 5;
 const MINE_LISTED = 20;
-const KIND_ORDER: StatusKind[] = ['deployable', 'pending', 'undeployable', 'archived'];
+const KIND_ORDER: readonly StatusKind[] = ['deployable', 'pending', 'undeployable', 'archived'];
 
 /** Resumen del Inicio (RF-28): una sola operación de lectura, con conteos agregados en SQL. */
 export class DashboardService {
@@ -21,10 +21,10 @@ export class DashboardService {
 
   async summary(userId: string): Promise<DashboardSummary> {
     const today = this.today();
-    const [totals, kinds, byCategory, stock, overdueCount, overdueItems, recent, mine] =
+    const [totals, statuses, byCategory, stock, overdueCount, overdueItems, recent, mine] =
       await Promise.all([
         this.repo.totals(this.db),
-        this.repo.byStatusKind(this.db),
+        this.repo.byStatus(this.db),
         this.repo.byCategory(this.db, TOP),
         this.repo.stockByWarehouse(this.db, TOP),
         this.repo.overdueCount(this.db, today),
@@ -35,10 +35,15 @@ export class DashboardService {
     const names = await this.actors.namesByIds([
       ...new Set(recent.flatMap((r) => (r.actorId ? [r.actorId] : []))),
     ]);
-    const countOf = new Map(kinds.map((k) => [k.kind, k.count]));
     return {
       totals,
-      byStatusKind: KIND_ORDER.map((kind) => ({ kind, count: countOf.get(kind) ?? 0 })),
+      byStatus: statuses
+        .map((st) => ({ ...st, kind: st.kind as StatusKind }))
+        .sort(
+          (a, b) =>
+            KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) ||
+            a.name.localeCompare(b.name, 'es'),
+        ),
       byCategory,
       stockByWarehouse: stock,
       overdue: { count: overdueCount, items: overdueItems },

@@ -4,7 +4,7 @@ import { hasNoAssets, isFieldTech, links } from './summary';
 
 const summary = (total: number): DashboardSummary => ({
   totals: { total, available: 0, assigned: 0, pendingSetup: 0 },
-  byStatusKind: [],
+  byStatus: [],
   byCategory: [],
   stockByWarehouse: [],
   overdue: { count: 0, items: [] },

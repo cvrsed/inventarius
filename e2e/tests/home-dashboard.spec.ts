@@ -26,7 +26,15 @@ test.describe('Inicio con resumen (RF-28)', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Inicio' })).toBeVisible();
     await expect(page.getByRole('link', { name: /Disponibles/ })).toBeVisible();
     await expect(page.getByText('Aún no hay activos registrados')).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Activos por estado' })).toBeVisible();
+    // Cada estado con su nombre real; los tipos («desplegable», etc.) no se nombran en la UI.
+    await expect(page.getByRole('link', { name: /^Disponible\s+\d+/ })).toBeVisible();
+    await expect(page.getByText(/desplegable/i)).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'Activos por categoría' })).toBeVisible();
+    // «Activos por estado» muestra los nombres reales, no los tipos internos [P20].
+    const byStatus = page.locator('section[aria-labelledby="kind-title"]');
+    await expect(byStatus.getByRole('link', { name: /^Disponible\b/ })).toBeVisible();
+    await expect(page.getByText(/desplegable/i)).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'Stock disponible por bodega' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Últimos movimientos' })).toBeVisible();
     // «Estado del sistema» va al final, compacto, solo para administradores.
@@ -38,7 +46,7 @@ test.describe('Inicio con resumen (RF-28)', () => {
     await expect(page).toHaveURL(/statusKind=deployable/);
     await expect(page).toHaveURL(/assigned=no/);
     await expect(page.getByRole('heading', { level: 1, name: 'Activos' })).toBeVisible();
-    await expect(page.locator('#filter-status-kind')).toContainText('Desplegable');
+    await expect(page.locator('#filter-status-kind')).toContainText('Estados asignables');
   });
 
   test('un lote queda como «Pendientes de configuración» (por tipo de estado) [P19]', async ({
