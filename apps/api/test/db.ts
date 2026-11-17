@@ -27,6 +27,7 @@ export async function createIsolatedDb(): Promise<IsolatedDb> {
   const migratorUrl = `postgres://inventarius_migrator:test-migrator@${host}:${port}/${name}`;
   const handle = createDb(appUrl);
   const migratorPool = new Pool({ connectionString: migratorUrl, max: 2 });
+  migratorPool.on('error', () => undefined);
   return {
     ...handle,
     appUrl,

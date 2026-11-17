@@ -13,6 +13,9 @@ export interface DbHandle {
 /** Abre un pool de Postgres y el cliente Drizzle asociado. */
 export function createDb(connectionString: string): DbHandle {
   const pool = new Pool({ connectionString, max: 10 });
+  // Un cliente inactivo que Postgres cierra (reinicio, `pg_terminate_backend`) emite `error` en el pool; sin
+  // oyente tumba el proceso. El pool descarta ese cliente y abre otro cuando hace falta.
+  pool.on('error', () => undefined);
   return { pool, db: drizzle(pool, { schema }), close: () => pool.end() };
 }
 
