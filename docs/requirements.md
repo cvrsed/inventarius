@@ -283,11 +283,11 @@ SPA y API se sirven en el **mismo origen** (`/` y `/api`): cookies de sesión si
 
 ### 7.2 Stack y versiones
 
-Regla: se fija la versión exacta en la Fase 0 con el lockfile y se registra en `docs/adr/0002-stack.md`. Lo de abajo es la línea base.
+Regla: se fija la versión exacta en la Fase 0 con el lockfile y se registra en `docs/adr/0002-stack.md`. Política de bases: Node 24 LTS y Debian 13 (trixie) con la variante explícita y fijadas por digest; las excepciones (Caddy en Alpine, Playwright en Ubuntu solo para pruebas) están justificadas en `docs/adr/0006-version-de-runtime-y-bases-debian.md`. Lo de abajo es la línea base.
 
 | Capa | Elección | Motivo |
 | --- | --- | --- |
-| Runtime | Node.js 24 LTS (CI también en 26 como alerta temprana de compatibilidad) | Política de versiones de la organización: Node 24 LTS (soporte hasta abril 2028); ver ADR 0006 |
+| Runtime | Node.js 24 LTS (24.22.3; imagen `node:24-trixie-slim`, Debian 13; CI también en 26 como alerta temprana de compatibilidad) | Política de versiones de la organización: Node 24 LTS (soporte hasta abril 2028); ver ADR 0006 |
 | Gestor de paquetes | pnpm (fijado con `packageManager` + corepack), workspaces | Monorepo, lockfile estricto |
 | Lenguaje | TypeScript estricto en front, back y paquete compartido | Tipos de punta a punta |
 | Frontend | Vue 3 (Composition API, `<script setup>`), Vite, Vue Router, Pinia, vue-i18n, TanStack Query (Vue) | Recomendación del proveedor del stack sugerido + caché y estados de carga sin código repetido |
@@ -295,7 +295,7 @@ Regla: se fija la versión exacta en la Fase 0 con el lockfile y se registra en 
 | Backend | Fastify 5.x con `fastify-type-provider-zod`, `@fastify/helmet`, `@fastify/rate-limit`, `@fastify/cookie`, `@fastify/swagger`, `@fastify/under-pressure` | Recomendación del proveedor del stack sugerido; Fastify 6 sigue en alpha, no se usa |
 | Validación | Zod en `packages/shared`, mismo esquema en API y formularios | Una sola fuente de verdad |
 | Contrato API | OpenAPI 3.1 generado desde las rutas; cliente del front tipado generado desde ese OpenAPI | El front no puede desalinearse de la API |
-| Base de datos | PostgreSQL 18 | Recomendación del proveedor del stack sugerido |
+| Base de datos | PostgreSQL 18 (18.7; imagen `postgres:18-trixie`, Debian 13) | Recomendación del proveedor del stack sugerido |
 | ORM / migraciones | Drizzle ORM + drizzle-kit (migraciones SQL versionadas en el repo) | SQL explícito, tipos, migraciones revisables |
 | Cola de jobs | pg-boss (sobre el mismo Postgres); primer uso: purga horaria de sesiones vencidas | Sin Redis: un servicio menos |
 | Cliente ChirpStack | `@chirpstack/chirpstack-api` + `@grpc/grpc-js` | Cliente oficial, gRPC recomendado |
