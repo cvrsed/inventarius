@@ -46,6 +46,18 @@ export function assertCanDelete(a: AssetState): void {
     throw new ConflictError('El activo está asignado; devuélvelo antes de darlo de baja');
 }
 
+/** RF-27: series que aparecen más de una vez en la lista (sin distinguir mayúsculas ni espacios), en su primera forma. */
+export function duplicatedSerials(serials: readonly string[]): string[] {
+  const seen = new Map<string, { first: string; count: number }>();
+  for (const raw of serials) {
+    const key = raw.trim().toLowerCase();
+    const entry = seen.get(key);
+    if (entry) entry.count += 1;
+    else seen.set(key, { first: raw.trim(), count: 1 });
+  }
+  return [...seen.values()].filter((e) => e.count > 1).map((e) => e.first);
+}
+
 /** RF-23: un equipo se asigna a un sitio donde queda instalado, no a una bodega (ahí solo se guarda). */
 export function assertCheckoutLocation(type: LocationType): void {
   if (type === 'warehouse') {

@@ -109,6 +109,7 @@ Cada requerimiento tiene ID para trazarlo en issues, commits y tests (`RF-xx`).
 - **RF-24** Historial por activo: línea de tiempo con creación, cambios de campos (antes/después), asignaciones y operaciones LNS.
 - **RF-25** Baja lógica (soft delete) con motivo; restaurable por un administrador.
 - **RF-26** Exportación CSV del listado filtrado (sin claves).
+- **RF-27** Alta en lote de activos: modelo, cantidad (1 a 500), bodega base, estado (por defecto el estado semilla «Pendiente de configuración», tipo `pendiente`) y lista opcional de números de serie (uno por línea; si se entrega, la cantidad debe coincidir). Crea los N activos en una sola transacción con etiquetas correlativas, un evento de historial por activo y un único registro de auditoría del lote. Rechaza series repetidas en la lista o que ya existan en la base. Pantalla propia, accesible desde «Nuevo activo», usable desde 360 px.
 
 ### 4.4 Auditoría
 

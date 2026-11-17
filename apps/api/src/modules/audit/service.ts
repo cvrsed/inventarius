@@ -47,6 +47,22 @@ export class AuditService {
     });
   }
 
+  /** Registra varias entradas con una sola inserción (altas en lote). */
+  async recordMany(exec: Executor, entries: AuditEntryInput[]): Promise<void> {
+    await this.repo.insertMany(
+      exec,
+      entries.map((entry) => ({
+        actorId: entry.actorId,
+        actorLabel: entry.actorId ? null : (entry.actorLabel ?? null),
+        action: entry.action,
+        entity: entry.entity,
+        entityId: entry.entityId ?? null,
+        diff: entry.diff ?? null,
+        ip: entry.ip,
+      })),
+    );
+  }
+
   /** Lista paginada y filtrable, la más reciente primero. */
   async list(
     filters: AuditFilters,

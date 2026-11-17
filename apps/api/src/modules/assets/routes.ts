@@ -1,6 +1,8 @@
 import {
   assetExportQuerySchema,
   assetFiltersSchema,
+  batchAssetsRequestSchema,
+  batchAssetsResultSchema,
   assetListQuerySchema,
   assetSchema,
   assigneeSchema,
@@ -92,6 +94,15 @@ export const assetsRoutes: FastifyPluginAsyncZod<{ assets: AssetsService }> = as
       const asset = await assets.create(actorOf(req), req.body);
       return reply.code(201).header('etag', `"${asset.updatedAt}"`).send(asset);
     },
+  );
+
+  app.post(
+    '/assets/batch',
+    {
+      ...requirePermission('asset:write'),
+      schema: { tags, body: batchAssetsRequestSchema, response: { 201: batchAssetsResultSchema } },
+    },
+    async (req, reply) => reply.code(201).send(await assets.createBatch(actorOf(req), req.body)),
   );
 
   app.patch(

@@ -335,6 +335,101 @@ describe('listado (RF-22)', () => {
   });
 });
 
+describe('alta en lote (RF-27)', () => {
+  const batch = (extra: Record<string, unknown> = {}, client = operator) =>
+    client.post(`${base}/assets/batch`, {
+      modelId: ids.model,
+      quantity: 3,
+      baseLocationId: ids.room,
+      statusId: ids.available,
+      ...extra,
+    });
+
+  it('el estado semilla «Pendiente de configuración» existe y es de tipo pendiente', async () => {
+    const res = await admin.get(`${base}/status-labels?q=Pendiente`);
+    expect(res.json().data).toContainEqual(
+      expect.objectContaining({ name: 'Pendiente de configuración', kind: 'pending' }),
+    );
+  });
+
+  it('crea N activos con etiquetas correlativas, series y bodega base', async () => {
+    const res = await batch({
+      quantity: 3,
+      serials: ['LOT-1', 'LOT-2', 'LOT-3'],
+      name: 'Sensor lote',
+    });
+    expect(res.statusCode, res.body).toBe(201);
+    const out = res.json() as {
+      batchId: string;
+      count: number;
+      assets: { id: string; assetTag: string; serial: string }[];
+    };
+    expect(out.count).toBe(3);
+    const nums = out.assets.map((a) => Number(a.assetTag.slice(4)));
+    expect(nums[1]).toBe(nums[0]! + 1);
+    expect(nums[2]).toBe(nums[0]! + 2);
+    expect(out.assets.map((a) => a.serial)).toEqual(['LOT-1', 'LOT-2', 'LOT-3']);
+    const one = await reader.get(`${base}/assets/${out.assets[1]!.id}`);
+    expect(one.json()).toMatchObject({
+      name: 'Sensor lote',
+      serial: 'LOT-2',
+      baseLocation: { id: ids.room },
+      location: { id: ids.room },
+      status: { id: ids.available },
+    });
+  });
+
+  it('cada activo tiene su evento de historial y el lote deja un solo registro de auditoría', async () => {
+    const res = await batch({ quantity: 2 });
+    const out = res.json() as { batchId: string; assets: { id: string }[] };
+    for (const a of out.assets) {
+      const h = await reader.get(`${base}/assets/${a.id}/history`);
+      expect(h.json().data.map((e: { action: string }) => e.action)).toEqual(['asset.create']);
+      expect(h.json().data[0].diff.after.batchId).toBe(out.batchId);
+    }
+    const audit = await admin.get(`${base}/audit?entity=asset_batch&pageSize=100`);
+    const mine = audit.json().data.filter((e: { entityId: string }) => e.entityId === out.batchId);
+    expect(mine).toHaveLength(1);
+    expect(mine[0]).toMatchObject({ action: 'asset.batch_create' });
+    expect(mine[0].diff.after).toMatchObject({ count: 2 });
+  });
+
+  it('valida cantidad (1 a 500), coincidencia con las series y series duplicadas', async () => {
+    expect((await batch({ quantity: 0 })).statusCode).toBe(400);
+    expect((await batch({ quantity: 501 })).statusCode).toBe(400);
+    expect((await batch({ quantity: 2, serials: ['X1'] })).statusCode).toBe(400);
+    const dup = await batch({ quantity: 3, serials: ['D1', 'd1 ', 'D2'] });
+    expect(dup.statusCode).toBe(422);
+    expect(dup.json().errors.serials[0]).toContain('D1');
+  });
+
+  it('rechaza series que ya existen en la base y no crea nada (una transacción)', async () => {
+    await newAsset({ serial: 'EXISTE-1' });
+    const before = (await reader.get(`${base}/assets?pageSize=1`)).json().meta.total;
+    const res = await batch({
+      quantity: 2,
+      serials: ['NUEVA-1', 'exists-1'.replace('exists', 'existe')],
+    });
+    expect(res.statusCode).toBe(422);
+    expect(res.json().errors.serials[0]).toContain('exist');
+    const after = (await reader.get(`${base}/assets?pageSize=1`)).json().meta.total;
+    expect(after).toBe(before);
+  });
+
+  it('exige bodega base activa, estado no reservado y permiso de escritura', async () => {
+    expect((await batch({ baseLocationId: ids.site })).statusCode).toBe(422);
+    expect((await batch({ statusId: ids.assigned })).statusCode).toBe(422);
+    expect((await batch({}, reader)).statusCode).toBe(403);
+    expect((await batch({}, tech)).statusCode).toBe(403);
+  });
+
+  it('crea 500 en una sola llamada', async () => {
+    const res = await batch({ quantity: 500 });
+    expect(res.statusCode, res.body.slice(0, 200)).toBe(201);
+    expect(res.json().count).toBe(500);
+  });
+});
+
 describe('asignación (RF-23)', () => {
   it('asigna a un usuario: queda «Asignado», con fecha esperada y nota', async () => {
     const a = await newAsset();

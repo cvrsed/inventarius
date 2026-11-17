@@ -6,6 +6,7 @@ import {
   desc,
   eq,
   ilike,
+  inArray,
   isNotNull,
   isNull,
   or,
@@ -222,6 +223,33 @@ export class AssetsRepository {
   async nextTagNumber(exec: Executor): Promise<bigint> {
     const res = await exec.execute<{ n: string }>(sql`SELECT nextval('asset_tag_seq') AS n`);
     return BigInt(res.rows[0]!.n);
+  }
+
+  /** Reserva `n` correlativos de etiqueta de una vez, en orden. */
+  async nextTagNumbers(exec: Executor, n: number): Promise<bigint[]> {
+    const res = await exec.execute<{ n: string }>(
+      sql`SELECT nextval('asset_tag_seq') AS n FROM generate_series(1, ${n}::int) AS g(i) ORDER BY g.i`,
+    );
+    return res.rows.map((r) => BigInt(r.n));
+  }
+
+  async insertMany(exec: Executor, rows: NewAsset[]): Promise<{ id: string; assetTag: string }[]> {
+    const out = await exec
+      .insert(assets)
+      .values(rows)
+      .returning({ id: assets.id, assetTag: sql<string>`${assets.assetTag}::text` });
+    return out;
+  }
+
+  /** Series de la lista que ya tiene algún activo (vigente o dado de baja), sin distinguir mayúsculas. */
+  async existingSerials(exec: Executor, serials: readonly string[]): Promise<string[]> {
+    if (!serials.length) return [];
+    const lowered = serials.map((s) => s.trim().toLowerCase());
+    const rows = await exec
+      .select({ serial: assets.serial })
+      .from(assets)
+      .where(inArray(sql<string>`lower(${assets.serial})`, lowered));
+    return rows.flatMap((r) => (r.serial ? [r.serial] : []));
   }
 
   async insert(exec: Executor, v: NewAsset): Promise<string> {

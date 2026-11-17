@@ -3,6 +3,8 @@ import {
   type AssetDto,
   type AssetFilters,
   type AssetListItemDto,
+  type BatchAssetsRequest,
+  type BatchAssetsResult,
   type AuditEntryDto,
   type CategoryExtension,
   type CheckinRequest,
@@ -13,6 +15,7 @@ import {
   type StatusKind,
   type UpdateAssetInput,
 } from '@inventarius/shared';
+import { randomUUID } from 'node:crypto';
 import { csvRow } from '../../core/csv.js';
 import type { Executor } from '../../core/db/executor.js';
 import { changedFields } from '../../core/diff.js';
@@ -30,6 +33,7 @@ import {
   assertCanCheckout,
   assertCanDelete,
   assertCheckoutLocation,
+  duplicatedSerials,
   assertReturnLocation,
   formatAssetTag,
   warrantyEndsOn,
@@ -264,6 +268,90 @@ export class AssetsService {
     }
   }
 
+  /**
+   * RF-27: crea `quantity` activos en una sola transacción, con etiquetas correlativas. Cada activo tiene su
+   * evento `asset.create` (su historial) y el lote deja un único registro `asset.batch_create`.
+   */
+  async createBatch(actor: Actor, input: BatchAssetsRequest): Promise<BatchAssetsResult> {
+    const serials = input.serials?.map((s) => s.trim());
+    if (serials) {
+      const repeated = duplicatedSerials(serials);
+      if (repeated.length) throw serialsError('Hay series repetidas en la lista', repeated);
+    }
+    return this.db.transaction(async (tx) => {
+      const model = await this.catalog.requireModel(tx, input.modelId);
+      const status = await this.catalog.requireStatus(tx, input.statusId);
+      if (status.systemKey) throw reservedStatus();
+      const base = await this.requireWarehouse(tx, input.baseLocationId, 'baseLocationId');
+      if (serials) {
+        const existing = await this.repo.existingSerials(tx, serials);
+        if (existing.length) throw serialsError('Ya existen activos con estas series', existing);
+      }
+      const numbers = await this.repo.nextTagNumbers(tx, input.quantity);
+      const name = input.name ?? model.name;
+      const created = await this.repo.insertMany(
+        tx,
+        numbers.map((n, i) => ({
+          assetTag: formatAssetTag(this.tagPrefix, n),
+          name,
+          serial: serials?.[i] ?? null,
+          modelId: input.modelId,
+          statusId: input.statusId,
+          baseLocationId: input.baseLocationId,
+          locationId: input.baseLocationId,
+          purchaseCurrency: this.defaultCurrency,
+        })),
+      );
+      const batchId = randomUUID();
+      await this.audit.recordMany(tx, [
+        ...created.map((a, i) => ({
+          ...actor,
+          action: 'asset.create',
+          entity: ENTITY,
+          entityId: a.id,
+          diff: {
+            after: {
+              assetTag: a.assetTag,
+              name,
+              serial: serials?.[i] ?? null,
+              model: model.name,
+              status: status.name,
+              baseLocation: base.name,
+              location: base.name,
+              batchId,
+            },
+          },
+        })),
+        {
+          ...actor,
+          action: 'asset.batch_create',
+          entity: 'asset_batch',
+          entityId: batchId,
+          diff: {
+            after: {
+              count: created.length,
+              model: model.name,
+              status: status.name,
+              baseLocation: base.name,
+              firstTag: created[0]!.assetTag,
+              lastTag: created.at(-1)!.assetTag,
+              withSerials: serials !== undefined,
+            },
+          },
+        },
+      ]);
+      return {
+        batchId,
+        count: created.length,
+        assets: created.map((a, i) => ({
+          id: a.id,
+          assetTag: a.assetTag,
+          serial: serials?.[i] ?? null,
+        })),
+      };
+    });
+  }
+
   /** RF-23: asigna a un usuario o a una ubicación y deja el activo en el estado de sistema «Asignado». */
   async checkout(actor: Actor, id: string, input: CheckoutRequest): Promise<AssetDto> {
     try {
@@ -475,6 +563,11 @@ function parseSort(sort: string | undefined) {
     throw new ValidationError('Orden no válido', { sort: ['Columna de orden desconocida'] });
   }
   return parsed.data;
+}
+
+function serialsError(message: string, serials: string[]): ValidationError {
+  const shown = serials.slice(0, 5).join(', ') + (serials.length > 5 ? '…' : '');
+  return new ValidationError(message, { serials: [`${message}: ${shown}`] });
 }
 
 function reservedStatus(): ValidationError {

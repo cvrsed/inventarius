@@ -5,6 +5,7 @@ import {
   assertCanCheckout,
   assertCanDelete,
   assertCheckoutLocation,
+  duplicatedSerials,
   assertReturnLocation,
   formatAssetTag,
   warrantyEndsOn,
@@ -59,6 +60,16 @@ describe('destinos de asignación y devolución (RF-23)', () => {
     expect(() => assertReturnLocation('warehouse')).not.toThrow();
     for (const type of ['customer_site', 'office', 'other'] as const)
       expect(() => assertReturnLocation(type)).toThrow(ValidationError);
+  });
+});
+
+describe('series del alta en lote (RF-27)', () => {
+  it('detecta series repetidas sin distinguir mayúsculas ni espacios', () => {
+    expect(duplicatedSerials(['A1', 'B2', ' a1 ', 'C3', 'b2', 'b2'])).toEqual(['A1', 'B2']);
+  });
+  it('sin repetidas devuelve una lista vacía', () => {
+    expect(duplicatedSerials(['A1', 'B2'])).toEqual([]);
+    expect(duplicatedSerials([])).toEqual([]);
   });
 });
 

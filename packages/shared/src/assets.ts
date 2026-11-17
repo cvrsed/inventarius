@@ -148,6 +148,31 @@ export const updateAssetSchema = z
   .refine((v) => Object.keys(v).length > 0, 'Indica al menos un campo');
 export type UpdateAssetInput = z.infer<typeof updateAssetSchema>;
 
+/** RF-27: alta en lote. Con `serials` la cantidad debe coincidir con la lista. */
+export const MAX_BATCH_SIZE = 500;
+export const batchAssetsRequestSchema = z
+  .object({
+    modelId: z.uuid(),
+    quantity: z.number().int().min(1).max(MAX_BATCH_SIZE),
+    baseLocationId: z.uuid(),
+    statusId: z.uuid(),
+    /** Nombre de cada activo; si falta se usa el nombre del modelo. */
+    name: assetEditable.name.optional(),
+    serials: z.array(z.string().trim().min(1).max(120)).max(MAX_BATCH_SIZE).optional(),
+  })
+  .refine((v) => v.serials === undefined || v.serials.length === v.quantity, {
+    message: 'La cantidad debe coincidir con las series entregadas',
+    path: ['serials'],
+  });
+export type BatchAssetsRequest = z.infer<typeof batchAssetsRequestSchema>;
+
+export const batchAssetsResultSchema = z.object({
+  batchId: z.uuid(),
+  count: z.number().int(),
+  assets: z.array(z.object({ id: z.uuid(), assetTag: z.string(), serial: z.string().nullable() })),
+});
+export type BatchAssetsResult = z.infer<typeof batchAssetsResultSchema>;
+
 /** RF-23: a un usuario o a una ubicación (exactamente uno). */
 export const checkoutRequestSchema = z
   .object({

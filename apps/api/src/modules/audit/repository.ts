@@ -31,6 +31,9 @@ export class AuditRepository {
   async insert(exec: Executor, row: NewAuditRow): Promise<void> {
     await exec.insert(auditLog).values(row);
   }
+  async insertMany(exec: Executor, rows: NewAuditRow[]): Promise<void> {
+    if (rows.length) await exec.insert(auditLog).values(rows);
+  }
 
   async list(
     exec: Executor,
