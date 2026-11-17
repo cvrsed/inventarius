@@ -5,6 +5,7 @@ import UButton from '@nuxt/ui/components/Button.vue';
 import { useToast } from '@nuxt/ui/composables/useToast';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { currentPlace } from './place';
 import { formatDateOnly, formatDateTime, formatMoney } from '@/shared/format/format';
 import { useRoute } from 'vue-router';
 import { errorMessage } from '@/features/auth/errors';
@@ -72,6 +73,7 @@ const rows = computed(() => {
   if (!a) return [];
   return [
     [t('assets.fields.model'), `${a.manufacturer.name} ${a.model.name}`],
+    [t('assets.fields.baseLocation'), a.baseLocation?.name ?? null],
     [t('assets.fields.category'), a.category.name],
     [t('assets.fields.serial'), a.serial],
     [t('assets.fields.purchaseDate'), a.purchaseDate ? formatDateOnly(a.purchaseDate) : null],
@@ -128,7 +130,7 @@ const rows = computed(() => {
             variant="subtle"
           />
           <span class="text-sm text-muted">
-            {{ asset.location?.name ?? t('assets.noLocation') }} ·
+            {{ currentPlace(asset, t) }} ·
             {{ assigneeName || t('assets.unassigned') }}
           </span>
         </div>

@@ -96,16 +96,16 @@ Cada requerimiento tiene ID para trazarlo en issues, commits y tests (`RF-xx`).
 
 - **RF-10** CRUD de **categorías** (nombre, tipo de extensión: `ninguna` | `lorawan`).
 - **RF-11** CRUD de **fabricantes** y **modelos** (nombre, número de modelo, fabricante, categoría). En modelos LoRaWAN: clase por defecto (A/B/C), versión LoRaWAN y regional parameters por defecto.
-- **RF-12** CRUD de **ubicaciones** jerárquicas (ej.: Cliente > Edificio > Piso > Sala) con dirección opcional.
+- **RF-12** CRUD de **ubicaciones** jerárquicas (ej.: Cliente > Edificio > Piso > Sala) con dirección opcional y **tipo** (bodega, sitio de cliente, oficina u otro). Las bodegas guardan equipos; los demás tipos son lugares donde un equipo se instala o se usa.
 - **RF-13** CRUD de **estados** con tipo: `desplegable`, `pendiente`, `no desplegable`, `archivado`. Semilla: Disponible, Asignado, En reparación, Dañado, Dado de baja.
 - **RF-14** No se puede borrar un elemento del catálogo en uso; se puede desactivar.
 
 ### 4.3 Activos
 
-- **RF-20** Alta de activo: etiqueta (asset tag, única, autogenerable con prefijo configurable), nombre, modelo, número de serie, estado, ubicación, fecha y costo de compra, proveedor, garantía (meses), notas.
+- **RF-20** Alta de activo: etiqueta (asset tag, única, autogenerable con prefijo configurable), nombre, modelo, número de serie, estado, **ubicación base** (la bodega donde vive; la ubicación actual parte igual a ella), fecha y costo de compra (con moneda, CLP por defecto y configurable), proveedor, garantía (meses), notas.
 - **RF-21** Si la categoría del modelo es `lorawan`, la ficha agrega la sección LoRaWAN (ver 5.2), con validación de formato y unicidad de DevEUI.
 - **RF-22** Listado con búsqueda de texto (etiqueta, nombre, serie, DevEUI), filtros (categoría, modelo, estado, ubicación, asignado a, estado LNS), orden y paginación del lado servidor. Los filtros quedan en la URL (compartibles).
-- **RF-23** Check-out a usuario o a ubicación, con fecha esperada de devolución opcional y nota; check-in con nota y nuevo estado. Solo activos en estado `desplegable` pueden asignarse.
+- **RF-23** Check-out a usuario o a ubicación, con fecha esperada de devolución opcional y nota; check-in con nota, nuevo estado y **«Devolver a»** (obligatorio, solo bodegas, precargado con la ubicación base). Al asignar a un usuario la ubicación actual queda vacía (la ficha muestra «Con <persona>»); a una ubicación solo se asigna a sitios que no sean bodega (equipo instalado). Solo activos en estado `desplegable` pueden asignarse.
 - **RF-24** Historial por activo: línea de tiempo con creación, cambios de campos (antes/después), asignaciones y operaciones LNS.
 - **RF-25** Baja lógica (soft delete) con motivo; restaurable por un administrador.
 - **RF-26** Exportación CSV del listado filtrado (sin claves).
@@ -342,7 +342,8 @@ erDiagram
         text serial
         uuid model_id FK
         uuid status_id FK
-        uuid location_id FK
+        uuid location_id FK "ubicación actual"
+        uuid base_location_id FK "bodega base"
         uuid assigned_user_id FK
         uuid assigned_location_id FK
         date purchase_date

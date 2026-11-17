@@ -19,7 +19,7 @@ describe('formulario de activo', () => {
       modelId: 'm1',
       statusId: 's1',
       serial: null,
-      locationId: null,
+      baseLocationId: null,
       purchaseDate: null,
       purchaseCost: null,
       purchaseCurrency: 'CLP',
@@ -83,7 +83,7 @@ describe('formulario de activo', () => {
       serial: null,
       model: option('m1', 'Modelo'),
       status: { id: 's1', name: 'Disponible', kind: 'deployable' },
-      location: option('l1', 'Sala'),
+      baseLocation: option('l1', 'Sala'),
       purchaseDate: '2026-01-31',
       purchaseCost: 1500,
       purchaseCurrency: 'CLP',
@@ -97,7 +97,7 @@ describe('formulario de activo', () => {
       purchaseCost: '1500',
       purchaseCurrency: 'CLP',
       warrantyMonths: '12',
-      location: { id: 'l1', name: 'Sala' },
+      baseLocation: { id: 'l1', name: 'Sala' },
     });
   });
 

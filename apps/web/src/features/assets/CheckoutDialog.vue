@@ -103,8 +103,10 @@ const kinds = [
             v-else
             id="co-target"
             v-model="target"
-            source="locations-checkout"
-            :fetcher="(q: string) => fetchOptions('locations', q)"
+            source="sites-checkout"
+            :fetcher="
+              (q: string) => fetchOptions('locations', q, { extra: { excludeType: 'warehouse' } })
+            "
             :placeholder="t('assets.locationPlaceholder')"
           />
         </UFormField>

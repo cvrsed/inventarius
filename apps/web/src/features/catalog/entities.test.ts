@@ -95,12 +95,14 @@ describe('formularios del catálogo', () => {
       name: 'Sala',
       parent: { id: '018f0000-0000-7000-8000-0000000000c1', name: 'Edificio' },
       path: 'Edificio > Sala',
+      type: 'warehouse',
       address: null,
       active: true,
       updatedAt: '2026-11-16T12:00:00.000Z',
     };
     expect(toPayload('locations', formFromItem('locations', location), 'edit')).toMatchObject({
       parentId: location.parent!.id,
+      type: 'warehouse',
       address: null,
     });
     expect(toPayload('locations', emptyForm('locations'), 'create')).toMatchObject({

@@ -19,6 +19,7 @@ const asset = (n: number, over: Record<string, unknown> = {}) => ({
   model: { id: '018f0000-0000-7000-8000-0000000000a1', name: 'Modelo A' },
   category: { id: '018f0000-0000-7000-8000-0000000000b1', name: 'Sensores', extension: 'none' },
   status: { id: '018f0000-0000-7000-8000-0000000000c1', name: 'Disponible', kind: 'deployable' },
+  baseLocation: null,
   location: n === 1 ? { id: '018f0000-0000-7000-8000-0000000000d1', name: 'Sala 1' } : null,
   assignedUser: n === 2 ? { id: '018f0000-0000-7000-8000-0000000000e1', name: 'Olga' } : null,
   assignedLocation: null,

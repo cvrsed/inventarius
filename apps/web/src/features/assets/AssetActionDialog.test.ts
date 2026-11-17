@@ -10,6 +10,7 @@ const asset = {
   assetTag: 'INV-000001',
   name: 'Notebook',
   status: { id: uuid(10), name: 'Disponible', kind: 'deployable' },
+  baseLocation: { id: uuid(20), name: 'Bodega Central' },
   updatedAt: '2026-11-16T12:00:00.000Z',
 } as unknown as AssetDto;
 
@@ -40,6 +41,27 @@ const submit = async () => {
 const field = (selector: string) => body().querySelector(selector) as HTMLTextAreaElement;
 
 describe('AssetActionDialog', () => {
+  it('devolver precarga la bodega base y la manda como locationId', async () => {
+    await open('checkin');
+    expect(body().textContent).toContain('Devolver a');
+    expect(body().textContent).toContain('Bodega Central');
+  });
+
+  it('devolver sin bodega de destino no envía y pide el campo', async () => {
+    const fetchMock = mockApi({});
+    const w = mount(AssetActionDialog, {
+      props: { asset: { ...asset, baseLocation: null }, mode: 'checkin', visible: false },
+      global: pagePlugins(),
+      attachTo: document.body,
+    });
+    mounted.push(w);
+    await w.setProps({ visible: true });
+    await flushPromises();
+    await submit();
+    expect(body().textContent).toContain('Este campo es obligatorio');
+    expect(fetchMock.mock.calls.some((c) => c[1]?.method === 'POST')).toBe(false);
+  });
+
   it('dar de baja exige un motivo y lo manda en el DELETE', async () => {
     const fetchMock = mockApi({
       [`DELETE /api/v1/assets/${asset.id}`]: () => jsonResponse(null, 204),

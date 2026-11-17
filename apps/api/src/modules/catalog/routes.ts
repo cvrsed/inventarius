@@ -9,6 +9,7 @@ import {
   createStatusLabelSchema,
   locationSchema,
   manufacturerSchema,
+  locationListQuerySchema,
   modelListQuerySchema,
   pageOf,
   statusLabelSchema,
@@ -148,7 +149,7 @@ export const catalogRoutes: FastifyPluginAsyncZod<{ catalog: CatalogService }> =
     dto: locationSchema,
     createSchema: createLocationSchema,
     patchSchema: updateLocationSchema,
-    querySchema: catalogListQuerySchema,
+    querySchema: locationListQuerySchema,
   });
   crud(app, {
     path: 'status-labels',

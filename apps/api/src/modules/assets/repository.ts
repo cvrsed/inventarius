@@ -26,6 +26,7 @@ import {
 } from '../../core/db/schema.js';
 
 const assignedLocation = alias(locations, 'assigned_location');
+const baseLocation = alias(locations, 'base_location');
 const openAssignment = alias(assetAssignments, 'open_assignment');
 
 /** Activo con los nombres de lo que referencia y su asignación abierta, si la hay. */
@@ -46,6 +47,8 @@ export interface AssetRow {
   statusKind: string;
   locationId: string | null;
   locationName: string | null;
+  baseLocationId: string | null;
+  baseLocationName: string | null;
   assignedUserId: string | null;
   assignedUserName: string | null;
   assignedLocationId: string | null;
@@ -75,6 +78,7 @@ export type AssetChanges = Partial<
     | 'modelId'
     | 'statusId'
     | 'locationId'
+    | 'baseLocationId'
     | 'purchaseDate'
     | 'purchaseCost'
     | 'purchaseCurrency'
@@ -123,6 +127,8 @@ export class AssetsRepository {
         statusKind: statusLabels.kind,
         locationId: assets.locationId,
         locationName: locations.name,
+        baseLocationId: assets.baseLocationId,
+        baseLocationName: baseLocation.name,
         assignedUserId: assets.assignedUserId,
         assignedUserName: users.name,
         assignedLocationId: assets.assignedLocationId,
@@ -147,6 +153,7 @@ export class AssetsRepository {
       .innerJoin(categories, eq(categories.id, models.categoryId))
       .innerJoin(statusLabels, eq(statusLabels.id, assets.statusId))
       .leftJoin(locations, eq(locations.id, assets.locationId))
+      .leftJoin(baseLocation, eq(baseLocation.id, assets.baseLocationId))
       .leftJoin(users, eq(users.id, assets.assignedUserId))
       .leftJoin(assignedLocation, eq(assignedLocation.id, assets.assignedLocationId))
       .leftJoin(
@@ -242,13 +249,21 @@ export class AssetsRepository {
   async setAssignee(
     exec: Executor,
     id: string,
-    v: { userId: string | null; locationId: string | null; statusId: string },
+    v: {
+      userId: string | null;
+      /** Sitio de la asignación (o `null`). */
+      locationId: string | null;
+      /** Ubicación actual tras el cambio: el sitio, la bodega de devolución o `null` con una persona. */
+      currentLocationId: string | null;
+      statusId: string;
+    },
   ): Promise<void> {
     await exec
       .update(assets)
       .set({
         assignedUserId: v.userId,
         assignedLocationId: v.locationId,
+        locationId: v.currentLocationId,
         statusId: v.statusId,
         updatedAt: sql`now()`,
       })

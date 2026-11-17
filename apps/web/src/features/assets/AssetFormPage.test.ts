@@ -23,6 +23,7 @@ const existing = {
   category: { id: uuid(4), name: 'Notebooks', extension: 'none' },
   status: { id: uuid(5), name: 'Disponible', kind: 'deployable' },
   location: { id: uuid(6), name: 'Sala 1' },
+  baseLocation: { id: uuid(6), name: 'Sala 1' },
   assignedUser: null,
   assignedLocation: null,
   deleted: false,

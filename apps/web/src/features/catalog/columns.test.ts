@@ -42,11 +42,15 @@ describe('columnas del catálogo', () => {
       name: 'Piso 2',
       parent: null,
       path: 'Cliente > Edificio > Piso 2',
+      type: 'customer_site',
       address: 'Calle 1',
       active: true,
       updatedAt: '',
     } satisfies LocationDto;
     expect(displayCells('locations', location, t).title).toBe('Cliente > Edificio > Piso 2');
+    expect(displayCells('locations', location, t).second).toBe(
+      'catalog.locationTypes.customer_site',
+    );
     const status = {
       id: '1',
       name: 'Dañado',

@@ -47,7 +47,7 @@ watch(
 const API_FIELDS: Record<string, string> = {
   modelId: 'model',
   statusId: 'status',
-  locationId: 'location',
+  baseLocationId: 'baseLocation',
 };
 
 const set = <K extends keyof AssetForm>(key: K, value: AssetForm[K]) => (form.value[key] = value);
@@ -206,18 +206,19 @@ async function submit(): Promise<void> {
           />
         </UFormField>
         <UFormField
-          :label="t('assets.fields.location')"
+          :label="t('assets.fields.baseLocation')"
           name="a-location"
-          :error="fieldErrors['location']"
+          :help="t('assets.baseLocationHelp')"
+          :error="fieldErrors['baseLocation']"
         >
           <RemoteSelect
             id="a-location"
-            :model-value="form.location"
-            source="locations-form"
-            :fetcher="(q: string) => fetchOptions('locations', q)"
+            :model-value="form.baseLocation"
+            source="warehouses-form"
+            :fetcher="(q: string) => fetchOptions('locations', q, { extra: { type: 'warehouse' } })"
             :placeholder="t('assets.locationPlaceholder')"
             clearable
-            @update:model-value="(v: RemoteOption | null) => set('location', v)"
+            @update:model-value="(v: RemoteOption | null) => set('baseLocation', v)"
           />
         </UFormField>
       </fieldset>

@@ -199,12 +199,20 @@ export const locations = pgTable(
     parentId: uuid('parent_id').references((): AnyPgColumn => locations.id, {
       onDelete: 'restrict',
     }),
+    /** `warehouse` | `customer_site` | `office` | `other` (RF-12). */
+    type: text('type').notNull().default('other'),
     address: text('address'),
     active: boolean('active').notNull().default(true),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [index('locations_parent_idx').on(t.parentId)],
+  (t) => [
+    index('locations_parent_idx').on(t.parentId),
+    check(
+      'locations_type_chk',
+      sql`${t.type} IN ('warehouse', 'customer_site', 'office', 'other')`,
+    ),
+  ],
 );
 
 export const statusLabels = pgTable('status_labels', {
@@ -234,7 +242,12 @@ export const assets = pgTable(
     statusId: uuid('status_id')
       .notNull()
       .references(() => statusLabels.id, { onDelete: 'restrict' }),
+    /** Ubicación actual: nula mientras lo tiene una persona (RF-23). */
     locationId: uuid('location_id').references(() => locations.id, { onDelete: 'restrict' }),
+    /** Bodega donde vive el activo; a ella vuelve al devolverse (RF-20). */
+    baseLocationId: uuid('base_location_id').references(() => locations.id, {
+      onDelete: 'restrict',
+    }),
     assignedUserId: uuid('assigned_user_id').references(() => users.id, { onDelete: 'restrict' }),
     assignedLocationId: uuid('assigned_location_id').references(() => locations.id, {
       onDelete: 'restrict',
@@ -254,6 +267,7 @@ export const assets = pgTable(
     index('assets_model_idx').on(t.modelId),
     index('assets_status_idx').on(t.statusId),
     index('assets_location_idx').on(t.locationId),
+    index('assets_base_location_idx').on(t.baseLocationId),
     index('assets_assigned_user_idx').on(t.assignedUserId),
     index('assets_assigned_location_idx').on(t.assignedLocationId),
     index('assets_created_idx').on(t.createdAt, t.id),

@@ -1,4 +1,4 @@
-import type { StatusKind } from '@inventarius/shared';
+import type { LocationType, StatusKind } from '@inventarius/shared';
 import { ConflictError, ValidationError } from '../../core/errors.js';
 
 /** Etiqueta autogenerada: prefijo configurable + correlativo (D6), p. ej. `INV-000123`. */
@@ -44,4 +44,22 @@ export function assertCanDelete(a: AssetState): void {
   if (a.deleted) throw new ConflictError('El activo ya está dado de baja');
   if (a.assigned)
     throw new ConflictError('El activo está asignado; devuélvelo antes de darlo de baja');
+}
+
+/** RF-23: un equipo se asigna a un sitio donde queda instalado, no a una bodega (ahí solo se guarda). */
+export function assertCheckoutLocation(type: LocationType): void {
+  if (type === 'warehouse') {
+    throw new ValidationError('No se asigna a una bodega', {
+      locationId: ['Elige un sitio de cliente, oficina u otro; las bodegas son para devolver'],
+    });
+  }
+}
+
+/** RF-23: al devolver, el activo vuelve a una bodega. */
+export function assertReturnLocation(type: LocationType): void {
+  if (type !== 'warehouse') {
+    throw new ValidationError('Se devuelve a una bodega', {
+      locationId: ['Elige una bodega para devolver el activo'],
+    });
+  }
 }

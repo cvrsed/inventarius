@@ -4,6 +4,7 @@ import type {
   CategoryDto,
   CategoryExtension,
   LocationDto,
+  LocationType,
   ManufacturerDto,
   StatusKind,
   StatusLabelDto,
@@ -44,6 +45,10 @@ type ModelPatch = { [K in keyof ModelInput]?: ModelInput[K] | undefined } & {
   active?: boolean | undefined;
 };
 
+interface LocationListQuery extends ListQuery {
+  type?: LocationType | undefined;
+  excludeType?: LocationType | undefined;
+}
 interface ModelListQuery extends ListQuery {
   manufacturerId?: string | undefined;
   categoryId?: string | undefined;
@@ -83,14 +88,15 @@ export class CatalogService {
   readonly locations: CatalogEntity<
     LocationRow,
     LocationDto,
-    { name: string; parentId: string | null; address: string | null },
+    { name: string; parentId: string | null; type: LocationType; address: string | null },
     {
       name?: string | undefined;
       parentId?: string | null | undefined;
+      type?: LocationType | undefined;
       address?: string | null | undefined;
       active?: boolean | undefined;
     },
-    ListQuery
+    LocationListQuery
   >;
   readonly statusLabels: CatalogEntity<
     StatusLabelRow,
@@ -209,12 +215,14 @@ export class CatalogService {
           name: r.name,
           parent: r.parentId && r.parentName ? { id: r.parentId, name: r.parentName } : null,
           path: r.path,
+          type: r.type as LocationType,
           address: r.address,
           active: r.active,
           updatedAt: iso(r.updatedAt),
         }),
-        snapshot: (r) => ({ path: r.path, address: r.address, active: r.active }),
-        list: (e, q) => repo.listLocations(e, listOpts(q)),
+        snapshot: (r) => ({ path: r.path, type: r.type, address: r.address, active: r.active }),
+        list: (e, q) =>
+          repo.listLocations(e, { ...listOpts(q), type: q.type, excludeType: q.excludeType }),
         get: (e, id) => repo.getLocation(e, id),
         insert: async (e, v) => repo.insertLocation(e, v),
         update: (e, id, v) => repo.updateLocation(e, id, compact(v)),

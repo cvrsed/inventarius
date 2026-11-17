@@ -7,6 +7,7 @@ import {
   type CategoryExtension,
   type CheckinRequest,
   type CheckoutRequest,
+  type LocationType,
   type CreateAssetInput,
   type Currency,
   type StatusKind,
@@ -28,6 +29,8 @@ import {
   assertCanCheckin,
   assertCanCheckout,
   assertCanDelete,
+  assertCheckoutLocation,
+  assertReturnLocation,
   formatAssetTag,
   warrantyEndsOn,
 } from './domain.js';
@@ -61,6 +64,7 @@ function snapshot(r: AssetRow): Record<string, unknown> {
     model: r.modelName,
     status: r.statusName,
     location: r.locationName,
+    baseLocation: r.baseLocationName,
     purchaseDate: r.purchaseDate,
     purchaseCost: r.purchaseCost === null ? null : Number(r.purchaseCost),
     purchaseCurrency: r.purchaseCurrency,
@@ -84,6 +88,7 @@ export function toListItem(r: AssetRow): AssetListItemDto {
     },
     status: { id: r.statusId, name: r.statusName, kind: r.statusKind as StatusKind },
     location: ref(r.locationId, r.locationName),
+    baseLocation: ref(r.baseLocationId, r.baseLocationName),
     assignedUser: ref(r.assignedUserId, r.assignedUserName),
     assignedLocation: ref(r.assignedLocationId, r.assignedLocationName),
     deleted: r.deletedAt !== null,
@@ -186,7 +191,8 @@ export class AssetsService {
     await this.catalog.requireModel(tx, input.modelId);
     const status = await this.catalog.requireStatus(tx, input.statusId);
     if (status.systemKey) throw reservedStatus();
-    if (input.locationId) await this.catalog.requireActiveLocation(tx, input.locationId);
+    if (input.baseLocationId)
+      await this.requireWarehouse(tx, input.baseLocationId, 'baseLocationId');
     const assetTag =
       input.assetTag ?? formatAssetTag(this.tagPrefix, await this.repo.nextTagNumber(tx));
     const id = await this.repo.insert(tx, {
@@ -195,7 +201,8 @@ export class AssetsService {
       serial: input.serial,
       modelId: input.modelId,
       statusId: input.statusId,
-      locationId: input.locationId,
+      baseLocationId: input.baseLocationId,
+      locationId: input.baseLocationId,
       purchaseDate: input.purchaseDate,
       purchaseCost: money(input.purchaseCost) ?? null,
       purchaseCurrency: input.purchaseCurrency ?? this.defaultCurrency,
@@ -219,7 +226,13 @@ export class AssetsService {
         const current = await this.lockAndRead(tx, id, expectedVersion);
         AssetsService.assertEditable(current);
         await this.validatePatch(tx, current, patch);
-        await this.repo.update(tx, id, toChanges(patch));
+        const changes = toChanges(patch);
+        // En bodega y sin asignar, cambiar la base mueve también la ubicación actual.
+        const inStock = !isAssigned(current) && current.locationId === current.baseLocationId;
+        if (changes.baseLocationId !== undefined && inStock) {
+          changes.locationId = changes.baseLocationId;
+        }
+        await this.repo.update(tx, id, changes);
         const row = await this.require(tx, id);
         const diff = changedFields(snapshot(current), snapshot(row));
         if (diff) await this.record(tx, actor, 'asset.update', id, diff);
@@ -239,8 +252,8 @@ export class AssetsService {
     if (patch.modelId && patch.modelId !== current.modelId) {
       await this.catalog.requireModel(tx, patch.modelId);
     }
-    if (patch.locationId && patch.locationId !== current.locationId) {
-      await this.catalog.requireActiveLocation(tx, patch.locationId);
+    if (patch.baseLocationId && patch.baseLocationId !== current.baseLocationId) {
+      await this.requireWarehouse(tx, patch.baseLocationId, 'baseLocationId');
     }
     if (patch.statusId && patch.statusId !== current.statusId) {
       if (isAssigned(current)) {
@@ -266,6 +279,8 @@ export class AssetsService {
         await this.repo.setAssignee(tx, id, {
           userId: input.userId ?? null,
           locationId: input.locationId ?? null,
+          // Con una persona la ubicación actual deja de ser la bodega; en un sitio, es el sitio.
+          currentLocationId: input.locationId ?? null,
           statusId: assigned.id,
         });
         await this.repo.openAssignmentFor(tx, {
@@ -305,7 +320,17 @@ export class AssetsService {
       }
       return user;
     }
-    return this.catalog.requireActiveLocation(tx, input.locationId!, 'locationId');
+    const site = await this.catalog.requireActiveLocation(tx, input.locationId!, 'locationId');
+    assertCheckoutLocation(site.type as LocationType);
+    return site;
+  }
+
+  private async requireWarehouse(tx: Executor, id: string, field: string) {
+    const row = await this.catalog.requireActiveLocation(tx, id, field);
+    if (row.type !== 'warehouse') {
+      throw new ValidationError('Debe ser una bodega', { [field]: ['Elige una bodega'] });
+    }
+    return row;
   }
 
   /** RF-23: devuelve el activo con una nota y el estado en que queda. */
@@ -316,10 +341,17 @@ export class AssetsService {
       const status = await this.catalog.requireStatus(tx, input.statusId);
       if (status.systemKey) throw reservedStatus();
       await this.repo.closeAssignment(tx, id, { by: actor.actorId, note: input.note ?? null });
-      await this.repo.setAssignee(tx, id, { userId: null, locationId: null, statusId: status.id });
+      const warehouse = await this.catalog.requireActiveLocation(tx, input.locationId);
+      assertReturnLocation(warehouse.type as LocationType);
+      await this.repo.setAssignee(tx, id, {
+        userId: null,
+        locationId: null,
+        currentLocationId: warehouse.id,
+        statusId: status.id,
+      });
       await this.record(tx, actor, 'asset.checkin', id, {
         before: { assignedTo: assigneeName(current), status: current.statusName },
-        after: { status: status.name, note: input.note ?? null },
+        after: { status: status.name, returnedTo: warehouse.name, note: input.note ?? null },
       });
       return toDto(await this.require(tx, id));
     });
@@ -399,7 +431,8 @@ const EXPORT_HEADERS = [
   'Fabricante',
   'Categoría',
   'Estado',
-  'Ubicación',
+  'Ubicación actual',
+  'Ubicación base',
   'Asignado a',
   'Fecha de compra',
   'Costo',
@@ -421,7 +454,8 @@ function exportCells(r: AssetRow) {
     r.manufacturerName,
     r.categoryName,
     r.statusName,
-    r.locationName,
+    r.locationName ?? (r.assignedUserName ? `Con ${r.assignedUserName}` : null),
+    r.baseLocationName,
     assigneeName(r),
     r.purchaseDate,
     r.purchaseCost,

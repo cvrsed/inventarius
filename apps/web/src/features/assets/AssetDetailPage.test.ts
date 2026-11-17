@@ -29,6 +29,7 @@ const baseAsset = {
   category: { ...ref('c1', 'Notebooks'), extension: 'none' },
   status: { ...ref('s1', 'Disponible'), kind: 'deployable' },
   location: ref('l1', 'Sala 1'),
+  baseLocation: ref('l1', 'Sala 1'),
   assignedUser: null,
   assignedLocation: null,
   deleted: false,
@@ -143,6 +144,14 @@ describe('AssetDetailPage (RF-41)', () => {
     const labels = buttons(await mountAsset({}, ['asset:read', 'asset:checkout']));
     expect(labels).toContain('Asignar');
     expect(labels).not.toContain('Editar');
+  });
+
+  it('con una persona la ficha dice «Con <nombre>» y conserva la base', async () => {
+    const w = await mountAsset({ location: null, assignedUser: ref('u1', 'Tomás') }, [
+      'asset:read',
+    ]);
+    expect(w.text()).toContain('Con Tomás');
+    expect(w.text()).toContain('Ubicación base');
   });
 
   it('asignado: ofrece devolver y oculta asignar, cambiar estado y dar de baja', async () => {

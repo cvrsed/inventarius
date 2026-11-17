@@ -4,6 +4,8 @@ import {
   assertCanCheckin,
   assertCanCheckout,
   assertCanDelete,
+  assertCheckoutLocation,
+  assertReturnLocation,
   formatAssetTag,
   warrantyEndsOn,
 } from './domain.js';
@@ -44,6 +46,19 @@ describe('reglas de asignación (RF-23)', () => {
   it('el check-in exige que esté asignado', () => {
     expect(() => assertCanCheckin({ deleted: false, assigned: true })).not.toThrow();
     expect(() => assertCanCheckin({ deleted: false, assigned: false })).toThrow(ConflictError);
+  });
+});
+
+describe('destinos de asignación y devolución (RF-23)', () => {
+  it('asignar a una ubicación solo admite sitios que no sean bodega', () => {
+    for (const type of ['customer_site', 'office', 'other'] as const)
+      expect(() => assertCheckoutLocation(type)).not.toThrow();
+    expect(() => assertCheckoutLocation('warehouse')).toThrow(ValidationError);
+  });
+  it('devolver solo admite bodegas', () => {
+    expect(() => assertReturnLocation('warehouse')).not.toThrow();
+    for (const type of ['customer_site', 'office', 'other'] as const)
+      expect(() => assertReturnLocation(type)).toThrow(ValidationError);
   });
 });
 

@@ -143,6 +143,7 @@ export async function createCatalogFixture(request: APIRequestContext): Promise<
   const locationName = uniqueName('Sala');
   const location = await apiPost<{ id: string }>(request, '/api/v1/locations', {
     name: locationName,
+    type: 'warehouse',
   });
   return {
     manufacturerId: manufacturer.id,
@@ -180,7 +181,7 @@ export async function createAssetViaApi(
     serial,
     modelId: fixture.modelId,
     statusId: await statusIdByName(request, 'Disponible'),
-    locationId: fixture.locationId,
+    baseLocationId: fixture.locationId,
     ...extra,
   });
   return { id: asset.id, assetTag: asset.assetTag, name, serial };

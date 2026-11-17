@@ -25,7 +25,7 @@ export function columnsOf(section: Section, t: Translate) {
         ...tail,
       ];
     case 'locations':
-      return [col('name', 'path'), col('second', 'address'), ...tail];
+      return [col('name', 'path'), col('second', 'locationType'), col('third', 'address'), ...tail];
     case 'statuses':
       return [col('name', 'name'), col('second', 'kind'), ...tail];
   }
@@ -60,7 +60,12 @@ export function displayCells(section: Section, item: CatalogItem, t?: Translate)
     }
     case 'locations': {
       const l = item as LocationDto;
-      return { title: l.path, second: l.address ?? '', third: '', fourth: '' };
+      return {
+        title: l.path,
+        second: tr(`catalog.locationTypes.${l.type}`),
+        third: l.address ?? '',
+        fourth: '',
+      };
     }
     case 'statuses':
       return {

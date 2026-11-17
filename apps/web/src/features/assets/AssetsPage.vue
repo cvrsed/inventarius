@@ -8,6 +8,7 @@ import UInput from '@nuxt/ui/components/Input.vue';
 import UTable from '@nuxt/ui/components/Table.vue';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { currentPlace } from './place';
 import { useAuthStore } from '@/features/auth/useAuthStore';
 import { useListQuery } from '@/shared/list/useListQuery';
 import AppSelect from '@/shared/ui/AppSelect.vue';
@@ -186,7 +187,12 @@ const filtered = computed(
             variant="subtle"
           />
         </template>
-        <template #location-cell="{ row }">{{ row.original.location?.name ?? '' }}</template>
+        <template #location-cell="{ row }">{{
+          row.original.location?.name ??
+          (row.original.assignedUser
+            ? t('assets.withPerson', { name: row.original.assignedUser.name })
+            : '')
+        }}</template>
         <template #assignedTo-cell="{ row }">{{ assignedName(row.original) }}</template>
       </UTable>
     </div>
@@ -208,7 +214,7 @@ const filtered = computed(
           <span class="text-sm text-muted">{{ a.model.name }}</span>
           <span class="flex items-center gap-1 text-sm text-muted">
             <UIcon name="i-lucide-map-pin" class="size-4" aria-hidden="true" />
-            {{ a.location?.name ?? t('assets.noLocation') }} ·
+            {{ currentPlace(a, t) }} ·
             {{ assignedName(a) || t('assets.unassigned') }}
           </span>
           <UBadge

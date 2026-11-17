@@ -1,6 +1,7 @@
 import type { CatalogItem } from './api';
 import type { RemoteOption } from '@/shared/ui/RemoteSelect.vue';
 import {
+  LOCATION_TYPES,
   LORAWAN_CLASS_OPTIONS,
   LORAWAN_REGIONAL_PARAMETERS_OPTIONS,
   LORAWAN_REGION_OPTIONS,
@@ -118,6 +119,14 @@ const FIELDS: Record<Section, FieldDef[]> = {
   ],
   locations: [
     text('name', { required: true, maxLength: 120 }),
+    {
+      key: 'type',
+      label: 'catalog.fields.locationType',
+      kind: 'select',
+      required: true,
+      translateOptions: true,
+      options: LOCATION_TYPES.map((k) => ({ value: k, label: `catalog.locationTypes.${k}` })),
+    },
     { key: 'parent', label: 'catalog.fields.parent', kind: 'ref', source: 'locations' },
     text('address', { maxLength: 240 }),
   ],
@@ -158,7 +167,7 @@ const DEFAULTS: Record<Section, FormState> = {
     lorawanRegionalParameters: '',
     active: true,
   },
-  locations: { name: '', parent: null, address: '', active: true },
+  locations: { name: '', type: 'other', parent: null, address: '', active: true },
   statuses: { name: '', kind: 'deployable', active: true },
 };
 
@@ -186,7 +195,13 @@ export function formFromItem(section: Section, item: CatalogItem): FormState {
     }
     case 'locations': {
       const l = item as LocationDto;
-      return { name: l.name, parent: ref(l.parent), address: l.address ?? '', active: l.active };
+      return {
+        name: l.name,
+        type: l.type,
+        parent: ref(l.parent),
+        address: l.address ?? '',
+        active: l.active,
+      };
     }
     case 'statuses': {
       const s = item as StatusLabelDto;
@@ -235,6 +250,7 @@ export function toPayload(
     case 'locations':
       return {
         name: str(form['name']),
+        type: str(form['type']),
         parentId: idOf(form['parent']),
         address: orNull(form['address']),
         ...active,

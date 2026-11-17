@@ -26,9 +26,12 @@ const toast = useToast();
 const { checkin, update, remove } = useAssetMutations();
 
 const status = ref<RemoteOption | null>(null);
+/** Bodega a la que vuelve: parte en la ubicación base del activo (RF-23). */
+const returnTo = ref<RemoteOption | null>(null);
 const text = ref('');
 const error = ref('');
 const fieldError = ref('');
+const returnError = ref('');
 const needsStatus = computed(() => props.mode !== 'delete');
 const pending = computed(
   () => checkin.isPending.value || update.isPending.value || remove.isPending.value,
@@ -43,8 +46,11 @@ watch(visible, (open) => {
   if (!open) return;
   status.value =
     props.mode === 'status' ? { id: props.asset.status.id, name: props.asset.status.name } : null;
+  returnTo.value = props.asset.baseLocation
+    ? { id: props.asset.baseLocation.id, name: props.asset.baseLocation.name }
+    : null;
   text.value = '';
-  error.value = fieldError.value = '';
+  error.value = fieldError.value = returnError.value = '';
 });
 
 /** «Asignado» lo pone el sistema al asignar: no se ofrece como destino. */
@@ -58,6 +64,7 @@ async function run(): Promise<void> {
       id,
       body: {
         statusId: status.value!.id,
+        locationId: returnTo.value!.id,
         ...(text.value.trim() ? { note: text.value.trim() } : {}),
       },
     });
@@ -69,7 +76,11 @@ async function run(): Promise<void> {
 }
 
 async function submit(): Promise<void> {
-  error.value = fieldError.value = '';
+  error.value = fieldError.value = returnError.value = '';
+  if (props.mode === 'checkin' && !returnTo.value) {
+    returnError.value = t('common.required');
+    return;
+  }
   if ((needsStatus.value && !status.value) || (props.mode === 'delete' && !text.value.trim())) {
     fieldError.value = t('common.required');
     return;
@@ -107,6 +118,21 @@ async function submit(): Promise<void> {
             source="statuses-action"
             :fetcher="fetchStatuses"
             :placeholder="t('assets.statusPlaceholder')"
+          />
+        </UFormField>
+        <UFormField
+          v-if="mode === 'checkin'"
+          :label="t('assets.checkin.returnTo')"
+          name="ac-location"
+          required
+          :error="returnError"
+        >
+          <RemoteSelect
+            id="ac-location"
+            v-model="returnTo"
+            source="warehouses-checkin"
+            :fetcher="(q: string) => fetchOptions('locations', q, { extra: { type: 'warehouse' } })"
+            :placeholder="t('assets.checkin.returnToPlaceholder')"
           />
         </UFormField>
         <UFormField

@@ -8,7 +8,7 @@ export interface AssetForm {
   name: string;
   model: RemoteOption | null;
   status: RemoteOption | null;
-  location: RemoteOption | null;
+  baseLocation: RemoteOption | null;
   serial: string;
   purchaseDate: string;
   purchaseCost: string;
@@ -23,7 +23,7 @@ export const emptyAssetForm = (currency = getDefaultCurrency()): AssetForm => ({
   name: '',
   model: null,
   status: null,
-  location: null,
+  baseLocation: null,
   serial: '',
   purchaseDate: '',
   purchaseCost: '',
@@ -40,7 +40,7 @@ type Loaded = Pick<
   | 'serial'
   | 'model'
   | 'status'
-  | 'location'
+  | 'baseLocation'
   | 'purchaseDate'
   | 'purchaseCost'
   | 'purchaseCurrency'
@@ -55,7 +55,7 @@ export function formFromAsset(a: Loaded): AssetForm {
     name: a.name,
     model: { id: a.model.id, name: a.model.name },
     status: { id: a.status.id, name: a.status.name },
-    location: a.location ? { id: a.location.id, name: a.location.name } : null,
+    baseLocation: a.baseLocation ? { id: a.baseLocation.id, name: a.baseLocation.name } : null,
     serial: a.serial ?? '',
     purchaseDate: a.purchaseDate ?? '',
     purchaseCost: a.purchaseCost === null ? '' : String(a.purchaseCost),
@@ -93,7 +93,7 @@ export function toAssetPayload(
       ? { statusId: f.status?.id ?? null }
       : {}),
     serial: orNull(f.serial),
-    locationId: f.location?.id ?? null,
+    baseLocationId: f.baseLocation?.id ?? null,
     purchaseDate: orNull(f.purchaseDate),
     purchaseCost: toNumber(f.purchaseCost),
     purchaseCurrency: f.purchaseCurrency,

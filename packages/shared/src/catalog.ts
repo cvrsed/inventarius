@@ -128,12 +128,18 @@ export const modelListQuerySchema = catalogListQuerySchema.extend({
 });
 
 // --- Ubicaciones (RF-12) ---
+/** Tipo de ubicación: la bodega guarda equipos; el resto son lugares donde se instalan o se usan. */
+export const LOCATION_TYPES = ['warehouse', 'customer_site', 'office', 'other'] as const;
+export const locationTypeSchema = z.enum(LOCATION_TYPES);
+export type LocationType = z.infer<typeof locationTypeSchema>;
+
 export const locationSchema = z.object({
   id: z.uuid(),
   name: z.string(),
   parent: refSchema.nullable(),
   /** Ruta completa, p. ej. «Cliente > Edificio > Piso». */
   path: z.string(),
+  type: locationTypeSchema,
   address: z.string().nullable(),
   active: z.boolean(),
   ...versioned,
@@ -142,12 +148,24 @@ export type LocationDto = z.infer<typeof locationSchema>;
 export const createLocationSchema = z.object({
   name,
   parentId: z.uuid().nullable().default(null),
+  type: locationTypeSchema.default('other'),
   address: optionalText(240).default(null),
 });
 export const updateLocationSchema = z
-  .object({ name, parentId: z.uuid().nullable(), address: optionalText(240), active: z.boolean() })
+  .object({
+    name,
+    parentId: z.uuid().nullable(),
+    type: locationTypeSchema,
+    address: optionalText(240),
+    active: z.boolean(),
+  })
   .partial()
   .refine((v) => Object.keys(v).length > 0, 'Indica al menos un campo');
+/** `type` deja solo ese tipo; `excludeType` lo saca (p. ej. destinos de asignación = todo menos bodegas). */
+export const locationListQuerySchema = catalogListQuerySchema.extend({
+  type: locationTypeSchema.optional(),
+  excludeType: locationTypeSchema.optional(),
+});
 
 // --- Estados (RF-13) ---
 export const statusLabelSchema = z.object({

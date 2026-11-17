@@ -76,7 +76,10 @@ export const assetListItemSchema = z.object({
   model: refSchema,
   category: refSchema.extend({ extension: categoryExtensionSchema }),
   status: refSchema.extend({ kind: statusKindSchema }),
+  /** Dónde está ahora; vacío si lo tiene una persona (ver `assignedUser`). */
   location: refSchema.nullable(),
+  /** Bodega donde vive el activo cuando no está asignado. */
+  baseLocation: refSchema.nullable(),
   assignedUser: refSchema.nullable(),
   assignedLocation: refSchema.nullable(),
   deleted: z.boolean(),
@@ -112,7 +115,7 @@ const assetEditable = {
   serial: text(120).nullable(),
   modelId: z.uuid(),
   statusId: z.uuid(),
-  locationId: z.uuid().nullable(),
+  baseLocationId: z.uuid().nullable(),
   purchaseDate: dateOnly.nullable(),
   purchaseCost: z.number().min(0).max(9_999_999_999.99).multipleOf(0.01).nullable(),
   purchaseCurrency: currencySchema,
@@ -128,7 +131,7 @@ export const createAssetSchema = z.object({
   modelId: assetEditable.modelId,
   statusId: assetEditable.statusId,
   serial: assetEditable.serial.default(null),
-  locationId: assetEditable.locationId.default(null),
+  baseLocationId: assetEditable.baseLocationId.default(null),
   purchaseDate: assetEditable.purchaseDate.default(null),
   purchaseCost: assetEditable.purchaseCost.default(null),
   /** Si falta, se usa la moneda por defecto de la instalación. */
@@ -162,6 +165,8 @@ export type CheckoutRequest = z.infer<typeof checkoutRequestSchema>;
 export const checkinRequestSchema = z.object({
   /** Estado en que queda el activo al volver. */
   statusId: z.uuid(),
+  /** Bodega a la que vuelve (por defecto, la ubicación base del activo). */
+  locationId: z.uuid(),
   note: text(500).optional(),
 });
 export type CheckinRequest = z.infer<typeof checkinRequestSchema>;

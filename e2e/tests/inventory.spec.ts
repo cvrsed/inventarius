@@ -187,7 +187,7 @@ async function createAssetViaUi(page: Page, fixture: Fixture, name: string, seri
   await page.getByLabel('Nombre', { exact: false }).first().fill(name);
   await pick(page, page.locator('form'), /^Modelo/, fixture.modelName);
   await pick(page, page.locator('form'), /^Estado/, 'Disponible');
-  await pick(page, page.locator('form'), /^Ubicación/, fixture.locationName);
+  await pick(page, page.locator('form'), /^Ubicación base/, fixture.locationName);
   await page.getByLabel('Número de serie').fill(serial);
   await page.getByLabel('Costo de compra').fill('1234,5');
   await page.getByLabel('Garantía (meses)').fill('12');
@@ -309,12 +309,18 @@ test.describe('activos: CRUD completo (RF-20 a RF-25)', () => {
     await expect(page.getByRole('region', { name: 'Asignación actual' })).toContainText(
       '2030-12-31',
     );
+    // Con una persona la ubicación actual deja de ser la bodega.
+    await expect(page.getByText(/Con Admin E2E/).first()).toBeVisible();
     // Asignado: no se cambia el estado ni se da de baja hasta devolverlo.
     await expect(page.getByRole('button', { name: 'Cambiar estado' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Dar de baja' })).toHaveCount(0);
 
     await page.getByRole('button', { name: 'Devolver' }).click();
     const back = page.getByRole('dialog', { name: 'Devolver activo' });
+    // «Devolver a» es obligatorio y parte en la bodega base del activo.
+    await expect(back.getByRole('button', { name: /^Devolver a/ })).toContainText(
+      fixture.locationName,
+    );
     await pick(page, back, /^Estado al devolver/, 'Disponible');
     await back.getByLabel('Nota').fill('Vuelve en buen estado');
     await back.getByRole('button', { name: 'Guardar' }).click();

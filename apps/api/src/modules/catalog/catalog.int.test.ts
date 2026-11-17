@@ -301,6 +301,34 @@ describe('modelos (RF-11)', () => {
   });
 });
 
+describe('tipo de ubicación (RF-12)', () => {
+  it('nace como «otro», admite los cuatro tipos y rechaza otros', async () => {
+    const plain = await create(operator, 'locations', { name: 'Sin tipo declarado' });
+    expect(plain).toMatchObject({ type: 'other' });
+    for (const type of ['warehouse', 'customer_site', 'office'] as const) {
+      const l = await create(operator, 'locations', { name: `Tipo ${type}`, type });
+      expect(l).toMatchObject({ type });
+    }
+    const bad = await operator.post(`${base}/locations`, { name: 'Tipo raro', type: 'garaje' });
+    expect(bad.statusCode).toBe(400);
+  });
+
+  it('el tipo se edita con If-Match y el listado filtra por type y excludeType', async () => {
+    const l = await create(operator, 'locations', { name: 'Bodega filtro', type: 'warehouse' });
+    await create(operator, 'locations', { name: 'Cliente filtro', type: 'customer_site' });
+    const only = await reader.get(`${base}/locations?type=warehouse&q=filtro`);
+    expect(only.json().data.map((x: { name: string }) => x.name)).toEqual(['Bodega filtro']);
+    const rest = await reader.get(`${base}/locations?excludeType=warehouse&q=filtro`);
+    expect(rest.json().data.map((x: { name: string }) => x.name)).toEqual(['Cliente filtro']);
+    const patched = await operator.patch(
+      `${base}/locations/${l.id}`,
+      { type: 'office' },
+      { 'if-match': `"${l.updatedAt}"` },
+    );
+    expect(patched.json()).toMatchObject({ type: 'office' });
+  });
+});
+
 describe('ubicaciones jerárquicas (RF-12)', () => {
   it('arma la ruta completa y filtra por texto', async () => {
     const cliente = await create(operator, 'locations', { name: 'Cliente A' });

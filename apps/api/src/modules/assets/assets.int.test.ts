@@ -21,6 +21,7 @@ const ids = {
   assigned: '',
   room: '',
   other: '',
+  site: '',
 };
 
 const hdr = (v: string) => ({ 'if-match': `"${v}"` });
@@ -95,8 +96,11 @@ beforeAll(async () => {
   ids.repair = await statusId('En reparación');
   ids.retired = await statusId('Dado de baja');
   ids.assigned = await statusId('Asignado');
-  ids.room = (await post(operator, 'locations', { name: 'Sala 1' })).id;
-  ids.other = (await post(operator, 'locations', { name: 'Bodega' })).id;
+  ids.room = (await post(operator, 'locations', { name: 'Sala 1', type: 'warehouse' })).id;
+  ids.other = (await post(operator, 'locations', { name: 'Bodega', type: 'warehouse' })).id;
+  ids.site = (
+    await post(operator, 'locations', { name: 'Cliente Norte', type: 'customer_site' })
+  ).id;
 });
 afterAll(async () => env.close());
 
@@ -125,7 +129,7 @@ describe('alta de activos (RF-20)', () => {
       serial: 'SN-1',
       modelId: ids.model,
       statusId: ids.available,
-      locationId: ids.room,
+      baseLocationId: ids.room,
       purchaseDate: '2026-01-31',
       purchaseCost: 499990.5,
       supplier: 'Proveedor SpA',
@@ -148,6 +152,7 @@ describe('alta de activos (RF-20)', () => {
       category: { id: ids.category, extension: 'none' },
       status: { id: ids.available, kind: 'deployable' },
       location: { id: ids.room, name: 'Sala 1' },
+      baseLocation: { id: ids.room, name: 'Sala 1' },
       assignedUser: null,
       deleted: false,
     });
@@ -193,17 +198,17 @@ describe('alta de activos (RF-20)', () => {
       });
     expect((await call({ modelId: ghost })).statusCode).toBe(422);
     expect((await call({ statusId: ghost })).statusCode).toBe(422);
-    expect((await call({ locationId: ghost })).statusCode).toBe(422);
+    expect((await call({ baseLocationId: ghost })).statusCode).toBe(422);
     const asg = await call({ statusId: ids.assigned });
     expect(asg.statusCode).toBe(422);
     expect(asg.json().errors.statusId).toBeTruthy();
-    const inactive = await post(operator, 'locations', { name: 'Cerrada' });
+    const inactive = await post(operator, 'locations', { name: 'Cerrada', type: 'warehouse' });
     await operator.patch(
       `${base}/locations/${inactive.id}`,
       { active: false },
       hdr(inactive.updatedAt),
     );
-    expect((await call({ locationId: inactive.id })).statusCode).toBe(422);
+    expect((await call({ baseLocationId: inactive.id })).statusCode).toBe(422);
   });
 
   it('deja el alta en auditoría (RF-30)', async () => {
@@ -265,7 +270,7 @@ describe('edición, concurrencia e historial (RF-24)', () => {
     );
     await operator.patch(
       `${base}/assets/${a.id}`,
-      { locationId: ids.room },
+      { baseLocationId: ids.room },
       hdr(first.json().updatedAt),
     );
     const res = await reader.get(`${base}/assets/${a.id}/history`);
@@ -286,9 +291,9 @@ describe('listado (RF-22)', () => {
       name: 'Zorzal azul',
       serial: 'QWERTY-99',
       statusId: ids.repair,
-      locationId: ids.other,
+      baseLocationId: ids.other,
     });
-    await newAsset({ name: 'Zorzal rojo', modelId: ids.loraModel, locationId: ids.room });
+    await newAsset({ name: 'Zorzal rojo', modelId: ids.loraModel, baseLocationId: ids.room });
   });
 
   it('busca por etiqueta, nombre o serie, sin distinguir mayúsculas', async () => {
@@ -349,10 +354,71 @@ describe('asignación (RF-23)', () => {
     expect(filtered.json().data.map((x: { id: string }) => x.id)).toContain(a.id);
   });
 
-  it('asigna a una ubicación', async () => {
-    const a = await newAsset();
-    const res = await operator.post(`${base}/assets/${a.id}/checkout`, { locationId: ids.room });
-    expect(res.json()).toMatchObject({ assignedLocation: { id: ids.room }, assignedUser: null });
+  it('asignar a una persona deja la ubicación actual vacía y conserva la base', async () => {
+    const a = await newAsset({ baseLocationId: ids.room });
+    const res = await operator.post(`${base}/assets/${a.id}/checkout`, { userId: techId });
+    expect(res.json()).toMatchObject({
+      location: null,
+      baseLocation: { id: ids.room },
+      assignedUser: { id: techId },
+    });
+  });
+
+  it('asigna a un sitio que no sea bodega; una bodega se rechaza (422)', async () => {
+    const a = await newAsset({ baseLocationId: ids.room });
+    const bad = await operator.post(`${base}/assets/${a.id}/checkout`, { locationId: ids.other });
+    expect(bad.statusCode).toBe(422);
+    expect(Object.keys(bad.json().errors)).toContain('locationId');
+    const res = await operator.post(`${base}/assets/${a.id}/checkout`, { locationId: ids.site });
+    expect(res.json()).toMatchObject({
+      assignedLocation: { id: ids.site },
+      location: { id: ids.site },
+      baseLocation: { id: ids.room },
+      assignedUser: null,
+    });
+  });
+
+  it('devolver exige una bodega: el sitio se rechaza y la bodega pasa a ser la ubicación actual', async () => {
+    const a = await newAsset({ baseLocationId: ids.room });
+    await operator.post(`${base}/assets/${a.id}/checkout`, { locationId: ids.site });
+    const bad = await operator.post(`${base}/assets/${a.id}/checkin`, {
+      statusId: ids.available,
+      locationId: ids.site,
+    });
+    expect(bad.statusCode).toBe(422);
+    const missing = await operator.post(`${base}/assets/${a.id}/checkin`, {
+      statusId: ids.available,
+    });
+    expect(missing.statusCode).toBe(400);
+    const ok = await operator.post(`${base}/assets/${a.id}/checkin`, {
+      statusId: ids.available,
+      locationId: ids.other,
+    });
+    expect(ok.json()).toMatchObject({
+      location: { id: ids.other },
+      baseLocation: { id: ids.room },
+      assignedLocation: null,
+    });
+  });
+
+  it('la base debe ser una bodega y, estando en bodega, mover la base mueve la ubicación actual', async () => {
+    const bad = await operator.post(`${base}/assets`, {
+      name: 'x',
+      modelId: ids.model,
+      statusId: ids.available,
+      baseLocationId: ids.site,
+    });
+    expect(bad.statusCode).toBe(422);
+    const a = await newAsset({ baseLocationId: ids.room });
+    const moved = await operator.patch(
+      `${base}/assets/${a.id}`,
+      { baseLocationId: ids.other },
+      hdr(a.updatedAt),
+    );
+    expect(moved.json()).toMatchObject({
+      baseLocation: { id: ids.other },
+      location: { id: ids.other },
+    });
   });
 
   it('solo los activos en estado desplegable se asignan (422) y no dos veces (409)', async () => {
@@ -406,6 +472,7 @@ describe('asignación (RF-23)', () => {
     await tech.post(`${base}/assets/${a.id}/checkout`, { userId: techId, note: 'sale' });
     const back = await tech.post(`${base}/assets/${a.id}/checkin`, {
       statusId: ids.repair,
+      locationId: ids.room,
       note: 'vuelve con falla',
     });
     expect(back.statusCode, back.body).toBe(200);
@@ -416,7 +483,12 @@ describe('asignación (RF-23)', () => {
       assignment: null,
     });
     expect(
-      (await tech.post(`${base}/assets/${a.id}/checkin`, { statusId: ids.available })).statusCode,
+      (
+        await tech.post(`${base}/assets/${a.id}/checkin`, {
+          statusId: ids.available,
+          locationId: ids.room,
+        })
+      ).statusCode,
     ).toBe(409);
     const history = await reader.get(`${base}/assets/${a.id}/history`);
     expect(history.json().data.map((e: { action: string }) => e.action)).toEqual([

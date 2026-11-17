@@ -12,6 +12,9 @@ import {
 } from '../../core/db/schema.js';
 
 export interface ListOptions {
+  /** Solo ubicaciones: deja solo ese tipo, o saca ese tipo. */
+  type?: string | undefined;
+  excludeType?: string | undefined;
   q?: string | undefined;
   active?: boolean | undefined;
   sort?: string | undefined;
@@ -47,6 +50,7 @@ export type LocationRow = {
   parentId: string | null;
   parentName: string | null;
   path: string;
+  type: string;
   address: string | null;
   active: boolean;
   createdAt: Date;
@@ -292,7 +296,7 @@ export class CatalogRepository {
     )`;
   private readonly locationSelect = sql`
     SELECT l.id, l.name, l.parent_id AS "parentId", p.name AS "parentName", tree.path,
-           l.address, l.active, l.created_at AS "createdAt", l.updated_at AS "updatedAt"
+           l.type, l.address, l.active, l.created_at AS "createdAt", l.updated_at AS "updatedAt"
     FROM locations l
     JOIN tree ON tree.id = l.id
     LEFT JOIN locations p ON p.id = l.parent_id`;
@@ -307,6 +311,8 @@ export class CatalogRepository {
       conds.push(sql`(tree.path ILIKE ${term} OR l.address ILIKE ${term})`);
     }
     if (o.active !== undefined) conds.push(sql`l.active = ${o.active}`);
+    if (o.type) conds.push(sql`l.type = ${o.type}`);
+    if (o.excludeType) conds.push(sql`l.type <> ${o.excludeType}`);
     const where = conds.length ? sql`WHERE ${sql.join(conds, sql` AND `)}` : sql``;
     const descending = o.sort?.startsWith('-') ?? false;
     const key = (descending ? o.sort!.slice(1) : o.sort) ?? '';
@@ -329,7 +335,7 @@ export class CatalogRepository {
   }
   async insertLocation(
     exec: Executor,
-    v: { name: string; parentId: string | null; address: string | null },
+    v: { name: string; parentId: string | null; type: string; address: string | null },
   ) {
     const row = (await exec.insert(locations).values(v).returning({ id: locations.id }))[0]!;
     return (await this.getLocation(exec, row.id))!;
@@ -337,7 +343,13 @@ export class CatalogRepository {
   async updateLocation(
     exec: Executor,
     id: string,
-    v: { name?: string; parentId?: string | null; address?: string | null; active?: boolean },
+    v: {
+      name?: string;
+      parentId?: string | null;
+      type?: string;
+      address?: string | null;
+      active?: boolean;
+    },
   ) {
     await exec
       .update(locations)
@@ -360,9 +372,10 @@ export class CatalogRepository {
   }
   async locationInUse(exec: Executor, id: string): Promise<boolean> {
     const n = async (q: Promise<{ n: number }[]>) => pairCount(await q);
-    const [children, located, assigned, assignments] = await Promise.all([
+    const [children, located, based, assigned, assignments] = await Promise.all([
       n(exec.select({ n: count() }).from(locations).where(eq(locations.parentId, id))),
       n(exec.select({ n: count() }).from(assets).where(eq(assets.locationId, id))),
+      n(exec.select({ n: count() }).from(assets).where(eq(assets.baseLocationId, id))),
       n(exec.select({ n: count() }).from(assets).where(eq(assets.assignedLocationId, id))),
       n(
         exec
@@ -371,7 +384,7 @@ export class CatalogRepository {
           .where(eq(assetAssignments.locationId, id)),
       ),
     ]);
-    return children + located + assigned + assignments > 0;
+    return children + located + based + assigned + assignments > 0;
   }
 
   // --- Estados ---
