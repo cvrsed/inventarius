@@ -52,7 +52,7 @@ export const authRoutes: FastifyPluginAsyncZod<AuthRoutesOptions> = async (app, 
       schema: { tags: ['auth'], body: loginRequestSchema, response: { 200: sessionUserSchema } },
     },
     async (req, reply) => {
-      const { token, user } = await auth.login(req.body, client(req));
+      const { token, user } = await auth.login(req.body, client(req), req.auth?.sessionId);
       startSession(reply, token);
       return reply.header('cache-control', 'no-store').send(user);
     },

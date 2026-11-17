@@ -88,12 +88,15 @@ export class AuthService {
   }
 
   /**
-   * Valida credenciales. Siempre abre una sesión nueva (rotación del ID al hacer login).
+   * Valida credenciales. Siempre abre una sesión nueva (rotación del ID al hacer login) y, en la misma
+   * transacción, revoca la sesión previa que traía la petición (`previousSessionId`), si había: así el token
+   * anterior del navegador deja de valer en cuanto se inicia otra sesión. Un login fallido no revoca nada.
    * Los fallos devuelven el mismo mensaje exista o no la cuenta, y cuentan para el bloqueo.
    */
   async login(
     input: { email: string; password: string },
     client: ClientInfo,
+    previousSessionId?: string,
   ): Promise<SessionStart> {
     const accountKey = LoginThrottle.accountKey(input.email);
     const ipKey = LoginThrottle.ipKey(client.ip);
@@ -121,6 +124,7 @@ export class AuthService {
 
     await this.throttle.clearAccount(accountKey);
     const token = await this.db.transaction(async (tx) => {
+      if (previousSessionId) await this.repo.deleteSession(tx, previousSessionId);
       const t = await this.openSession(tx, found.id, client);
       await this.audit.record(tx, {
         actorId: found.id,

@@ -26,6 +26,39 @@ describe('login y sesión (RF-01)', () => {
     expect(me.json().permissions).not.toContain('user:manage');
   });
 
+  it('al iniciar sesión se revoca la sesión previa que traía la cookie [P32]', async () => {
+    const c = env.client('10.40.0.1');
+    await c.login('ana@ejemplo.cl');
+    const oldToken = c.cookie['session']!;
+    // Mismo navegador: la cookie vieja viaja en el nuevo login.
+    expect((await c.login('ana@ejemplo.cl')).statusCode).toBe(200);
+    const newToken = c.cookie['session']!;
+    expect(newToken).not.toBe(oldToken);
+    expect((await c.get('/api/v1/auth/me')).statusCode).toBe(200);
+
+    const stale = env.client('10.40.0.2');
+    stale.setCookie('session', oldToken);
+    expect((await stale.get('/api/v1/auth/me')).statusCode).toBe(401);
+  });
+
+  it('otra persona que inicia sesión sobre la cookie de la primera también la revoca [P32]', async () => {
+    const c = env.client('10.40.0.3');
+    await c.login('ana@ejemplo.cl');
+    const anaToken = c.cookie['session']!;
+    expect((await c.login('root@ejemplo.cl')).statusCode).toBe(200);
+    const stale = env.client('10.40.0.4');
+    stale.setCookie('session', anaToken);
+    expect((await stale.get('/api/v1/auth/me')).statusCode).toBe(401);
+    expect((await c.get('/api/v1/auth/me')).json().email).toBe('root@ejemplo.cl');
+  });
+
+  it('un login fallido no revoca la sesión que ya existía [P32]', async () => {
+    const c = env.client('10.40.0.5');
+    await c.login('ana@ejemplo.cl');
+    expect((await c.login('ana@ejemplo.cl', 'clave-incorrecta-123456')).statusCode).toBe(401);
+    expect((await c.get('/api/v1/auth/me')).statusCode).toBe(200);
+  });
+
   it('el email no distingue mayúsculas', async () => {
     expect((await env.client().login('ANA@Ejemplo.CL')).statusCode).toBe(200);
   });
