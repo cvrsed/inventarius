@@ -77,8 +77,18 @@ const filtered = computed(
     query.value.modelId !== '' ||
     query.value.locationId !== '' ||
     query.value.assignedUserId !== '' ||
+    query.value.baseLocationId !== '' ||
+    query.value.statusKind !== '' ||
+    query.value.assigned !== '' ||
+    query.value.overdue !== '' ||
     query.value.deleted !== 'exclude',
 );
+// Un enlace con filtros (p. ej. desde el Inicio) abre el panel para que se vean los que están aplicados.
+const NOT_FILTERS = ['page', 'pageSize', 'q', 'sort'];
+const hasPanelFilters = (Object.keys(ASSET_LIST_DEFAULTS) as (keyof AssetListState)[]).some(
+  (k) => !NOT_FILTERS.includes(k) && query.value[k] !== ASSET_LIST_DEFAULTS[k],
+);
+if (hasPanelFilters) showFilters.value = true;
 </script>
 
 <template>

@@ -30,6 +30,13 @@ export const ASSET_LIST_DEFAULTS = {
   modelId: '',
   locationId: '',
   assignedUserId: '',
+  baseLocationId: '',
+  /** Tipo de estado (`deployable`, `pending`...), no su nombre. */
+  statusKind: '',
+  /** `yes` | `no`. */
+  assigned: '',
+  /** `true`: devolución esperada vencida. */
+  overdue: '',
   deleted: 'exclude',
 };
 export type AssetListState = typeof ASSET_LIST_DEFAULTS;
@@ -49,6 +56,10 @@ export function listParams(s: AssetListState, includePaging = true): URLSearchPa
     'modelId',
     'locationId',
     'assignedUserId',
+    'baseLocationId',
+    'statusKind',
+    'assigned',
+    'overdue',
   ] as const) {
     if (s[key]) p.set(key, s[key]);
   }

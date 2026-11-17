@@ -13,12 +13,13 @@ const props = defineProps<{ state: AssetListState }>();
 const emit = defineEmits<{ change: [patch: Partial<AssetListState>]; clear: [] }>();
 const { t } = useI18n();
 
-type RefKey = 'statusId' | 'categoryId' | 'modelId' | 'locationId';
+type RefKey = 'statusId' | 'categoryId' | 'modelId' | 'locationId' | 'baseLocationId';
 const REF_FILTERS: { key: RefKey; section: Section; label: string }[] = [
   { key: 'statusId', section: 'statuses', label: 'assets.filterStatus' },
   { key: 'categoryId', section: 'categories', label: 'assets.filterCategory' },
   { key: 'modelId', section: 'models', label: 'assets.filterModel' },
   { key: 'locationId', section: 'locations', label: 'assets.filterLocation' },
+  { key: 'baseLocationId', section: 'locations', label: 'assets.filterBaseLocation' },
 ];
 
 /** Nombres de lo que viene en la URL, para mostrarlo en cada selector. */
@@ -38,6 +39,10 @@ const labels = {
   locationId: useOptionById(
     'locations',
     toRef(() => props.state.locationId),
+  ),
+  baseLocationId: useOptionById(
+    'locations',
+    toRef(() => props.state.baseLocationId),
   ),
 };
 const assignee = useAssigneeById(toRef(() => props.state.assignedUserId));
@@ -60,8 +65,28 @@ const hasFilters = computed(
     props.state.modelId !== '' ||
     props.state.locationId !== '' ||
     props.state.assignedUserId !== '' ||
+    props.state.baseLocationId !== '' ||
+    props.state.statusKind !== '' ||
+    props.state.assigned !== '' ||
+    props.state.overdue !== '' ||
     props.state.deleted !== 'exclude',
 );
+const statusKindItems = computed(() => [
+  { value: '', label: t('common.all') },
+  ...(['deployable', 'pending', 'undeployable', 'archived'] as const).map((value) => ({
+    value,
+    label: t(`catalog.kinds.${value}`),
+  })),
+]);
+const assignedItems = computed(() => [
+  { value: '', label: t('common.all') },
+  { value: 'yes', label: t('assets.assignedOptions.yes') },
+  { value: 'no', label: t('assets.assignedOptions.no') },
+]);
+const overdueItems = computed(() => [
+  { value: '', label: t('common.all') },
+  { value: 'true', label: t('assets.overdueOption') },
+]);
 const deletedItems = computed(() =>
   (['exclude', 'include', 'only'] as const).map((value) => ({
     value,
@@ -92,6 +117,33 @@ const deletedItems = computed(() =>
         :placeholder="t('common.all')"
         clearable
         @update:model-value="(v: RemoteOption | null) => change('assignedUserId', v)"
+      />
+    </UFormField>
+    <UFormField :label="t('assets.filterStatusKind')" name="filter-status-kind">
+      <AppSelect
+        id="filter-status-kind"
+        :model-value="state.statusKind"
+        :items="statusKindItems"
+        class="w-full"
+        @update:model-value="(v: string | number) => emit('change', { statusKind: String(v) })"
+      />
+    </UFormField>
+    <UFormField :label="t('assets.filterAssigned')" name="filter-assigned">
+      <AppSelect
+        id="filter-assigned"
+        :model-value="state.assigned"
+        :items="assignedItems"
+        class="w-full"
+        @update:model-value="(v: string | number) => emit('change', { assigned: String(v) })"
+      />
+    </UFormField>
+    <UFormField :label="t('assets.filterOverdue')" name="filter-overdue">
+      <AppSelect
+        id="filter-overdue"
+        :model-value="state.overdue"
+        :items="overdueItems"
+        class="w-full"
+        @update:model-value="(v: string | number) => emit('change', { overdue: String(v) })"
       />
     </UFormField>
     <UFormField :label="t('assets.filterDeleted')" name="filter-deleted">

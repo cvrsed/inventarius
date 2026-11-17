@@ -76,6 +76,21 @@ describe('AssetsPage (RF-22, RF-40)', () => {
     });
   });
 
+  it('los filtros del Inicio (tipo de estado, asignación, atraso) viajan a la API y abren el panel', async () => {
+    const { wrapper, fetchMock } = await mountAt(
+      '/activos?statusKind=pending&assigned=no&overdue=true&baseLocationId=018f0000-0000-7000-8000-0000000000d1',
+      [],
+    );
+    const params = new URL(listCalls(fetchMock).at(-1)!, 'http://x').searchParams;
+    expect(Object.fromEntries(params)).toMatchObject({
+      statusKind: 'pending',
+      assigned: 'no',
+      overdue: 'true',
+      baseLocationId: '018f0000-0000-7000-8000-0000000000d1',
+    });
+    expect(wrapper.find('#filter-status-kind').exists()).toBe(true);
+  });
+
   it('sin filtros la API recibe solo página y tamaño', async () => {
     const { fetchMock } = await mountAt('/activos', []);
     const params = new URL(listCalls(fetchMock).at(-1)!, 'http://x').searchParams;
