@@ -270,19 +270,13 @@ test.describe('activos: CRUD completo (RF-20 a RF-25)', () => {
       'Borrador sin guardar',
     );
 
-    // Recargar: el navegador muestra su aviso (beforeunload).
-    const kinds: string[] = [];
-    page.once('dialog', async (dialog) => {
-      kinds.push(dialog.type());
-      await dialog.dismiss();
+    // Recargar o cerrar: con cambios, la página cancela el evento beforeunload (el navegador pregunta).
+    const prevented = await page.evaluate(() => {
+      const event = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(event);
+      return event.defaultPrevented;
     });
-    await page.evaluate(() => {
-      // Chromium solo avisa si hubo interacción; el relleno anterior ya cuenta.
-      window.dispatchEvent(new Event('beforeunload', { cancelable: true }));
-    });
-    await page.reload().catch(() => undefined);
-    expect(kinds).toEqual(['beforeunload']);
-    await expect(page).toHaveURL(/\/activos\/nuevo$/);
+    expect(prevented).toBe(true);
 
     // Descartar sí sale.
     await page.getByRole('link', { name: 'Activos' }).first().click();
@@ -550,7 +544,10 @@ test.describe('listado de activos (RF-22, RF-26, RF-40)', () => {
     await page.getByRole('option', { name: fixture.modelName }).click();
     await expect(page).toHaveURL(new RegExp(`modelId=${fixture.modelId}`));
     await page.reload();
-    if (info.project.name === 'mobile') await page.getByRole('button', { name: 'Filtros' }).click();
+    // Con filtros en la URL el panel ya viene abierto; en móvil solo se abre si sigue cerrado.
+    const toggle = page.getByRole('button', { name: 'Filtros', exact: true });
+    if (info.project.name === 'mobile' && (await toggle.getAttribute('aria-expanded')) !== 'true')
+      await toggle.click();
     // El nombre accesible del selector es su rótulo; lo elegido se lee en su contenido.
     await expect(page.getByRole('button', { name: /^Modelo/ })).toContainText(
       fixture.modelName.slice(0, 20),

@@ -17,6 +17,7 @@ async function accept(): Promise<void> {
     v-model:open="state.open"
     :title="state.options?.title ?? ''"
     :description="state.options?.message ?? ''"
+    :ui="{ overlay: 'z-[60]', content: 'z-[60]' }"
   >
     <template #footer>
       <div class="flex w-full justify-end gap-2">
