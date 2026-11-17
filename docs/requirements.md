@@ -103,7 +103,7 @@ Cada requerimiento tiene ID para trazarlo en issues, commits y tests (`RF-xx`).
 ### 4.3 Activos
 
 - **RF-20** Alta de activo: etiqueta (asset tag, única, autogenerable con prefijo configurable), nombre, modelo, número de serie, estado, **ubicación base** (la bodega donde vive; la ubicación actual parte igual a ella), fecha y costo de compra (con moneda, CLP por defecto y configurable), proveedor, garantía (meses), notas.
-- **RF-21** Si la categoría del modelo es `lorawan`, la ficha agrega la sección LoRaWAN (ver 5.2), con validación de formato y unicidad de DevEUI.
+- **RF-21** Si la categoría del modelo es `lorawan`, la ficha agrega la sección LoRaWAN (ver 5.2), con validación de formato y unicidad de DevEUI. **Los datos LoRaWAN son opcionales al crear el activo** (se pueden completar después, a mano o por CSV, RF-66); son obligatorios solo al **registrar en el LNS** (RF-60), que es lo que valida F3.
 - **RF-22** Listado con búsqueda de texto (etiqueta, nombre, serie, DevEUI), filtros (categoría, modelo, estado, ubicación, asignado a, estado LNS), orden y paginación del lado servidor. Los filtros quedan en la URL (compartibles).
 - **RF-23** Check-out a usuario o a ubicación, con fecha esperada de devolución opcional y nota; check-in con nota, nuevo estado y **«Devolver a»** (obligatorio, solo bodegas, precargado con la ubicación base). Al asignar a un usuario la ubicación actual queda vacía (la ficha muestra «Con <persona>»); a una ubicación solo se asigna a sitios que no sean bodega (equipo instalado). Solo activos en estado `desplegable` pueden asignarse.
 - **RF-24** Historial por activo: línea de tiempo con creación, cambios de campos (antes/después), asignaciones y operaciones LNS.
@@ -142,7 +142,7 @@ Un **perfil LNS** es una conexión guardada a un Network Server más los valores
 
 ### 5.2 Datos LoRaWAN del activo
 
-Extensión 1:1 del activo: **DevEUI** (16 hex, único), **JoinEUI / AppEUI** (16 hex), **AppKey** (32 hex, cifrada), **NwkKey** (32 hex, cifrada, solo LoRaWAN 1.1), activación (`OTAA` en el MVP), clase, versión LoRaWAN, región. Los hex se normalizan a mayúsculas sin separadores.
+Extensión 1:1 del activo: **DevEUI** (16 hex, único), **JoinEUI / AppEUI** (16 hex), **AppKey** (32 hex, cifrada), **NwkKey** (32 hex, cifrada, solo LoRaWAN 1.1), activación (`OTAA` en el MVP), clase, versión LoRaWAN, región. Los hex se normalizan a mayúsculas sin separadores. Todos son opcionales mientras el activo no se registre en el LNS: el alta (incluida el alta en lote, RF-27) no los exige; el registro (RF-60) exige DevEUI, JoinEUI, AppKey (y NwkKey en 1.1) y los valida antes de encolar el job.
 
 ### 5.3 Registro y baja
 
