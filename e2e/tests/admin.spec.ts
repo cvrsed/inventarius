@@ -2,6 +2,8 @@ import { expect, test } from '@playwright/test';
 import {
   ADMIN,
   STRONG_PASSWORD,
+  apiPost,
+  createAssetViaApi,
   createCatalogFixture,
   eachTheme,
   expectNoA11yViolations,
@@ -155,6 +157,27 @@ test.describe('auditoría (RF-31)', () => {
     await expect(page.locator('#app')).not.toHaveAttribute('inert', '');
     await expect(page.getByText('Inicio de sesión').locator('visible=true').first()).toBeVisible();
     await expect(page.getByText('Alta de usuario').locator('visible=true')).toHaveCount(0);
+  });
+
+  test('el detalle traduce también los valores: «Tipo de destino» dice Usuario, no user [P29]', async ({
+    page,
+  }) => {
+    const fixture = await createCatalogFixture(page.request);
+    const asset = await createAssetViaApi(page.request, fixture);
+    const me = (await (await page.request.get('/api/v1/auth/me')).json()) as { id: string };
+    await apiPost(page.request, `/api/v1/assets/${asset.id}/checkout`, { userId: me.id });
+    await page.goto('/auditoria');
+    await page.getByRole('combobox', { name: 'Acción' }).click();
+    await page.getByRole('option', { name: 'Asignación', exact: true }).click();
+    await page
+      .getByRole('button', { name: /^Detalle/ })
+      .locator('visible=true')
+      .first()
+      .click();
+    const detail = page.locator('dl').locator('visible=true').first();
+    await expect(detail).toContainText('Tipo de destino');
+    await expect(detail).toContainText('Usuario');
+    await expect(detail).not.toContainText(/\buser\b/);
   });
 
   test('el detalle es una lista campo → valor en español, no JSON [P25]', async ({ page }) => {

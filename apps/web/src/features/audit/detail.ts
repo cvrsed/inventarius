@@ -1,4 +1,4 @@
-import { auditFieldLabel } from '@/app/i18n/audit';
+import { auditFieldLabel, auditValueLabel } from '@/app/i18n/audit';
 import { formatDateOnly } from '@/shared/format/format';
 
 /** Una línea del detalle: un valor, o un antes/después cuando el campo cambió. */
@@ -36,14 +36,8 @@ export function formatDetailValue(field: string, value: unknown, text: DetailTex
       .join(', ');
   }
   if (typeof value === 'string') {
-    if (field === 'kind' && text.te(`catalog.kinds.${value}`))
-      return text.t(`catalog.kinds.${value}`);
-    if (field === 'type' && text.te(`catalog.locationTypes.${value}`)) {
-      return text.t(`catalog.locationTypes.${value}`);
-    }
-    if (field === 'extension' && text.te(`catalog.extensions.${value}`)) {
-      return text.t(`catalog.extensions.${value}`);
-    }
+    const enumerated = auditValueLabel(field, value);
+    if (enumerated !== undefined) return enumerated;
     if (
       (field === 'purchaseDate' || field === 'expectedReturnOn') &&
       /^\d{4}-\d{2}-\d{2}$/.test(value)

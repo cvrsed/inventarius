@@ -1,4 +1,14 @@
-import type { AuditAction, AuditEntity } from '@inventarius/shared';
+import {
+  type AUDIT_ENUM_FIELDS,
+  LORAWAN_CLASS_OPTIONS,
+  LORAWAN_REGION_OPTIONS,
+  LORAWAN_REGIONAL_PARAMETERS_OPTIONS,
+  LORAWAN_VERSION_OPTIONS,
+  type AuditAction,
+  type AuditEnumField,
+  type AuditEntity,
+} from '@inventarius/shared';
+import { messages } from './es-CL';
 
 /**
  * Único mapa de los códigos internos de auditoría a texto (RNF-05). Inicio, historial y auditoría lo usan:
@@ -108,3 +118,32 @@ export const AUDIT_FIELD_LABELS: Record<string, string> = {
 };
 
 export const auditFieldLabel = (field: string): string => AUDIT_FIELD_LABELS[field] ?? field;
+
+const fromOptions = (options: readonly { value: string; label: string }[]) =>
+  Object.fromEntries(options.map((o) => [o.value, o.label]));
+
+/**
+ * Texto de cada valor de los campos enumerados del detalle (p. ej. «Tipo de destino: user» → «Usuario»).
+ * `Record` exige todos los valores de `AUDIT_ENUM_FIELDS`; `audit.test.ts` lo comprueba también en ejecución.
+ */
+export const AUDIT_VALUE_LABELS: {
+  [F in AuditEnumField]: Record<(typeof AUDIT_ENUM_FIELDS)[F][number], string>;
+} = {
+  assignedToType: { user: 'Usuario', location: 'Ubicación' },
+  kind: messages.catalog.kinds,
+  type: messages.catalog.locationTypes,
+  extension: {
+    none: messages.catalog.extensions.none,
+    lorawan: messages.catalog.extensions.lorawan,
+  },
+  lorawanClass: fromOptions(LORAWAN_CLASS_OPTIONS) as Record<'A' | 'B' | 'C', string>,
+  lorawanRegion: fromOptions(LORAWAN_REGION_OPTIONS) as never,
+  lorawanVersion: fromOptions(LORAWAN_VERSION_OPTIONS) as never,
+  lorawanRegionalParameters: fromOptions(LORAWAN_REGIONAL_PARAMETERS_OPTIONS) as never,
+};
+
+/** Traducción de un valor enumerado, o `undefined` si el campo no es enumerado o el valor es desconocido. */
+export function auditValueLabel(field: string, value: string): string | undefined {
+  const map = (AUDIT_VALUE_LABELS as Record<string, Record<string, string>>)[field];
+  return map?.[value];
+}

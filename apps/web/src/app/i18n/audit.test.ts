@@ -1,8 +1,9 @@
-import { AUDIT_ACTIONS, AUDIT_ENTITIES } from '@inventarius/shared';
+import { AUDIT_ACTIONS, AUDIT_ENTITIES, AUDIT_ENUM_FIELDS } from '@inventarius/shared';
 import { describe, expect, it } from 'vitest';
 import {
   AUDIT_ACTION_LABELS,
   auditFieldLabel,
+  auditValueLabel,
   AUDIT_ENTITY_LABELS,
   auditActionLabel,
   auditEntityLabel,
@@ -80,5 +81,27 @@ describe('traducción de la auditoría (RNF-05)', () => {
       'lorawanRegionalParameters',
     ];
     for (const f of fields) expect(auditFieldLabel(f), f).not.toBe(f);
+  });
+
+  it('todo valor de un campo enumerado tiene traducción y no se muestra el código [P29]', () => {
+    for (const [field, values] of Object.entries(AUDIT_ENUM_FIELDS)) {
+      for (const value of values as readonly string[]) {
+        const label = auditValueLabel(field, value);
+        expect(label, `falta traducir ${field} = ${value}`).toBeTruthy();
+        if (
+          field === 'assignedToType' ||
+          field === 'kind' ||
+          field === 'type' ||
+          field === 'extension'
+        ) {
+          expect(label).not.toBe(value);
+        }
+      }
+    }
+  });
+
+  it('un valor desconocido no tiene traducción (se mostrará tal cual)', () => {
+    expect(auditValueLabel('assignedToType', 'otro')).toBeUndefined();
+    expect(auditValueLabel('name', 'x')).toBeUndefined();
   });
 });

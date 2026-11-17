@@ -73,6 +73,20 @@ describe('describeAuditDetail (RF-31)', () => {
     expect(formatDetailValue('permissions', [], text)).toBe('—');
   });
 
+  it('traduce los valores enumerados, no solo los nombres de campo [P29]', () => {
+    const rows = describeAuditDetail(
+      { after: { assignedTo: 'Ana', assignedToType: 'user', kind: 'undeployable' } },
+      text,
+    );
+    expect(rows.map((r) => [r.label, r.value])).toEqual([
+      ['Asignado a', 'Ana'],
+      ['Tipo de destino', 'Usuario'],
+      ['Tipo de estado', 'No asignable'],
+    ]);
+    expect(formatDetailValue('assignedToType', 'location', text)).toBe('Ubicación');
+    expect(formatDetailValue('lorawanClass', 'C', text)).not.toBe('C');
+  });
+
   it('un campo desconocido se muestra con su clave en lugar de perderse', () => {
     expect(describeAuditDetail({ after: { campoNuevo: 'x' } }, text)[0]).toMatchObject({
       label: 'campoNuevo',

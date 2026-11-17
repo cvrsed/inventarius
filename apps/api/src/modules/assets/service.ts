@@ -1,5 +1,6 @@
 import {
   assetSortSchema,
+  type AssigneeType,
   type AuditAction,
   type AssetDto,
   type AssetFilters,
@@ -414,7 +415,7 @@ export class AssetsService {
           after: {
             status: assigned.name,
             assignedTo: target.name,
-            assignedToType: input.userId ? 'user' : 'location',
+            assignedToType: (input.userId ? 'user' : 'location') satisfies AssigneeType,
             expectedReturnOn: input.expectedReturnOn ?? null,
             note: input.note ?? null,
           },
