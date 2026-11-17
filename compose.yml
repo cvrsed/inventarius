@@ -19,7 +19,7 @@ x-dev-service: &dev-service
 
 services:
   postgres:
-    image: postgres:18@sha256:2ea8630df176ad090ec92136dee850397c5af8781e4bcf2e4162593691c61bbc
+    image: postgres:18-trixie@sha256:2ea8630df176ad090ec92136dee850397c5af8781e4bcf2e4162593691c61bbc
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev-admin-password}
       APP_DB_PASSWORD: ${APP_DB_PASSWORD:-dev-app-password}

@@ -6,7 +6,7 @@ línea son los de esta rama; los de `pnpm-lock.yaml` cambian con cada actualizac
 ## 1. Motor de base de datos
 
 - **PostgreSQL 18.7** (verificado ejecutando la imagen: `postgres (PostgreSQL) 18.7`).
-- Imagen `postgres:18@sha256:2ea8630df176ad090ec92136dee850397c5af8781e4bcf2e4162593691c61bbc`, la misma en desarrollo
+- Imagen `postgres:18-trixie@sha256:2ea8630df176ad090ec92136dee850397c5af8781e4bcf2e4162593691c61bbc`, la misma en desarrollo
   (`compose.yml:22`), e2e (`compose.e2e.yml:25`) y tests de integración (`apps/api/test/postgres.ts:6`).
 - Extensiones: `citext` (`apps/api/drizzle/0000_extensions.sql:2`) y `pg_trgm` (`apps/api/drizzle/0005_inventory.sql:1`).
 - El esquema de la cola de pg-boss se instala en el paso de migración (`apps/api/src/core/db/migrator.ts:22-26`).
@@ -153,7 +153,7 @@ rangos y el CI instala con `--frozen-lockfile` (`.github/workflows/ci.yml:28`).
 | Testcontainers                            | 12.2.1                                                                                                            | lock `:4311`                                                          |
 | Playwright (`@playwright/test`)           | 1.65.1                                                                                                            | lock `:1508`                                                          |
 | axe (`@axe-core/playwright` y `axe-core`) | 4.14.0                                                                                                            | lock `:389` y `:2466`                                                 |
-| Imagen de Postgres                        | 18.7, `postgres:18@sha256:2ea8630d…bbc`                                                                           | `compose.yml:22`, `compose.e2e.yml:25`, `apps/api/test/postgres.ts:6` |
+| Imagen de Postgres                        | 18.7, `postgres:18-trixie@sha256:2ea8630d…bbc`                                                                    | `compose.yml:22`, `compose.e2e.yml:25`, `apps/api/test/postgres.ts:6` |
 | Imagen de Caddy                           | 2.11.9, `caddy:2-alpine@sha256:003a9780…2c0` (verificado ejecutándola)                                            | `Dockerfile:3`                                                        |
 | Imagen base de Node                       | `node:26-slim@sha256:e6bedef2…20bc`                                                                               | `Dockerfile:2`                                                        |
 | Imagen de Playwright                      | `v1.65.1-noble@sha256:1507cbfc…5579`, igual a la del paquete (lo verifica `scripts/check-playwright-version.mjs`) | `Dockerfile:5`, `ci.yml:29`                                           |

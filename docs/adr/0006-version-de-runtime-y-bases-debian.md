@@ -16,6 +16,16 @@ versiones de Node entre proyectos complica el soporte y los parches de seguridad
 - **CI:** la matriz sigue probando **24.22.3 y 26**. La 26 es solo una alerta temprana de compatibilidad con la siguiente
   versión; no es el runtime y su fallo no cambia lo que se despliega.
 - Un cambio de versión mayor de Node es una tarea explícita, con su PR, no una actualización automática.
+- **Imágenes basadas en Debian 13, con la variante explícita:** `node:24-trixie-slim` y `postgres:18-trixie`, ambas fijadas
+  por digest. La etiqueta `postgres:18` ya resolvía a trixie (mismo digest, 18.7); la variante explícita evita que un cambio
+  futuro de la etiqueta por defecto cambie la distribución sin que nadie lo note.
+- **Excepciones justificadas:**
+  - **Caddy (`caddy:2-alpine`, 2.11.9):** Caddy es un binario estático en Go sin dependencias del sistema; la imagen
+    oficial de Alpine es la más pequeña y su única función es servir la SPA y proxyar `/api`. No hay variante Debian oficial
+    mantenida por el proyecto. Se mantiene fijada por digest y la escanea Trivy.
+  - **Playwright (`mcr.microsoft.com/playwright:v…-noble`, Ubuntu 24.04):** solo se usa para las pruebas e2e, nunca se
+    despliega. Los navegadores y sus dependencias del sistema solo se publican oficialmente sobre Ubuntu; la versión del tag
+    debe ser igual a la del paquete `@playwright/test` (`scripts/check-playwright-version.mjs`).
 
 ## Consecuencias
 
