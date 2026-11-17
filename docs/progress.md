@@ -263,6 +263,19 @@ Marcas `[P15]` a `[P19]` al final del asunto de cada commit.
 - **Decisiones provisionales nuevas**: Q41 a Q46 en `docs/open-questions.md`.
 - **Cómo probar**: `pnpm lint && pnpm typecheck && pnpm test`, integración de la API y el e2e de `docs/development.md` (escritorio y 360 px).
 
+## Correcciones de la ficha técnica (2026-11-17, mismo PR #5)
+
+Marcas `[P32]` a `[P36]` al final del asunto de cada commit.
+
+- **P32** El login revoca, en la misma transacción, la sesión previa que traía la cookie (un login fallido no revoca nada).
+- **P33** Topes de BD por conexión (`DB_CONNECTION_TIMEOUT_MS` 5 s, `DB_STATEMENT_TIMEOUT_MS` 30 s, `DB_IDLE_IN_TRANSACTION_TIMEOUT_MS` 30 s) y
+  apagado ordenado con tope (`SHUTDOWN_TIMEOUT_MS` 10 s) de la API y el worker; el proceso termina igual con código 1 pasado el tope.
+- **P34** CSRF firmado (HMAC-SHA256 con `CSRF_SECRET`, obligatorio en producción) y ligado al id de sesión (antes del login, a una cookie
+  anónima); un token válido de otra sesión se rechaza. Se retira `@fastify/csrf-protection`.
+- **P35** Acciones de GitHub fijadas por SHA con la versión en comentario, verificado por `scripts/check-actions-pinned.mjs`; Renovate las agrupa.
+- **P36** `requirements.md`, `security.md` y `ficha-tecnica.md` al día; «Diferencias» solo con lo pendiente de F3 (cifrado AES-256-GCM) y F4 (CSP/HSTS).
+- **Decisión a revisar:** `CSRF_SECRET` es obligatorio en producción; hay que definirlo en el despliegue (y en `.env.example`, ya agregado).
+
 ## Cuarta tanda de revisión de F2 (2026-11-17, mismo PR #5)
 
 Marcas `[P27]` a `[P31]` al final del asunto de cada commit.

@@ -7,6 +7,14 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). D
 
 ### F2 — Inventario
 
+#### Correcciones de la ficha técnica (PR #5)
+
+- El login revoca la sesión previa que traía la cookie [P32].
+- Topes de BD configurables y apagado ordenado de la API y del worker con tope de tiempo [P33].
+- CSRF firmado y ligado a la sesión; `CSRF_SECRET` obligatorio en producción [P34].
+- Acciones de GitHub fijadas por SHA de commit [P35].
+- Documentación al día con el código [P36].
+
 #### Cuarta tanda de revisión (PR #5)
 
 - Orden del listado por encabezados (escritorio, con `aria-sort`) y «Ordenar por» + dirección (móvil) [P27].
