@@ -7,6 +7,17 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). D
 
 ### F2 — Inventario
 
+#### Segunda tanda de revisión (PR #5)
+
+- Aviso de cambios sin guardar al navegar, recargar o cerrar un diálogo [P15].
+- Alta en lote de activos (RF-27): 1 a 500 con series opcionales, estado semilla «Pendiente de configuración» (migración 0010),
+  una transacción, historial por activo y un registro del lote [P16].
+- Datos LoRaWAN opcionales al crear; obligatorios solo al registrar en el LNS (RF-21) [P17].
+- Plan: importación CSV de datos LoRaWAN por serie pasa a Must en F3 (RF-66) y nueva fase F3.5 de consumibles (RF-70 a RF-74) [P18].
+- Inicio con resumen (RF-28): totales por tipo de estado, categorías, stock por bodega, devoluciones atrasadas, últimos movimientos y
+  «Mis equipos» para el técnico; corrige el «Aún no hay activos» con activos existentes. Nuevos filtros del listado: `statusKind`,
+  `assigned`, `baseLocationId`, `overdue` [P19].
+
 #### Revisión manual (PR #5)
 
 - Catálogo: la pestaña activa refleja la ruta al entrar (`/catalogo` redirige a la primera sección); en móvil las

@@ -245,3 +245,20 @@ Los 14 puntos de la revisión de Rodrigo, un commit por punto sobre `phase/f2-in
 - **Nota**: `compose.yml` ahora pasa `DEFAULT_CURRENCY` y `ASSET_TAG_PREFIX`; `.env.example` sigue sin poder editarse desde la sesión.
 - **Cómo probar**: `pnpm lint && pnpm typecheck && pnpm test`, `pnpm --filter @inventarius/api exec vitest run --project int`
   y el e2e de `docs/development.md` (escritorio y 360 px).
+
+## Segunda tanda de revisión de F2 (2026-11-17, mismo PR #5)
+
+Marcas `[P15]` a `[P19]` al final del asunto de cada commit.
+
+- **P15** Aviso de cambios sin guardar (`useUnsavedChanges`: guardián del router, `beforeunload` y cierre de diálogos) en el formulario
+  de activo, el alta en lote y los diálogos de catálogo, usuarios y roles. e2e incluido.
+- **P16** Alta en lote (RF-27 en `docs/requirements.md`): `POST /api/v1/assets/batch`, pantalla `/activos/lote` accesible desde «Nuevo
+  activo» y usable en 360 px, estado semilla «Pendiente de configuración» (migración 0010). Series duplicadas o ya existentes se rechazan.
+- **P17** `requirements.md`: los datos LoRaWAN son opcionales al crear y obligatorios solo al registrar en el LNS (lo valida F3).
+- **P18** `requirements.md`: la importación CSV por serie pasa a Must en F3 (RF-66); nueva fase F3.5 «Consumibles» (RF-70 a RF-74) con su
+  fila en el plan y su criterio de aceptación.
+- **P19** Inicio (RF-28): `GET /api/v1/dashboard` con conteos agregados en SQL, filtros nuevos del listado (`statusKind`, `assigned`,
+  `baseLocationId`, `overdue`), tarjetas y barras con CSS que enlazan al listado filtrado, vista de técnico y estado del sistema
+  compacto para administradores. Corrige el «Aún no hay activos» con activos existentes (test).
+- **Decisiones provisionales nuevas**: Q41 a Q46 en `docs/open-questions.md`.
+- **Cómo probar**: `pnpm lint && pnpm typecheck && pnpm test`, integración de la API y el e2e de `docs/development.md` (escritorio y 360 px).
