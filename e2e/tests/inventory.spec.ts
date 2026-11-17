@@ -129,7 +129,12 @@ test.describe('catálogo (RF-10 a RF-14)', () => {
     if ((page.viewportSize()?.width ?? 0) >= 768) {
       await expect(remove).toHaveAccessibleDescription(/está en uso/);
     } else {
-      await expect(page.getByText(/está en uso/).locator('visible=true')).toBeVisible();
+      await expect(
+        page
+          .getByRole('listitem')
+          .filter({ hasText: mk.name })
+          .getByText(/está en uso/),
+      ).toBeVisible();
     }
     await expect(page.getByRole('button', { name: `Editar ${mk.name}` })).toBeVisible();
     // La API sigue siendo la barrera: borrar directamente responde 409 e invita a desactivar.
@@ -234,6 +239,7 @@ test.describe('activos: CRUD completo (RF-20 a RF-25)', () => {
     await expect(page.getByRole('listbox')).toBeVisible();
     await expectNoA11yViolations(page); // selector con búsqueda ABIERTO
     await page.keyboard.press('Escape');
+    await expect(page.getByRole('listbox')).toBeHidden();
 
     const name = uniqueName('Notebook');
     await createAssetViaUi(page, fixture, name, `SN-${Date.now()}`);
