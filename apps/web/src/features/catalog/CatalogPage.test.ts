@@ -221,4 +221,107 @@ describe('CatalogPage (RF-10 a RF-14)', () => {
       vi.useRealTimers();
     }
   });
+
+  describe('cambio de sección [P30]', () => {
+    const location = {
+      id: '018f0000-0000-7000-8000-0000000000a1',
+      name: 'Sala 1',
+      path: 'Sala 1',
+      type: 'warehouse',
+      address: null,
+      parent: null,
+      active: true,
+      updatedAt: '2026-11-16T12:00:00.000Z',
+    };
+    const category = {
+      id: '018f0000-0000-7000-8000-0000000000b1',
+      name: 'Notebooks',
+      extension: 'none',
+      active: true,
+      updatedAt: '2026-11-16T12:00:00.000Z',
+    };
+    const model = {
+      id: '018f0000-0000-7000-8000-0000000000c1',
+      name: 'ThinkPad',
+      modelNumber: null,
+      manufacturer: { id: '018f0000-0000-7000-8000-0000000000d1', name: 'Lenovo' },
+      category: { id: category.id, name: 'Notebooks', extension: 'none' },
+      active: true,
+      lorawanClass: null,
+      lorawanRegion: null,
+      lorawanVersion: null,
+      lorawanRegionalParameters: null,
+      updatedAt: '2026-11-16T12:00:00.000Z',
+    };
+
+    /** Responde al instante a `locations` y deja pendientes las demás hasta que el test las libere. */
+    function slowFetch() {
+      const pending: (() => void)[] = [];
+      const bodies: Record<string, unknown[]> = {
+        '/api/v1/locations': [location],
+        '/api/v1/categories': [category],
+        '/api/v1/models': [model],
+      };
+      const fn = vi.fn(async (input: RequestInfo | URL) => {
+        const path = String(input).split('?')[0]!;
+        if (path === '/api/v1/auth/csrf') return jsonResponse({ token: 't' });
+        const data = bodies[path] ?? [];
+        if (path !== '/api/v1/locations') await new Promise<void>((r) => pending.push(r));
+        return jsonResponse({ data, meta: { page: 1, pageSize: 25, total: data.length } });
+      });
+      vi.stubGlobal('fetch', fn);
+      return { release: () => pending.splice(0).forEach((r) => r()) };
+    }
+
+    async function mountWithAuth(section: string) {
+      const global = pagePlugins();
+      useAuthStore(global.plugins![0] as never).user = {
+        id: '018f0000-0000-7000-8000-0000000000ff',
+        email: 'x@y.cl',
+        name: 'X',
+        mustChangePassword: false,
+        roles: [],
+        permissions: ['asset:read', 'catalog:write'],
+      };
+      await router.push(`/catalogo/${section}`);
+      await router.isReady();
+      const wrapper = mount(CatalogPage, { global });
+      mounted.push(wrapper);
+      await flushPromises();
+      return wrapper;
+    }
+
+    it('al cambiar de sección no se muestran las filas de la anterior con las celdas de la nueva', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const net = slowFetch();
+      const w = await mountWithAuth('locations');
+      expect(w.text()).toContain('Sala 1');
+
+      // Categorías y luego Modelos tardan en responder: mientras tanto no puede verse Sala 1 ni fallar el render.
+      await router.push('/catalogo/categories');
+      await flushPromises();
+      expect(w.text()).not.toContain('Sala 1');
+      await router.push('/catalogo/models');
+      await flushPromises();
+      expect(w.text()).not.toContain('Sala 1');
+
+      net.release();
+      await flushPromises();
+      expect(w.text()).toContain('ThinkPad');
+      expect(w.text()).toContain('Lenovo');
+
+      await router.push('/catalogo/categories');
+      await flushPromises();
+      net.release();
+      await flushPromises();
+      expect(w.text()).toContain('Notebooks');
+      expect(w.text()).not.toContain('ThinkPad');
+
+      const logged = [...warn.mock.calls, ...error.mock.calls].map((c) => String(c[0]));
+      expect(logged.filter((m) => /Not found|undefined|TypeError/.test(m))).toEqual([]);
+      warn.mockRestore();
+      error.mockRestore();
+    });
+  });
 });

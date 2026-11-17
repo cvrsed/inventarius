@@ -183,6 +183,7 @@ const toggleActive = (item: CatalogItem) =>
     </UAlert>
 
     <ResponsiveTable
+      :key="section"
       :data="data?.data ?? []"
       :columns="columns"
       :loading="isPending || isFetching"

@@ -1,4 +1,4 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
 import {
   assetModelSchema,
   categorySchema,
@@ -64,7 +64,11 @@ export function useCatalogList(section: Ref<Section>, query: Ref<CatalogQuery>) 
         { signal },
       );
     },
-    placeholderData: keepPreviousData,
+    // Al paginar o buscar se conserva la página anterior para no parpadear, pero NUNCA la de otra sección: sus
+    // filas tienen otra forma y la plantilla de la sección nueva las leería mal (y, con un `TypeError` al
+    // renderizar, dejaba la vista congelada). El segundo elemento de la clave es la sección.
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[1] === section.value ? previous : undefined,
   });
 }
 

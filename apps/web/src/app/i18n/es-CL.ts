@@ -17,6 +17,9 @@ export const messages = {
     moreHint: 'Otras secciones y tu cuenta',
     moreLabel: 'Otras secciones',
   },
+  errors: {
+    unexpected: 'Algo salió mal. Si la pantalla no responde, recarga la página.',
+  },
   common: {
     save: 'Guardar',
     cancel: 'Cancelar',
