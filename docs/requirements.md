@@ -287,7 +287,7 @@ Regla: se fija la versión exacta en la Fase 0 con el lockfile y se registra en 
 
 | Capa | Elección | Motivo |
 | --- | --- | --- |
-| Runtime | Node.js 26 LTS (CI también en 24 LTS como respaldo) | 26 pasó a LTS en octubre 2026, soporte hasta abril 2029; 24 queda hasta abril 2028 |
+| Runtime | Node.js 24 LTS (CI también en 26 como alerta temprana de compatibilidad) | Política de versiones de la organización: Node 24 LTS (soporte hasta abril 2028); ver ADR 0006 |
 | Gestor de paquetes | pnpm (fijado con `packageManager` + corepack), workspaces | Monorepo, lockfile estricto |
 | Lenguaje | TypeScript estricto en front, back y paquete compartido | Tipos de punta a punta |
 | Frontend | Vue 3 (Composition API, `<script setup>`), Vite, Vue Router, Pinia, vue-i18n, TanStack Query (Vue) | Recomendación del proveedor del stack sugerido + caché y estados de carga sin código repetido |
@@ -651,7 +651,7 @@ Además, `.claude/settings.json` del repo restringe comandos: permite `pnpm`, `d
 
 | # | Decisión | Propuesta por defecto |
 | --- | --- | --- |
-| D1 | Node 26 LTS o 24 LTS | 26; si una dependencia no compila, 24 y se registra en ADR |
+| D1 | Node 26 LTS o 24 LTS | 24 LTS por la política de versiones de la organización (ADR 0006); el CI mantiene 26 como alerta temprana |
 | D2 | Cluster TTN, plan de frecuencias y versión LoRaWAN de los equipos reales (SDM530-LR, medidores de agua) | Tomar los valores que ya usa el cliente en TTN; quedan como defaults del perfil, no en código |
 | D3 | ¿Hay un ChirpStack disponible para pruebas reales o solo el de Docker en la VM? | Docker en la VM para el MVP |
 | D4 | Cloudflare Access delante de la app durante el MVP | Sí |

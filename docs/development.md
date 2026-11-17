@@ -2,7 +2,7 @@
 
 ## Requisitos
 
-- Node.js 26.13.1 (ver `.nvmrc`; funciona también en 24 LTS) y pnpm 12.21.0 (`corepack enable` o `npm i -g pnpm@12.21.0`).
+- Node.js 24.22.3 LTS (ver `.nvmrc`; el CI también prueba Node 26 como alerta temprana) y pnpm 12.21.0 (`corepack enable` o `npm i -g pnpm@12.21.0`).
 - Docker con Compose (Postgres, e2e y las imágenes).
 
 ## Levantar todo

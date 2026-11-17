@@ -15,12 +15,12 @@ guardadas con versión exacta (`savePrefix: ''` en `pnpm-workspace.yaml`) más `
 
 | Pieza               | Versión                                                       | Nota                                                                                                            |
 | ------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Node.js             | **26.13.1** (`.nvmrc`; `engines` ≥ 24)                        | Decisión D1: Node 26 funciona con todo el stack. CI también corre los tests unitarios en Node 24 como respaldo. |
+| Node.js             | **24.22.3** (`.nvmrc`; `engines` ≥ 24.22)                     | Decisión D1 revisada en el ADR 0006: Node 24 LTS por política de la organización; el CI también prueba Node 26. |
 | pnpm                | **12.21.0** (`packageManager`)                                | pnpm 12 bloquea scripts de instalación: se aprueban solo `esbuild` y `lefthook` (`allowBuilds`).                |
 | TypeScript          | **6.0.3**                                                     | Se queda en 6.0.x (ver «TypeScript 7» abajo y Q3).                                                              |
 | PostgreSQL          | **18.7** (`postgres:18@sha256:2ea8630d…`)                     | `uuidv7()` nativo; el volumen se monta en `/var/lib/postgresql`.                                                |
 | Caddy               | 2.11.9 (`caddy:2-alpine@sha256:003a9780…`)                    | SPA + proxy `/api`.                                                                                             |
-| Imagen Node         | `node:26-slim@sha256:e6bedef2…`                               | Base de dev y runtime de API/worker.                                                                            |
+| Imagen Node         | `node:24-trixie-slim@sha256:af02d57b…`                        | Base de dev y runtime de API/worker (ADR 0006).                                                                 |
 | Playwright (imagen) | `mcr.microsoft.com/playwright:v1.65.1-noble@sha256:1507cbfc…` | Misma versión que el paquete; lo verifica `scripts/check-playwright-version.mjs` en CI.                         |
 
 ### Backend (`apps/api`)
@@ -65,4 +65,4 @@ lefthook 2.2.2 · @playwright/test 1.65.1 · @axe-core/playwright 4.14.0 · @vit
 ## Consecuencias
 
 - Subir una versión mayor (Nuxt UI 5, TypeScript 7) es una tarea explícita, con su propio PR.
-- pnpm 12 y Node 26 son muy recientes; si un contribuyente usa otra versión, `engine-strict` lo avisa.
+- pnpm 12 es muy reciente; si un contribuyente usa otra versión, `engine-strict` lo avisa.
