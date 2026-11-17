@@ -1,4 +1,6 @@
 import type { Clock } from './clock.js';
+import { DashboardRepository } from '../modules/dashboard/repository.js';
+import { DashboardService } from '../modules/dashboard/service.js';
 import { localDate, systemClock } from './clock.js';
 import type { AppConfig } from './config.js';
 import type { Executor } from './db/executor.js';
@@ -24,6 +26,7 @@ export interface Services {
   auth: AuthService;
   catalog: CatalogService;
   assets: AssetsService;
+  dashboard: DashboardService;
 }
 
 export interface ContainerDeps {
@@ -88,5 +91,11 @@ export function buildServices(deps: ContainerDeps): Services {
     config.defaultCurrency,
     () => localDate(clock.now(), config.timezone),
   );
-  return { audit, rbac, users, auth, catalog, assets };
+  const dashboard = new DashboardService(
+    new DashboardRepository(),
+    db,
+    { namesByIds: (ids) => users.namesByIds(ids) },
+    () => localDate(clock.now(), config.timezone),
+  );
+  return { audit, rbac, users, auth, catalog, assets, dashboard };
 }

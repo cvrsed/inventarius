@@ -25,6 +25,7 @@ import { authRoutes } from './modules/auth/routes.js';
 import { assetsRoutes } from './modules/assets/routes.js';
 import { catalogRoutes } from './modules/catalog/routes.js';
 import { rbacRoutes } from './modules/rbac/routes.js';
+import { dashboardRoutes } from './modules/dashboard/routes.js';
 import { settingsRoutes } from './modules/settings/routes.js';
 import { usersRoutes } from './modules/users/routes.js';
 import {
@@ -202,6 +203,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
             await v1.register(auditRoutes, { audit: services.audit });
             await v1.register(catalogRoutes, { catalog: services.catalog });
             await v1.register(assetsRoutes, { assets: services.assets });
+            await v1.register(dashboardRoutes, { dashboard: services.dashboard });
             await v1.register(settingsRoutes, { config });
           },
           { prefix: '/v1' },
