@@ -565,6 +565,33 @@ test.describe('listado de activos (RF-22, RF-26, RF-40)', () => {
     await eachTheme(page, () => expectNoA11yViolations(page));
   });
 
+  test('«Limpiar filtros» sin filtros activos está atenuado, no tachado [P26]', async ({
+    page,
+  }, info) => {
+    await page.goto('/activos');
+    if (info.project.name === 'mobile') await page.getByRole('button', { name: 'Filtros' }).click();
+    const clear = page.getByRole('button', { name: 'Limpiar filtros' });
+    await expect(clear).toBeDisabled();
+    const style = await clear.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return { line: cs.textDecorationLine, opacity: Number(cs.opacity), cursor: cs.cursor };
+    });
+    expect(style.line).toBe('none');
+    expect(style.opacity).toBeLessThan(1);
+    expect(style.cursor).not.toBe('not-allowed');
+
+    await page.goto('/activos?statusKind=deployable');
+    if (
+      info.project.name === 'mobile' &&
+      (await page
+        .getByRole('button', { name: 'Filtros', exact: true })
+        .getAttribute('aria-expanded')) !== 'true'
+    ) {
+      await page.getByRole('button', { name: 'Filtros' }).click();
+    }
+    await expect(page.getByRole('button', { name: 'Limpiar filtros' })).toBeEnabled();
+  });
+
   test('orden, tamaño de página y paginación del lado servidor', async ({ page }) => {
     const fixture = await createCatalogFixture(page.request);
     for (let i = 0; i < 3; i += 1) await createAssetViaApi(page.request, fixture);
