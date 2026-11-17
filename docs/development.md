@@ -84,6 +84,13 @@ de un usuario) están en `docs/operations.md`.
 `TRUSTED_PROXIES` (por defecto `loopback,uniquelocal`) y, para Caddy, `TRUSTED_PROXY_RANGES` (por defecto
 `private_ranges`) fijan de qué proxies se acepta la IP del cliente; ver `docs/security.md` y `docs/operations.md`.
 
+## Topes de BD y apagado (todos opcionales)
+
+`DB_CONNECTION_TIMEOUT_MS` (5000), `DB_STATEMENT_TIMEOUT_MS` (30000) y `DB_IDLE_IN_TRANSACTION_TIMEOUT_MS` (30000) acotan
+cada conexión de la API, el worker y el CLI (`0` = sin tope). `SHUTDOWN_TIMEOUT_MS` (10000) es el tiempo máximo del apagado
+ordenado de la API y del worker: pasado ese tope el proceso termina igual con código 1. La migración usa sus propios pools
+sin topes (puede tardar).
+
 ## Etiquetas de activo (RF-20)
 
 `ASSET_TAG_PREFIX` (por defecto `INV`) fija el prefijo de las etiquetas autogeneradas: `INV-000123`. Debe tener solo

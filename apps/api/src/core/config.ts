@@ -1,5 +1,6 @@
 import { currencySchema, type Currency } from '@inventarius/shared';
 import { isIP } from 'node:net';
+import type { DbTimeouts } from './db/timeouts.js';
 import { z } from 'zod';
 
 /** Palabras que `proxy-addr` (Fastify) entiende además de IP y CIDR. */
@@ -53,6 +54,12 @@ const envSchema = z.object({
       (list) => list.every(isProxyEntry),
       'lista de IP/CIDR (o loopback, linklocal, uniquelocal)',
     ),
+  /** Milisegundos; `0` desactiva el tope (como en PostgreSQL). */
+  DB_CONNECTION_TIMEOUT_MS: z.coerce.number().int().min(0).default(5_000),
+  DB_STATEMENT_TIMEOUT_MS: z.coerce.number().int().min(0).default(30_000),
+  DB_IDLE_IN_TRANSACTION_TIMEOUT_MS: z.coerce.number().int().min(0).default(30_000),
+  /** Tiempo máximo del apagado ordenado de la API y del worker; pasado ese tope el proceso termina igual. */
+  SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
   DATABASE_URL: z.string().min(1),
   MIGRATION_DATABASE_URL: z.string().min(1).optional(),
   SESSION_IDLE_TIMEOUT_SECONDS: z.coerce
@@ -96,6 +103,9 @@ export interface AppConfig {
   /** Proxies de confianza para `X-Forwarded-For`; vacío = no confiar en ninguno. */
   trustedProxies: string[];
   databaseUrl: string;
+  /** Topes de la conexión a la BD de la API, el worker y el CLI (ms; 0 = sin tope). */
+  db: DbTimeouts;
+  shutdownTimeoutMs: number;
   migrationDatabaseUrl: string | undefined;
   metricsToken: string | undefined;
   assetTagPrefix: string;
@@ -139,6 +149,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     timezone: e.APP_TIMEZONE,
     trustedProxies: e.TRUSTED_PROXIES,
     databaseUrl: e.DATABASE_URL,
+    db: {
+      connectionTimeoutMs: e.DB_CONNECTION_TIMEOUT_MS,
+      statementTimeoutMs: e.DB_STATEMENT_TIMEOUT_MS,
+      idleInTransactionTimeoutMs: e.DB_IDLE_IN_TRANSACTION_TIMEOUT_MS,
+    },
+    shutdownTimeoutMs: e.SHUTDOWN_TIMEOUT_MS,
     migrationDatabaseUrl: e.MIGRATION_DATABASE_URL,
     metricsToken: e.METRICS_TOKEN,
     assetTagPrefix: e.ASSET_TAG_PREFIX,

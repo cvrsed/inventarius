@@ -27,6 +27,35 @@ describe('loadConfig', () => {
     }
   });
 
+  it('topes de BD y de apagado: por defecto razonables, configurables y validados [P33]', () => {
+    const c = loadConfig(valid);
+    expect(c.db).toEqual({
+      connectionTimeoutMs: 5_000,
+      statementTimeoutMs: 30_000,
+      idleInTransactionTimeoutMs: 30_000,
+    });
+    expect(c.shutdownTimeoutMs).toBe(10_000);
+    const custom = loadConfig({
+      ...valid,
+      DB_CONNECTION_TIMEOUT_MS: '2000',
+      DB_STATEMENT_TIMEOUT_MS: '0',
+      DB_IDLE_IN_TRANSACTION_TIMEOUT_MS: '15000',
+      SHUTDOWN_TIMEOUT_MS: '3000',
+    });
+    expect(custom.db).toEqual({
+      connectionTimeoutMs: 2_000,
+      statementTimeoutMs: 0,
+      idleInTransactionTimeoutMs: 15_000,
+    });
+    expect(custom.shutdownTimeoutMs).toBe(3_000);
+    expect(() => loadConfig({ ...valid, DB_STATEMENT_TIMEOUT_MS: '-1' })).toThrowError(
+      /DB_STATEMENT_TIMEOUT_MS/,
+    );
+    expect(() => loadConfig({ ...valid, SHUTDOWN_TIMEOUT_MS: '0' })).toThrowError(
+      /SHUTDOWN_TIMEOUT_MS/,
+    );
+  });
+
   it('falla de forma legible si falta DATABASE_URL', () => {
     expect(() => loadConfig({})).toThrowError(/DATABASE_URL/);
   });
