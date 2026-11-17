@@ -6,7 +6,7 @@ Nov 16, 2026 · @Yatto · Estado: borrador v0.1
 
 **Inventarius** es una aplicación web de inventario de activos (estilo Snipe-IT), construida desde cero, simple y modular. Su diferencia: los activos de tipo **dispositivo LoRaWAN** se pueden registrar directamente en un Network Server (**ChirpStack v4** o **The Things Stack / TTN v3**) desde la ficha del activo, usando conexiones configuradas previamente como **perfiles LNS** dentro de la app.
 
-Despliegue inicial: `inventarius.supporti.cl` (homelab pve-z420). Requisito de diseño: debe poder migrarse sin cambios de código a otra infraestructura (por ejemplo, servidores de Zensi), solo cambiando configuración.
+Despliegue inicial: una VM de producción detrás de un túnel hacia Internet (ver sección 12). Requisito de diseño: debe poder migrarse sin cambios de código a otra infraestructura (por ejemplo, servidores de Zensi), solo cambiando configuración.
 
 ### Objetivos del MVP
 
@@ -491,7 +491,7 @@ inventarius/
 | Contenedores | Usuario no root, sistema de archivos de solo lectura donde se pueda, `no-new-privileges`, sin capacidades extra, imágenes base mínimas fijadas por digest. |
 | Cadena de suministro | Lockfile, `pnpm audit` y OSV-Scanner en CI, Trivy sobre las imágenes, gitleaks contra secretos commiteados, Renovate para parches, revisión humana de toda dependencia nueva. |
 | Repositorio | `.env` en `.gitignore` desde el primer commit; solo `.env.example`. Rama `main` protegida: PR + CI verde. |
-| Exposición | Solo por Cloudflare Tunnel; ningún puerto abierto en el router. Recomendado durante el MVP: Cloudflare Access delante de `inventarius.supporti.cl` (segunda barrera antes del login de la app). |
+| Exposición | Solo por Cloudflare Tunnel; ningún puerto abierto en el router. Recomendado durante el MVP: Cloudflare Access delante del dominio de la app (segunda barrera antes del login de la app). |
 
 ### 10.2 Amenazas principales
 
@@ -551,34 +551,36 @@ flowchart LR
 
 ## 12. Entornos
 
+Hay dos entornos: una VM de desarrollo aislada y una VM de producción. Este documento no registra IPs, identificadores de VM ni nombres de la infraestructura real; viven en la documentación privada de quien la opera.
+
 ### 12.1 VM de desarrollo para Claude Code
 
-Claude Code trabaja en una VM dedicada dentro del Proxmox, aislada del resto del homelab. Respeta la regla vigente del homelab: Claude Code no tiene shell en el host ni en los CTs existentes; solo en su VM.
+Claude Code trabaja en una VM dedicada, aislada del resto de la infraestructura: sin shell en el host de virtualización ni en otros servidores, solo en su VM.
 
 | Aspecto | Propuesta |
 | --- | --- |
-| Tipo | VM (no LXC): Docker dentro de una VM aísla mejor y evita relajar un LXC unprivileged |
+| Tipo | VM (no contenedor de sistema): Docker dentro de una VM aísla mejor y evita relajar un contenedor sin privilegios |
 | SO | Debian 13 |
-| Recursos | 4 vCPU, 8 GB RAM, 60 GB en `local-lvm` (Postgres, Playwright con navegadores y una instancia ChirpStack de prueba en Docker) |
-| Red | IP fija fuera del DHCP. Firewall de Proxmox en la NIC de la VM: salida a Internet permitida, **todo `192.168.100.0/24` bloqueado** salvo gateway y DNS. Sin montajes NFS. |
+| Recursos | 4 vCPU, 8 GB RAM, 60 GB de disco (Postgres, Playwright con navegadores y una instancia ChirpStack de prueba en Docker) |
+| Red | IP fija fuera del rango DHCP. Firewall en la NIC de la VM: salida a Internet permitida y toda la red local bloqueada, salvo puerta de enlace y DNS. Sin montajes de red compartidos. |
 | Software | Docker + Compose, Node vía la versión fijada del repo (corepack), git, `gh`, Claude Code |
-| Credenciales | Solo las del repo: token fine-grained de GitHub limitado a `inventarius` (contenido y PRs). Ninguna credencial de producción, del homelab ni de Zensi. Credenciales LNS solo de aplicaciones de prueba. |
-| Control | Rama `main` protegida: Claude Code trabaja en ramas y abre PRs; Rodrigo revisa y hace merge. Snapshot de Proxmox antes de cada fase para volver atrás rápido. |
-| Acceso | SSH con llave dedicada desde el ThinkPad (o conexión SSH de Claude Desktop), también por Tailscale si se agrega el nodo con ACL acotada |
+| Credenciales | Solo las del repo: token fine-grained de GitHub limitado a `inventarius` (contenido y PRs). Ninguna credencial de producción, de la infraestructura ni de terceros. Credenciales LNS solo de aplicaciones de prueba. |
+| Control | Rama `main` protegida: Claude Code trabaja en ramas y abre PRs; el responsable del proyecto revisa y hace merge. Snapshot de la VM antes de cada fase para volver atrás rápido. |
+| Acceso | SSH con llave dedicada desde el equipo del desarrollador, opcionalmente por una VPN con ACL acotada |
 
 La VM corre el entorno completo de desarrollo (`compose.yml`: Postgres, ChirpStack de prueba, API, worker, web con Vite) para que todas las pruebas pasen localmente antes del push.
 
-### 12.2 Producción inicial: `inventarius.supporti.cl`
+### 12.2 VM de producción
 
 | Aspecto | Propuesta |
 | --- | --- |
-| Tipo | VM Debian 13 con Docker Compose, `onboot: 1` |
-| Recursos | 2 vCPU, 3 GB RAM, 32 GB en `local-lvm` (la BD en disco local, nunca sobre NFS) |
+| Tipo | VM Debian 13 con Docker Compose, arranque automático con el host |
+| Recursos | 2 vCPU, 3 GB RAM, 32 GB de disco (la base de datos en disco local, nunca sobre un montaje de red) |
 | Servicios | `caddy` (estáticos + proxy), `api`, `worker`, `postgres`; imágenes desde GHCR con versión fija |
-| Exposición | Nueva ruta en el Tunnel `supporti-home` → `http://<ip-vm>:80`. Sin puertos en el router. Cloudflare Access recomendado. |
+| Exposición | Túnel hacia Internet (Cloudflare Tunnel) con una ruta al puerto de `caddy`; sin puertos abiertos en el router. Acceso restringido delante del login (p. ej. Cloudflare Access) recomendado. |
 | Secretos | `.env` solo en la VM (permisos 600), con copia de `APP_ENCRYPTION_KEY` en el gestor de contraseñas. Sin la clave, las AppKeys respaldadas son irrecuperables. |
-| Respaldos | `pg_dump` diario (timer systemd) a un destino fuera de la VM; vzdump semanal la cubre por el job `--all 1` existente. Ojo: el vzdump incluye el `.env`, mismo criterio ya aceptado para los otros secretos del homelab. |
-| Monitoreo | Uptime Kuma (GCP) contra `/api/health/ready`; métricas listas para el monitoreo centralizado cuando se instale. |
+| Respaldos | `pg_dump` diario (timer systemd) a un destino fuera de la VM, más el respaldo periódico de la VM completa. Ojo: ese respaldo incluye el `.env`; mismo criterio ya aceptado para los demás secretos. |
+| Monitoreo | Monitor externo de disponibilidad contra `/api/health/ready`; métricas listas para el monitoreo centralizado cuando se instale. |
 
 Portabilidad: mover la app a otro servidor = copiar `deploy/`, crear `.env`, `docker compose pull && docker compose run --rm migrate && docker compose up -d`, y restaurar el dump si se migran datos. Queda escrito paso a paso en `docs/install.md`.
 
