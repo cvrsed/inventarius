@@ -11,14 +11,21 @@ Referencia: sección 10 del requerimiento. Este documento crece por fase; aquí 
 
 ## Sesiones
 
-- Token aleatorio de 256 bits en cookie `HttpOnly`, `SameSite=Strict`, `Secure` y prefijo `__Host-` (producción).
-- En la BD solo se guarda el SHA-256 del token. Cada login crea una sesión nueva (rotación).
+- Token aleatorio de 256 bits en cookie `HttpOnly` y `SameSite=Strict`, sin `Max-Age` (cookie de sesión del navegador).
+- `Secure` y el prefijo `__Host-` se activan **solo en producción** (o con `SESSION_COOKIE_SECURE=true`). Motivo: los
+  navegadores rechazan las cookies `Secure` y `__Host-` sin HTTPS, y en desarrollo local y en la red interna de Compose
+  (e2e) se llega por HTTP. En producción el túnel hacia Internet termina TLS, por lo que se exige.
+- En la BD solo se guarda el SHA-256 del token. Cada login crea una sesión nueva (rotación) y **revoca en la misma
+  transacción la sesión previa que traía la cookie**; un login fallido no revoca nada.
 - Expiración inactiva (8 h por defecto) y absoluta (24 h). Se invalidan al desactivar al usuario, al resetear o cambiar
   su contraseña, y al cambiar su correo. Las vencidas se purgan cada hora (job de pg-boss).
 
 ## CSRF, fuerza bruta y límites
 
-- Token CSRF de doble envío (`@fastify/csrf-protection`) en toda petición que cambia estado, además de `SameSite=Strict`.
+- Token CSRF firmado: HMAC-SHA256, con el secreto `CSRF_SECRET` (obligatorio en producción, mínimo 32 caracteres), del id
+  de la sesión; antes del login, de una cookie anónima aleatoria. Se envía en la cabecera `x-csrf-token` y se valida en
+  todo método no seguro de `/api/v1`, incluido el login, antes de validar el cuerpo. Un token válido de otra sesión, o el
+  anterior al login, se rechaza (403). Se complementa con `SameSite=Strict`.
 - Bloqueo progresivo por cuenta (5 fallos) y por IP (20), con tope; las claves no revelan si la cuenta existe y la respuesta
   de error es idéntica para cuenta inexistente o contraseña incorrecta (se iguala también el tiempo de hash).
 - Rate limit global por IP y específico en el login.
@@ -65,6 +72,16 @@ Sin hallazgos en: mensajes de commit, `compose*.yml`, `deploy/`, `scripts/`, `.g
 
 Cómo repetirlo: `pnpm gitleaks` (historial completo), `scripts/gitleaks.sh staged` (lo que se va a commitear) y
 `pnpm test:gitleaks` (comprueba que cada regla salta y que los fixtures inventados de `e2e/` y `*.test.ts` no).
+
+## Topes de BD, apagado y cadena de suministro
+
+- Cada conexión de la API, el worker y el CLI lleva `connectionTimeoutMillis` (5 s), `statement_timeout` (30 s) e
+  `idle_in_transaction_session_timeout` (30 s), configurables con `DB_CONNECTION_TIMEOUT_MS`, `DB_STATEMENT_TIMEOUT_MS` y
+  `DB_IDLE_IN_TRANSACTION_TIMEOUT_MS` (`0` = sin tope). Tests: `apps/api/src/core/db/timeouts.int.test.ts`.
+- El apagado ordenado de la API y del worker tiene un tope (`SHUTDOWN_TIMEOUT_MS`, 10 s): pasado, el proceso termina igual
+  con código 1 (`apps/api/src/core/shutdown.ts`).
+- Las acciones de GitHub del CI van fijadas por SHA de commit con la versión en comentario; un script del CI falla si alguna
+  no lo está y Renovate las actualiza agrupadas.
 
 ## Autorización
 

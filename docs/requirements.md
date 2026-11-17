@@ -247,7 +247,7 @@ Los adaptadores se prueban contra dobles (fake gRPC server y mock HTTP) en CI, y
 | RNF-06 | Rendimiento | API p95 < 300 ms en lecturas con 10.000 activos; listados siempre paginados (máx. 100 por página). Bundle inicial del frontend < 250 KB gzip; rutas con carga diferida. |
 | RNF-07 | Disponibilidad | Objetivo de infraestructura propia: reinicio automático de contenedores, arranque sin intervención tras reboot del host. Sin HA en el MVP. |
 | RNF-08 | Portabilidad | Toda configuración por variables de entorno (12-factor). Sin dominio, IP ni ruta de la infraestructura escritos en código. Despliegue completo con `docker compose up` + migraciones. Guía de instalación en `docs/`. |
-| RNF-09 | Versiones trabadas | Lockfile commiteado, dependencias con versión exacta, Node y pnpm fijados, imágenes Docker fijadas por digest. Actualizaciones solo vía PR (Renovate) con CI en verde. |
+| RNF-09 | Versiones trabadas | Lockfile commiteado, dependencias con versión exacta, Node y pnpm fijados, imágenes Docker fijadas por digest y acciones de GitHub fijadas por SHA de commit (versión en comentario; lo verifica `scripts/check-actions-pinned.mjs`). Actualizaciones solo vía PR (Renovate) con CI en verde. |
 | RNF-10 | Versionamiento | SemVer para la app, Conventional Commits, CHANGELOG generado, tags `vX.Y.Z` e imágenes etiquetadas con la misma versión. Esquema de BD versionado por migraciones. API bajo prefijo `/api/v1`. |
 | RNF-11 | Calidad de código | TypeScript estricto en todo el repo, ESLint + Prettier, sin `any` implícito, módulos con límites claros, funciones pequeñas, comentarios donde explican el porqué (no el qué). |
 | RNF-12 | Pruebas | Cobertura mínima 80 % en dominio y servicios del backend, 70 % global. Tests de integración contra Postgres real (contenedor). E2E de los flujos críticos en escritorio y móvil. |
@@ -292,7 +292,7 @@ Regla: se fija la versión exacta en la Fase 0 con el lockfile y se registra en 
 | Lenguaje | TypeScript estricto en front, back y paquete compartido | Tipos de punta a punta |
 | Frontend | Vue 3 (Composition API, `<script setup>`), Vite, Vue Router, Pinia, vue-i18n, TanStack Query (Vue) | Recomendación del proveedor del stack sugerido + caché y estados de carga sin código repetido |
 | UI | Nuxt UI v4 (MIT) en modo Vue + Vite, sin Nuxt (`@nuxt/ui/vite`), tema propio por design tokens; Tailwind CSS v4 solo para layout; íconos Lucide (`@iconify-json/lucide`) empaquetados en el build | Reemplaza a Volt, propuesto por el proveedor del stack sugerido, y a PrimeVue, que desde la v5 exige licencia con clave (ver 7.3 y ADR 0004) |
-| Backend | Fastify 5.x con `fastify-type-provider-zod`, `@fastify/helmet`, `@fastify/rate-limit`, `@fastify/cookie`, `@fastify/csrf-protection`, `@fastify/swagger`, `@fastify/under-pressure` | Recomendación del proveedor del stack sugerido; Fastify 6 sigue en alpha, no se usa |
+| Backend | Fastify 5.x con `fastify-type-provider-zod`, `@fastify/helmet`, `@fastify/rate-limit`, `@fastify/cookie`, `@fastify/swagger`, `@fastify/under-pressure` | Recomendación del proveedor del stack sugerido; Fastify 6 sigue en alpha, no se usa |
 | Validación | Zod en `packages/shared`, mismo esquema en API y formularios | Una sola fuente de verdad |
 | Contrato API | OpenAPI 3.1 generado desde las rutas; cliente del front tipado generado desde ese OpenAPI | El front no puede desalinearse de la API |
 | Base de datos | PostgreSQL 18 | Recomendación del proveedor del stack sugerido |
@@ -479,15 +479,15 @@ inventarius/
 | Área | Control |
 | --- | --- |
 | Contraseñas | argon2id con parámetros OWASP vigentes; mínimo 12 caracteres; chequeo contra lista de contraseñas comunes. |
-| Sesiones | ID aleatorio guardado en Postgres (hash), cookie `HttpOnly`, `Secure`, `SameSite=Strict`, prefijo `__Host-`; rotación del ID al hacer login; expiración absoluta e inactiva; invalidación al desactivar usuario o cambiar contraseña. |
-| CSRF | Token doble (`@fastify/csrf-protection`) en toda petición que modifica estado, además de `SameSite=Strict`. |
+| Sesiones | ID aleatorio guardado en Postgres (hash), cookie `HttpOnly` y `SameSite=Strict`; `Secure` y prefijo `__Host-` en producción (con HTTPS) y desactivables con `SESSION_COOKIE_SECURE=false` donde no hay HTTPS (desarrollo local y la red interna de Compose en e2e, porque el navegador rechaza cookies `Secure`/`__Host-` sin HTTPS); rotación del ID al hacer login **con revocación de la sesión previa que traía la cookie**; expiración absoluta e inactiva; invalidación al desactivar usuario, cambiar el correo o cambiar o restablecer la contraseña. |
+| CSRF | Token firmado (HMAC-SHA256 con `CSRF_SECRET`, obligatorio en producción) y **ligado al id de sesión** (antes del login, a una cookie anónima), en la cabecera `x-csrf-token` de todo método no seguro de `/api/v1`, además de `SameSite=Strict`. Un token válido de otra sesión se rechaza. |
 | Fuerza bruta | Rate limit global y específico en login (por IP y por cuenta), bloqueo temporal progresivo. |
 | Autorización | Chequeo de permiso en cada ruta mediante un decorador declarativo (`requirePermission('asset:write')`); test que falla si una ruta no declara permiso. |
 | Entrada | Validación Zod en toda ruta (body, query, params); SQL siempre parametrizado vía Drizzle; nada de SQL concatenado. |
 | Cabeceras | Helmet con CSP estricta (sin `unsafe-inline` en scripts), HSTS, `frame-ancestors 'none'`, `Referrer-Policy`. |
 | Secretos en BD | AppKey, NwkKey y credenciales LNS cifradas con AES-256-GCM (IV aleatorio por valor, AAD = tabla + id). Clave maestra `APP_ENCRYPTION_KEY` (32 bytes) solo en el `.env` del servidor; soporta rotación con `key_id`. Nunca salen en logs, exportaciones ni respuestas salvo el reveal autorizado y auditado. |
 | Logs | Redacción en pino de `authorization`, `cookie`, `password`, `*key*`, `*token*`. |
-| Base de datos | Dos usuarios: `inventarius_migrator` (DDL, solo al migrar) e `inventarius_app` (DML, sin `UPDATE`/`DELETE` en `audit_log`). Postgres no expuesto fuera de la red de Compose. |
+| Base de datos | Dos usuarios: `inventarius_migrator` (DDL, solo al migrar) e `inventarius_app` (DML, sin `UPDATE`/`DELETE` en `audit_log`). Postgres no expuesto fuera de la red de Compose. Topes por conexión configurables (espera de conexión 5 s, consulta 30 s, transacción inactiva 30 s) y apagado ordenado de la API y del worker con tope de 10 s. |
 | Contenedores | Usuario no root, sistema de archivos de solo lectura donde se pueda, `no-new-privileges`, sin capacidades extra, imágenes base mínimas fijadas por digest. |
 | Cadena de suministro | Lockfile, `pnpm audit` y OSV-Scanner en CI, Trivy sobre las imágenes, gitleaks contra secretos commiteados, Renovate para parches, revisión humana de toda dependencia nueva. |
 | Repositorio | `.env` en `.gitignore` desde el primer commit; solo `.env.example`. Rama `main` protegida: PR + CI verde. |
