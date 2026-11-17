@@ -32,6 +32,15 @@ describe('loadConfig', () => {
     );
   });
 
+  it('valida APP_TIMEZONE como zona horaria IANA', () => {
+    expect(loadConfig({ ...valid, APP_TIMEZONE: 'America/Punta_Arenas' }).timezone).toBe(
+      'America/Punta_Arenas',
+    );
+    expect(() => loadConfig({ ...valid, APP_TIMEZONE: 'Marte/Olimpo' })).toThrowError(
+      /APP_TIMEZONE/,
+    );
+  });
+
   it('marca isProduction según NODE_ENV', () => {
     expect(loadConfig({ ...valid, NODE_ENV: 'production' }).isProduction).toBe(true);
   });

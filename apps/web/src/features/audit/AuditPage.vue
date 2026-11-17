@@ -8,11 +8,12 @@ import UTable from '@nuxt/ui/components/Table.vue';
 import { computed, ref } from 'vue';
 import IconAction from '@/shared/ui/IconAction.vue';
 import { useI18n } from 'vue-i18n';
+import { formatDateTime } from '@/shared/format/format';
 import AppSelect from '@/shared/ui/AppSelect.vue';
 import PagedFooter from '@/shared/ui/PagedFooter.vue';
 import { useAuditList, type AuditQuery } from './api';
 
-const { t, te, d } = useI18n();
+const { t, te } = useI18n();
 
 const blank: AuditQuery = { page: 1, pageSize: 25, entity: '', action: '', from: '', to: '' };
 const query = ref<AuditQuery>({ ...blank });
@@ -167,7 +168,7 @@ const pretty = (value: unknown) => JSON.stringify(value, null, 2);
           @click="row.toggleExpanded()"
         />
       </template>
-      <template #when-cell="{ row }">{{ d(new Date(row.original.at), 'long') }}</template>
+      <template #when-cell="{ row }">{{ formatDateTime(row.original.at) }}</template>
       <template #who-cell="{ row }">{{ who(row.original) }}</template>
       <template #action-cell="{ row }">{{ actionLabel(row.original.action) }}</template>
       <template #entity-cell="{ row }">{{ entityLabel(row.original.entity) }}</template>

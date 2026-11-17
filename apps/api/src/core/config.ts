@@ -5,7 +5,19 @@ const envSchema = z.object({
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   HOST: z.string().min(1).default('0.0.0.0'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
-  APP_TIMEZONE: z.string().min(1).default('America/Santiago'),
+  /** Zona en que la web muestra las fechas (se guardan en UTC, RNF-05). */
+  APP_TIMEZONE: z
+    .string()
+    .min(1)
+    .default('America/Santiago')
+    .refine((tz) => {
+      try {
+        new Intl.DateTimeFormat('es-CL', { timeZone: tz });
+        return true;
+      } catch {
+        return false;
+      }
+    }, 'zona horaria IANA inválida (p. ej. America/Santiago)'),
   DATABASE_URL: z.string().min(1),
   MIGRATION_DATABASE_URL: z.string().min(1).optional(),
   SESSION_IDLE_TIMEOUT_SECONDS: z.coerce

@@ -4,11 +4,12 @@ import UIcon from '@nuxt/ui/components/Icon.vue';
 import UPagination from '@nuxt/ui/components/Pagination.vue';
 import { computed, ref, toRef } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { formatDateTime } from '@/shared/format/format';
 import { useAssetHistory } from './api';
 import { describeEntry } from './history';
 
 const props = defineProps<{ assetId: string }>();
-const { t, te, d } = useI18n();
+const { t, te } = useI18n();
 const page = ref(1);
 const { data, isPending, isError } = useAssetHistory(toRef(props, 'assetId'), page);
 
@@ -49,7 +50,7 @@ const show = (v: unknown) => (v === null || v === '' ? t('assets.history.empty_v
             {{ t(`assets.history.actions.${view.key}`, view.params) }}
           </p>
           <p class="m-0 text-sm text-muted">
-            {{ d(new Date(entry.at), 'long') }} ·
+            {{ formatDateTime(entry.at) }} ·
             {{ t('assets.history.by', { name: entry.actorName ?? entry.actorLabel ?? '—' }) }}
           </p>
           <ul v-if="view.changes.length" class="m-0 mt-1 flex list-none flex-col gap-1 p-0 text-sm">

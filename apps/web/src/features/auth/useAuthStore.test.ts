@@ -2,6 +2,7 @@ import type { SessionUser } from '@inventarius/shared';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetCsrfToken } from '@/shared/api/http';
+import { formatDateTime, setFormatSettings } from '@/shared/format/format';
 import { useAuthStore } from './useAuthStore';
 
 const user: SessionUser = {
@@ -37,6 +38,23 @@ describe('useAuthStore', () => {
     expect(anon.user).toBeNull();
   });
 
+  it('load() toma la zona horaria de los ajustes; si fallan, la sesión sigue', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(json(user))
+      .mockResolvedValueOnce(json({ timezone: 'UTC' }));
+    await useAuthStore().load();
+    expect(formatDateTime('2026-06-15T15:05:00.000Z')).toBe('15-06-2026 15:05');
+
+    setActivePinia(createPinia());
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(json(user))
+      .mockResolvedValueOnce(json({ title: 'Error', status: 500 }, 500));
+    const store = useAuthStore();
+    await store.load();
+    expect(store.user?.name).toBe('Ana');
+    setFormatSettings({ timezone: 'America/Santiago' });
+  });
+
   it('can() / canAny() consultan los permisos del usuario', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(json(user));
     const store = useAuthStore();
@@ -59,6 +77,7 @@ describe('useAuthStore', () => {
   it('logout() limpia el usuario', async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce(json(user))
+      .mockResolvedValueOnce(json({ timezone: 'America/Santiago' }))
       .mockResolvedValueOnce(json({ token: 't' }))
       .mockResolvedValueOnce(new Response(null, { status: 204 }));
     const store = useAuthStore();

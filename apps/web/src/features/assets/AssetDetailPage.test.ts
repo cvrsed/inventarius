@@ -105,7 +105,7 @@ describe('AssetDetailPage (RF-41)', () => {
     expect(w.text()).toContain('Sala 1');
     expect(w.text()).toContain('Lenovo ThinkPad');
     expect(w.text()).toContain('Activo creado');
-    expect(w.text()).toContain('2027-01-31');
+    expect(w.text()).toContain('31-01-2027');
   });
 
   it('un lector no ve ninguna acción de escritura', async () => {

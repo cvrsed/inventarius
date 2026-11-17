@@ -267,6 +267,8 @@ test.describe('activos: CRUD completo (RF-20 a RF-25)', () => {
     await expect(history.getByText('Datos modificados').first()).toBeVisible();
     await expect(history.getByText('Activo creado')).toBeVisible();
     await expect(history.getByText(asset.name, { exact: true })).toBeVisible();
+    // Fechas en el formato único de la app: dd-mm-aaaa HH:mm (24 h).
+    await expect(history.getByText(/\b\d{2}-\d{2}-\d{4} \d{2}:\d{2}\b/).first()).toBeVisible();
     await expectNoA11yViolations(page);
   });
 

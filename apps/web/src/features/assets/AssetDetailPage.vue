@@ -5,6 +5,7 @@ import UButton from '@nuxt/ui/components/Button.vue';
 import { useToast } from '@nuxt/ui/composables/useToast';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { formatDateOnly, formatDateTime } from '@/shared/format/format';
 import { useRoute } from 'vue-router';
 import { errorMessage } from '@/features/auth/errors';
 import { useAuthStore } from '@/features/auth/useAuthStore';
@@ -15,7 +16,7 @@ import CheckoutDialog from './CheckoutDialog.vue';
 import { useAsset, useAssetMutations } from './api';
 import { statusColor } from './status';
 
-const { t, d } = useI18n();
+const { t } = useI18n();
 const route = useRoute();
 const auth = useAuthStore();
 const toast = useToast();
@@ -73,13 +74,13 @@ const rows = computed(() => {
     [t('assets.fields.model'), `${a.manufacturer.name} ${a.model.name}`],
     [t('assets.fields.category'), a.category.name],
     [t('assets.fields.serial'), a.serial],
-    [t('assets.fields.purchaseDate'), a.purchaseDate],
+    [t('assets.fields.purchaseDate'), a.purchaseDate ? formatDateOnly(a.purchaseDate) : null],
     [
       t('assets.fields.purchaseCost'),
       a.purchaseCost === null ? null : `$${a.purchaseCost.toLocaleString('es-CL')}`,
     ],
     [t('assets.fields.supplier'), a.supplier],
-    [t('assets.fields.warrantyEndsOn'), a.warrantyEndsOn],
+    [t('assets.fields.warrantyEndsOn'), a.warrantyEndsOn ? formatDateOnly(a.warrantyEndsOn) : null],
     [t('assets.fields.notes'), a.notes],
   ].filter(([, v]) => v !== null && v !== '') as [string, string][];
 });
@@ -204,10 +205,10 @@ const rows = computed(() => {
           <dt class="text-muted">{{ t('assets.fields.assignedUser') }}</dt>
           <dd class="m-0">{{ assigneeName }}</dd>
           <dt class="text-muted">{{ t('assets.assignment.since') }}</dt>
-          <dd class="m-0">{{ d(new Date(asset.assignment.since), 'long') }}</dd>
+          <dd class="m-0">{{ formatDateTime(asset.assignment.since) }}</dd>
           <template v-if="asset.assignment.expectedReturnOn">
             <dt class="text-muted">{{ t('assets.assignment.expected') }}</dt>
-            <dd class="m-0">{{ asset.assignment.expectedReturnOn }}</dd>
+            <dd class="m-0">{{ formatDateOnly(asset.assignment.expectedReturnOn) }}</dd>
           </template>
           <template v-if="asset.assignment.note">
             <dt class="text-muted">{{ t('assets.assignment.note') }}</dt>
