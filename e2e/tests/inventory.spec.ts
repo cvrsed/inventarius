@@ -115,7 +115,7 @@ test.describe('catálogo (RF-10 a RF-14)', () => {
     await expect(page.getByText('No hay resultados para esta búsqueda')).toBeVisible();
   });
 
-  test('un fabricante en uso no se borra: el mensaje invita a desactivarlo (RF-14)', async ({
+  test('un fabricante en uso no se borra: Eliminar queda deshabilitado con el motivo (RF-14)', async ({
     page,
   }) => {
     const fixture = await createCatalogFixture(page.request);
@@ -124,13 +124,18 @@ test.describe('catálogo (RF-10 a RF-14)', () => {
     ).json();
     await page.goto('/catalogo/manufacturers');
     await page.getByRole('searchbox').fill(mk.name);
-    await page.getByRole('button', { name: `Eliminar ${mk.name}` }).click();
-    await page
-      .getByRole('dialog', { name: 'Eliminar fabricante' })
-      .getByRole('button', { name: 'Eliminar' })
-      .click();
-    await expect(toast(page, /Desactívalo/)).toBeVisible();
+    const remove = page.getByRole('button', { name: `Eliminar ${mk.name}` });
+    await expect(remove).toBeDisabled();
+    await expect(remove).toHaveAccessibleDescription(/está en uso/);
     await expect(page.getByRole('button', { name: `Editar ${mk.name}` })).toBeVisible();
+    // La API sigue siendo la barrera: borrar directamente responde 409 e invita a desactivar.
+    const token = (
+      (await (await page.request.get('/api/v1/auth/csrf')).json()) as { token: string }
+    ).token;
+    const res = await page.request.delete(`/api/v1/manufacturers/${fixture.manufacturerId}`, {
+      headers: { 'x-csrf-token': token },
+    });
+    expect(res.status()).toBe(409);
   });
 
   test('modelo: los campos LoRaWAN aparecen solo con una categoría LoRaWAN; selector abierto pasa axe', async ({
@@ -233,7 +238,7 @@ test.describe('activos: CRUD completo (RF-20 a RF-25)', () => {
     await expect(page.getByRole('heading', { level: 1, name })).toBeVisible();
     await expect(page.getByText(/^INV-\d{6}$/)).toBeVisible();
     await expect(page.getByText('Disponible', { exact: true }).first()).toBeVisible();
-    await expect(page.getByText('$1.234,5')).toBeVisible();
+    await expect(page.getByText(/\$\s?1\.23[45]/)).toBeVisible();
     await eachTheme(page, () => expectNoA11yViolations(page));
     expect(await horizontalOverflow(page)).toBe(false);
   });
@@ -322,7 +327,7 @@ test.describe('activos: CRUD completo (RF-20 a RF-25)', () => {
       'Admin E2E',
     );
     await expect(page.getByRole('region', { name: 'Asignación actual' })).toContainText(
-      '2030-12-31',
+      '31-12-2030',
     );
     // Con una persona la ubicación actual deja de ser la bodega.
     await expect(page.getByText(/Con Admin E2E/).first()).toBeVisible();

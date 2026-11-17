@@ -1,6 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { mockApi, pagePlugins } from '@/test-utils';
+import { mockApi, pagePlugins, useMobileViewport } from '@/test-utils';
 import AuditPage from './AuditPage.vue';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -41,12 +41,13 @@ describe('AuditPage', () => {
   });
 
   it('en móvil cada registro es una tarjeta cuyo detalle se abre sin scroll horizontal', async () => {
+    useMobileViewport();
     mockApi({
       'GET /api/v1/audit': () => ({ data: [entry(1)], meta: { page: 1, pageSize: 25, total: 1 } }),
     });
     const w = mount(AuditPage, { global: pagePlugins() });
     await flushPromises();
-    const card = w.get('ul.md\\:hidden > li');
+    const card = w.get('ul > li');
     expect(card.text()).toContain('Usuario modificado');
     expect(card.find('pre').exists()).toBe(false);
     await card.get('button').trigger('click');

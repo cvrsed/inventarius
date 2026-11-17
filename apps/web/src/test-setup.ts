@@ -8,7 +8,8 @@ vi.mock('@nuxt/ui/components/Tooltip.vue', () => ({
 // jsdom no implementa matchMedia (Nuxt UI/reka-ui lo consultan para adaptar los componentes).
 if (typeof window.matchMedia !== 'function') {
   window.matchMedia = ((query: string) => ({
-    matches: false,
+    // En pruebas se parte en escritorio (ancho mínimo cumplido); las de móvil lo cambian con `setViewport`.
+    matches: /min-width/.test(query),
     media: query,
     onchange: null,
     addEventListener: () => undefined,

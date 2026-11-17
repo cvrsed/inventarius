@@ -1,6 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { pagePlugins } from '@/test-utils';
+import { pagePlugins, useMobileViewport } from '@/test-utils';
 import UsersPage from './UsersPage.vue';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -44,6 +44,7 @@ describe('UsersPage', () => {
   });
 
   it('en móvil cada usuario es una tarjeta con correo y acciones con texto', async () => {
+    useMobileViewport();
     vi.stubGlobal(
       'fetch',
       vi
@@ -57,7 +58,7 @@ describe('UsersPage', () => {
     );
     const wrapper = mountPage();
     await flushPromises();
-    const card = wrapper.get('ul.md\\:hidden > li');
+    const card = wrapper.get('ul > li');
     expect(card.text()).toContain('u1@ejemplo.cl');
     expect(card.findAll('button').map((b) => b.text())).toEqual([
       'Editar',

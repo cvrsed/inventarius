@@ -27,7 +27,12 @@ const id2 = '018f0000-0000-7000-8000-000000000002';
 describe('esquemas de activos (RF-20, RF-22, RF-23)', () => {
   it('el alta exige nombre, modelo y estado; lo opcional queda en null', () => {
     const parsed = createAssetSchema.parse({ name: ' Sensor ', modelId: id, statusId: id2 });
-    expect(parsed).toMatchObject({ name: 'Sensor', serial: null, locationId: null, notes: null });
+    expect(parsed).toMatchObject({
+      name: 'Sensor',
+      serial: null,
+      baseLocationId: null,
+      notes: null,
+    });
     expect(createAssetSchema.safeParse({ modelId: id, statusId: id2 }).success).toBe(false);
   });
 

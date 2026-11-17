@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils';
-import { describe, expect, it } from 'vitest';
-import { globalPlugins } from '@/test-utils';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { globalPlugins, useMobileViewport } from '@/test-utils';
 import ResponsiveTable from './ResponsiveTable.vue';
 
 const rows = [
@@ -23,23 +23,27 @@ const mountIt = (data: typeof rows) =>
   });
 
 describe('ResponsiveTable', () => {
-  it('renderiza la tabla (escritorio) y una tarjeta por fila (móvil) con sus acciones', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('en escritorio renderiza solo la tabla', () => {
     const w = mountIt(rows);
     expect(w.get('table').text()).toContain('T:Alfa');
+    expect(w.find('ul').exists()).toBe(false);
+  });
+
+  it('en móvil renderiza solo una tarjeta por fila, con sus acciones y sin scroll horizontal', () => {
+    useMobileViewport();
+    const w = mountIt(rows);
+    expect(w.find('table').exists()).toBe(false);
     const cards = w.findAll('ul > li');
     expect(cards).toHaveLength(2);
     expect(cards[0]!.text()).toContain('C:Alfa');
     expect(cards[1]!.find('button').text()).toBe('Editar Beta');
-  });
-
-  it('las tarjetas no generan scroll horizontal y la tabla solo se muestra desde md', () => {
-    const w = mountIt(rows);
-    expect(w.get('div.hidden').classes()).toContain('md:block');
-    expect(w.get('ul').classes()).toContain('md:hidden');
     expect(w.get('ul').classes().join(' ')).not.toContain('overflow-x');
   });
 
   it('sin filas muestra el estado vacío en las tarjetas', () => {
+    useMobileViewport();
     expect(mountIt([]).get('ul').text()).toContain('Sin datos');
   });
 });

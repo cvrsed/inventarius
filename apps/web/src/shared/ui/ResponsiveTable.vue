@@ -1,9 +1,11 @@
 <script setup lang="ts" generic="T">
 import UTable from '@nuxt/ui/components/Table.vue';
 import { computed, useSlots } from 'vue';
+import { useIsDesktop } from './useIsDesktop';
 
 /**
  * Listado que es tabla desde 768 px y lista de tarjetas por debajo (sin scroll horizontal, RF-40).
+ * Solo se monta una de las dos vistas, para que no haya contenido duplicado en el DOM.
  * Las celdas de la tabla se pasan como slots `<columna>-cell` (igual que `UTable`); la tarjeta de cada
  * fila se arma con el slot `card` y sus acciones quedan visibles dentro de ella.
  */
@@ -15,13 +17,14 @@ const props = defineProps<{
   getRowId: (item: T) => string;
 }>();
 
+const isDesktop = useIsDesktop();
 const slots = useSlots();
 /** Todo lo que no sea del modo tarjeta se reenvía a `UTable`. */
 const tableSlots = computed(() => Object.keys(slots).filter((name) => name !== 'card'));
 </script>
 
 <template>
-  <div class="hidden md:block">
+  <div v-if="isDesktop">
     <UTable
       v-bind="$attrs"
       :data="[...props.data]"
@@ -36,7 +39,7 @@ const tableSlots = computed(() => Object.keys(slots).filter((name) => name !== '
     </UTable>
   </div>
 
-  <ul class="m-0 flex list-none flex-col gap-3 p-0 md:hidden" :aria-busy="props.loading">
+  <ul v-else class="m-0 flex list-none flex-col gap-3 p-0" :aria-busy="props.loading">
     <li v-if="!props.data.length" class="py-8 text-center text-muted">
       <slot name="empty" />
     </li>
