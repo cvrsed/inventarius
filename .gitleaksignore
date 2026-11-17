@@ -1,0 +1,6 @@
+# Hallazgos históricos revisados (docs/security.md, «Barrido de información sensible»).
+# Están en el commit original de docs/requirements.md; no se reescribe el historial. El árbol actual ya no los contiene.
+a996fb5d173e95ead247f94c5e6f4101ac031c14:docs/requirements.md:red-privada-192-168:550
+a996fb5d173e95ead247f94c5e6f4101ac031c14:docs/requirements.md:dominio-supporti:9
+a996fb5d173e95ead247f94c5e6f4101ac031c14:docs/requirements.md:dominio-supporti:481
+a996fb5d173e95ead247f94c5e6f4101ac031c14:docs/requirements.md:dominio-supporti:558
