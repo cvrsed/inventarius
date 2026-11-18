@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import {
   ADMIN,
   STRONG_PASSWORD,
+  apiDelete,
   apiPost,
   createAssetViaApi,
   createCatalogFixture,
@@ -157,6 +158,41 @@ test.describe('auditoría (RF-31)', () => {
     await expect(page.locator('#app')).not.toHaveAttribute('inert', '');
     await expect(page.getByText('Inicio de sesión').locator('visible=true').first()).toBeVisible();
     await expect(page.getByText('Alta de usuario').locator('visible=true')).toHaveCount(0);
+  });
+
+  test('«Registro» identifica el activo y solo enlaza mientras siga vigente [P40]', async ({
+    page,
+  }) => {
+    const fixture = await createCatalogFixture(page.request);
+    const asset = await createAssetViaApi(page.request, fixture);
+    const label = `${asset.assetTag} ${asset.name}`;
+    await page.goto('/auditoria');
+    const link = page.getByRole('link', { name: label }).locator('visible=true').first();
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute('href', `/activos/${asset.id}`);
+
+    await apiDelete(page.request, `/api/v1/assets/${asset.id}`, { reason: 'Equipo robado' });
+    await page.reload();
+    // El rótulo se conserva (en el alta y en la baja) pero ya no hay enlace a la ficha.
+    await expect(page.getByText(label).locator('visible=true').first()).toBeVisible();
+    await expect(page.getByRole('link', { name: label })).toHaveCount(0);
+
+    // El detalle de la baja: situación antes/después, motivo y estado.
+    await page.getByRole('combobox', { name: 'Acción' }).click();
+    await page.getByRole('option', { name: 'Baja', exact: true }).click();
+    await page
+      .locator('tr:visible, li:visible')
+      .filter({ hasText: label })
+      .getByRole('button', { name: /^Detalle/ })
+      .click();
+    const detail = page.locator('dl').locator('visible=true').first();
+    await expect(detail).toContainText('Situación');
+    await expect(detail).toContainText('Vigente');
+    await expect(detail).toContainText('Dado de baja');
+    await expect(detail).toContainText('Motivo');
+    await expect(detail).toContainText('Equipo robado');
+    expect(await horizontalOverflow(page)).toBe(false);
+    await eachTheme(page, () => expectNoA11yViolations(page));
   });
 
   test('el detalle traduce también los valores: «Tipo de destino» dice Usuario, no user [P29]', async ({

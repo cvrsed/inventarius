@@ -9,6 +9,7 @@ export interface AuditRow {
   action: string;
   entity: string;
   entityId: string | null;
+  entityLabel: string | null;
   diff: Record<string, unknown> | null;
   ip: string | null;
   at: Date;

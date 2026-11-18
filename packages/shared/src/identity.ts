@@ -101,6 +101,10 @@ export const auditEntrySchema = z.object({
   action: z.string(),
   entity: z.string(),
   entityId: z.string().nullable(),
+  /** Rótulo legible del registro afectado, guardado al momento del evento (activo: etiqueta + nombre). */
+  entityLabel: z.string().nullable(),
+  /** El registro todavía existe y está vigente, así que la ficha o el listado al que apunta se puede abrir. */
+  entityLinkable: z.boolean(),
   diff: z.record(z.string(), z.unknown()).nullable(),
   ip: z.string().nullable(),
 });

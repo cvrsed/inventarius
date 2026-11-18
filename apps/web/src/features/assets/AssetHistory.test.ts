@@ -15,6 +15,8 @@ const entry = (n: number, action: string, diff: Record<string, unknown> | null) 
   action,
   entity: 'asset',
   entityId: ID,
+  entityLabel: null,
+  entityLinkable: true,
   diff,
   ip: null,
 });

@@ -69,6 +69,19 @@ export async function loginViaApi(
   expect(res.status(), await res.text()).toBe(200);
 }
 
+/** DELETE con cuerpo JSON (p. ej. la baja de un activo con su motivo). */
+export async function apiDelete(
+  request: APIRequestContext,
+  url: string,
+  data?: unknown,
+): Promise<void> {
+  const res = await request.delete(url, {
+    ...(data !== undefined ? { data } : {}),
+    headers: { 'x-csrf-token': await csrf(request) },
+  });
+  expect(res.status(), await res.text()).toBeLessThan(300);
+}
+
 export async function apiPost<T>(
   request: APIRequestContext,
   url: string,

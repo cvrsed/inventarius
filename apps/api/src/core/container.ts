@@ -7,6 +7,7 @@ import type { Executor } from './db/executor.js';
 import { AssetsRepository } from '../modules/assets/repository.js';
 import { AssetsService } from '../modules/assets/service.js';
 import { AuditRepository } from '../modules/audit/repository.js';
+import { RecordDirectory } from './db/records.js';
 import { AuditService } from '../modules/audit/service.js';
 import { Argon2Hasher, type PasswordHasher } from '../modules/auth/password.js';
 import { AuthRepository } from '../modules/auth/repository.js';
@@ -56,12 +57,17 @@ export function buildServices(deps: ContainerDeps): Services {
   };
 
   // Auditoría resuelve nombres de actor a través de users; se enlaza con un directorio diferido.
-  const audit = new AuditService(new AuditRepository(), db, {
-    namesByIds: (ids) => {
-      if (!late.users) throw new Error('UsersService no inicializado');
-      return late.users.namesByIds(ids);
+  const audit = new AuditService(
+    new AuditRepository(),
+    db,
+    {
+      namesByIds: (ids) => {
+        if (!late.users) throw new Error('UsersService no inicializado');
+        return late.users.namesByIds(ids);
+      },
     },
-  });
+    new RecordDirectory(db),
+  );
   const rbac = new RbacService(new RbacRepository(), db, audit);
   const users = (late.users = new UsersService(usersRepo, db, rbac, audit, hasher, revoker));
   const authRepo = new AuthRepository();

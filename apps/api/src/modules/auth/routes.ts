@@ -79,7 +79,7 @@ export const authRoutes: FastifyPluginAsyncZod<AuthRoutesOptions> = async (app, 
     },
     async (req, reply) => {
       if (!req.auth) throw new UnauthorizedError();
-      await auth.logout(actorOf(req), req.auth.sessionId);
+      await auth.logout(actorOf(req), req.auth.sessionId, req.auth.user.name);
       clearSessionCookie(reply, names.session, config);
       return reply.code(204).send(null);
     },

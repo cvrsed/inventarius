@@ -95,6 +95,7 @@ export class CatalogEntity<
           action: `${this.def.entity}.create`,
           entity: this.def.entity,
           entityId: row.id,
+          entityLabel: labelOf(row),
           diff: { after: this.def.snapshot(row) },
         });
         return this.def.toDto(row);
@@ -123,6 +124,7 @@ export class CatalogEntity<
             action: `${this.def.entity}.update`,
             entity: this.def.entity,
             entityId: id,
+            entityLabel: labelOf(row),
             diff,
           });
         }
@@ -147,6 +149,7 @@ export class CatalogEntity<
           action: `${this.def.entity}.delete`,
           entity: this.def.entity,
           entityId: id,
+          entityLabel: labelOf(current),
           diff: { before: this.def.snapshot(current) },
         });
       });
@@ -156,4 +159,10 @@ export class CatalogEntity<
       throw e;
     }
   }
+}
+
+/** Rótulo del registro para la auditoría: su nombre (las ubicaciones, su ruta completa). */
+function labelOf(row: object): string {
+  const r = row as { name?: string; path?: string };
+  return r.path ?? r.name ?? '';
 }

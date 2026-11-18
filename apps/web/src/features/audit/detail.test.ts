@@ -87,6 +87,22 @@ describe('describeAuditDetail (RF-31)', () => {
     expect(formatDetailValue('lorawanClass', 'C', text)).not.toBe('C');
   });
 
+  it('la baja muestra situación antes/después, motivo y el estado como contexto [P40]', () => {
+    const rows = describeAuditDetail(
+      {
+        before: { situation: 'vigente' },
+        after: { situation: 'baja', reason: 'Equipo robado' },
+        context: { status: 'Disponible' },
+      },
+      text,
+    );
+    expect(rows).toEqual([
+      { field: 'situation', label: 'Situación', before: 'Vigente', after: 'Dado de baja' },
+      { field: 'reason', label: 'Motivo', before: '—', after: 'Equipo robado' },
+      { field: 'status', label: 'Estado', value: 'Disponible' },
+    ]);
+  });
+
   it('un campo desconocido se muestra con su clave en lugar de perderse', () => {
     expect(describeAuditDetail({ after: { campoNuevo: 'x' } }, text)[0]).toMatchObject({
       label: 'campoNuevo',

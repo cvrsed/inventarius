@@ -53,11 +53,26 @@ describe('migración de F1 a F2 sobre una base con datos', () => {
       "INSERT INTO users (email, name, password_hash) VALUES ('antes@ejemplo.cl', 'Antes', 'x') RETURNING id",
     );
     await pool.query("INSERT INTO audit_log (action, entity) VALUES ('user.create', 'user')");
+    // Registros de F1/F2 sin rótulo: el backfill de la migración 0011 los rotula (P40).
+    await pool.query(
+      "INSERT INTO audit_log (action, entity, entity_id) VALUES ('user.update', 'user', $1)",
+      [user.rows[0].id],
+    );
+    await pool.query(
+      'INSERT INTO audit_log (action, entity, entity_id, diff) VALUES (\'category.delete\', \'category\', gen_random_uuid(), \'{"before":{"name":"Categoría borrada"}}\')',
+    );
 
     await runMigrations(testDb.migratorUrl);
 
     expect((await pool.query('SELECT count(*)::int AS n FROM users')).rows[0].n).toBe(1);
-    expect((await pool.query('SELECT count(*)::int AS n FROM audit_log')).rows[0].n).toBe(1);
+    expect((await pool.query('SELECT count(*)::int AS n FROM audit_log')).rows[0].n).toBe(3);
+    const labels = await pool.query(
+      'SELECT action, entity_label FROM audit_log WHERE entity_label IS NOT NULL ORDER BY action',
+    );
+    expect(labels.rows).toEqual([
+      { action: 'category.delete', entity_label: 'Categoría borrada' },
+      { action: 'user.update', entity_label: 'Antes' },
+    ]);
     expect(user.rows[0].id).toBeTruthy();
 
     const statuses = await pool.query(

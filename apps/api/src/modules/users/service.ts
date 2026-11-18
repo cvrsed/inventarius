@@ -92,6 +92,7 @@ export class UsersService implements ActorDirectory {
           action: 'user.create',
           entity: 'user',
           entityId: user.id,
+          entityLabel: user.name,
           diff: { after: { email: user.email, name: user.name, roles: roles.map((r) => r.name) } },
         });
         return this.toDto(user, roles);
@@ -128,6 +129,7 @@ export class UsersService implements ActorDirectory {
           action: 'user.create_initial_admin',
           entity: 'user',
           entityId: user.id,
+          entityLabel: user.name,
           diff: { after: { email: user.email, name: user.name } },
         });
         return this.toDto(user, (await this.rbac.rolesForUsers([user.id], tx)).get(user.id) ?? []);
@@ -212,6 +214,7 @@ export class UsersService implements ActorDirectory {
         action: patch.active === false && current.active ? 'user.deactivate' : 'user.update',
         entity: 'user',
         entityId: id,
+        entityLabel: row.name,
         diff: {
           before: {
             email: current.email,
@@ -254,6 +257,7 @@ export class UsersService implements ActorDirectory {
           action: 'user.update',
           entity: 'user',
           entityId: current.id,
+          entityLabel: row.name,
           diff: { before: { email: current.email }, after: { email: row.email } },
         });
         return this.toDto(row, (await this.rbac.rolesForUsers([row.id], tx)).get(row.id) ?? []);
@@ -269,7 +273,8 @@ export class UsersService implements ActorDirectory {
     const temporaryPassword = generateTemporaryPassword();
     const passwordHash = await this.hasher.hash(temporaryPassword);
     await this.db.transaction(async (tx) => {
-      if (!(await this.repo.getById(tx, id))) throw new NotFoundError('Usuario no encontrado');
+      const target = await this.repo.getById(tx, id);
+      if (!target) throw new NotFoundError('Usuario no encontrado');
       await this.repo.setPassword(tx, id, passwordHash, true);
       await this.sessions.revokeAllForUser(tx, id);
       await this.audit.record(tx, {
@@ -277,6 +282,7 @@ export class UsersService implements ActorDirectory {
         action: 'user.reset_password',
         entity: 'user',
         entityId: id,
+        entityLabel: target.name,
       });
     });
     return { temporaryPassword };

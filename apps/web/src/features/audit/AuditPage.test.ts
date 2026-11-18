@@ -14,6 +14,8 @@ const entry = (n: number, over: Record<string, unknown> = {}) => ({
   action: 'user.update',
   entity: 'user',
   entityId: '018f0000-0000-7000-8000-000000000002',
+  entityLabel: 'Usuario 2',
+  entityLinkable: true,
   diff: { before: { name: 'A' }, after: { name: 'B' } },
   ip: '10.0.0.1',
   ...over,
@@ -70,5 +72,58 @@ describe('AuditPage', () => {
     const last = String(fetchMock.mock.calls.at(-1)![0]);
     expect(last).toContain('from=2026-11-01T');
     expect(w.text()).toContain('No hay registros de auditoría');
+  });
+
+  describe('columna «Registro» [P40]', () => {
+    const ASSET = '018f0000-0000-7000-8000-0000000000a1';
+    const rows = [
+      entry(1, {
+        action: 'asset.update',
+        entity: 'asset',
+        entityId: ASSET,
+        entityLabel: 'INV-000007 Notebook de Ana',
+        entityLinkable: true,
+      }),
+      entry(2, {
+        action: 'asset.delete',
+        entity: 'asset',
+        entityId: '018f0000-0000-7000-8000-0000000000a2',
+        entityLabel: 'INV-000008 Sensor viejo',
+        entityLinkable: false,
+      }),
+      entry(3, {
+        action: 'auth.login_failed',
+        entity: 'user',
+        entityId: null,
+        entityLabel: null,
+        entityLinkable: false,
+      }),
+    ];
+
+    it('muestra el rótulo de cada registro, enlazado solo si sigue vigente', async () => {
+      mockApi({
+        'GET /api/v1/audit': () => ({ data: rows, meta: { page: 1, pageSize: 25, total: 3 } }),
+      });
+      const w = mount(AuditPage, { global: pagePlugins() });
+      await flushPromises();
+      expect(w.findAll('th').map((th) => th.text())).toContain('Registro');
+      const linked = w.findAll('a').find((a) => a.text() === 'INV-000007 Notebook de Ana')!;
+      expect(linked.attributes('href')).toBe(`/activos/${ASSET}`);
+      expect(w.text()).toContain('INV-000008 Sensor viejo');
+      expect(w.findAll('a').some((a) => a.text() === 'INV-000008 Sensor viejo')).toBe(false);
+      expect(w.text()).toContain('—'); // sin rótulo
+    });
+
+    it('en móvil la tarjeta también identifica el registro', async () => {
+      useMobileViewport();
+      mockApi({
+        'GET /api/v1/audit': () => ({ data: [rows[0]], meta: { page: 1, pageSize: 25, total: 1 } }),
+      });
+      const w = mount(AuditPage, { global: pagePlugins() });
+      await flushPromises();
+      const card = w.get('ul > li');
+      expect(card.text()).toContain('Activo');
+      expect(card.get('a').text()).toBe('INV-000007 Notebook de Ana');
+    });
   });
 });

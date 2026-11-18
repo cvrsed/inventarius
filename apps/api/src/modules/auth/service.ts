@@ -117,6 +117,7 @@ export class AuthService {
         action: 'auth.login_failed',
         entity: 'user',
         entityId: found?.id ?? null,
+        entityLabel: found?.name ?? input.email,
         diff: { email: input.email },
       });
       throw new UnauthorizedError('Correo o contraseña incorrectos');
@@ -132,6 +133,7 @@ export class AuthService {
         action: 'auth.login',
         entity: 'user',
         entityId: found.id,
+        entityLabel: found.name,
       });
       return t;
     });
@@ -163,7 +165,7 @@ export class AuthService {
     return { sessionId: id, user };
   }
 
-  async logout(actor: Actor, sessionId: string): Promise<void> {
+  async logout(actor: Actor, sessionId: string, label: string): Promise<void> {
     await this.db.transaction(async (tx) => {
       await this.repo.deleteSession(tx, sessionId);
       await this.audit.record(tx, {
@@ -171,6 +173,7 @@ export class AuthService {
         action: 'auth.logout',
         entity: 'user',
         entityId: actor.actorId,
+        entityLabel: label,
       });
     });
   }
@@ -204,6 +207,7 @@ export class AuthService {
         action: 'auth.change_password',
         entity: 'user',
         entityId: found.id,
+        entityLabel: found.name,
       });
       return t;
     });

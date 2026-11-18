@@ -1,5 +1,6 @@
 import {
   assetSortSchema,
+  type AssetSituation,
   type AssigneeType,
   type AuditAction,
   type AssetDto,
@@ -63,6 +64,9 @@ const assigneeName = (r: AssetRow) => r.assignedUserName ?? r.assignedLocationNa
 const money = (v: number | null | undefined) => (v === null || v === undefined ? v : String(v));
 
 /** Lo que va a auditoría: nombres legibles, para que el historial se lea sin consultar otras tablas. */
+/** Rótulo del activo para la auditoría: etiqueta + nombre. */
+const assetLabel = (r: AssetRow): string => `${r.assetTag} ${r.name}`;
+
 function snapshot(r: AssetRow): Record<string, unknown> {
   return {
     assetTag: r.assetTag,
@@ -340,6 +344,7 @@ export class AssetsService {
           action: 'asset.create' as const,
           entity: ENTITY,
           entityId: a.id,
+          entityLabel: `${a.assetTag} ${name}`,
           diff: {
             after: {
               assetTag: a.assetTag,
@@ -358,6 +363,7 @@ export class AssetsService {
           action: 'asset.batch_create',
           entity: 'asset_batch',
           entityId: batchId,
+          entityLabel: `Lote de ${created.length} activos`,
           diff: {
             after: {
               count: created.length,
@@ -482,7 +488,12 @@ export class AssetsService {
       const current = await this.lockAndRead(tx, id);
       assertCanDelete({ deleted: current.deletedAt !== null, assigned: isAssigned(current) });
       await this.repo.setDeleted(tx, id, reason);
-      await this.record(tx, actor, 'asset.delete', id, { after: { reason } });
+      // Antes/después de la situación del activo (el estado del catálogo no cambia con la baja, va como contexto).
+      await this.record(tx, actor, 'asset.delete', id, {
+        before: { situation: 'vigente' satisfies AssetSituation },
+        after: { situation: 'baja' satisfies AssetSituation, reason },
+        context: { status: current.statusName },
+      });
     });
   }
 
@@ -493,7 +504,9 @@ export class AssetsService {
       if (!current.deletedAt) throw new ConflictError('El activo no está dado de baja');
       await this.repo.setDeleted(tx, id, null);
       await this.record(tx, actor, 'asset.restore', id, {
-        before: { reason: current.deleteReason },
+        before: { situation: 'baja' satisfies AssetSituation, reason: current.deleteReason },
+        after: { situation: 'vigente' satisfies AssetSituation },
+        context: { status: current.statusName },
       });
       return toDto(await this.require(tx, id));
     });
@@ -537,14 +550,23 @@ export class AssetsService {
     }
   }
 
-  private record(
+  private async record(
     tx: Executor,
     actor: Actor,
     action: AuditAction,
     id: string,
     diff: Record<string, unknown>,
   ) {
-    return this.audit.record(tx, { ...actor, action, entity: ENTITY, entityId: id, diff });
+    // El rótulo se toma del estado actual del activo (ya con el cambio aplicado) y queda congelado en el registro.
+    const row = await this.require(tx, id);
+    return this.audit.record(tx, {
+      ...actor,
+      action,
+      entity: ENTITY,
+      entityId: id,
+      entityLabel: assetLabel(row),
+      diff,
+    });
   }
 }
 

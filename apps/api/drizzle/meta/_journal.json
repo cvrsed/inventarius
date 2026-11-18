@@ -78,6 +78,13 @@
       "when": 1794888954722,
       "tag": "0010_seed_pending_setup_status",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794965305394,
+      "tag": "0011_audit_entity_label",
+      "breakpoints": true
     }
   ]
 }

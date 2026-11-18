@@ -11,6 +11,8 @@ const entry = (action: string, diff: AuditEntryDto['diff']): AuditEntryDto => ({
   action,
   entity: 'asset',
   entityId: null,
+  entityLabel: null,
+  entityLinkable: false,
   diff,
   ip: null,
 });

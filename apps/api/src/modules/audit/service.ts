@@ -14,6 +14,8 @@ export interface AuditEntryInput extends Actor {
   action: AuditAction;
   entity: AuditEntity;
   entityId?: string | null;
+  /** Rótulo legible del registro afectado en este momento (se guarda tal cual: sobrevive a renombres y borrados). */
+  entityLabel?: string | null;
   /** Antes/después de los campos que cambiaron. Nunca incluir secretos ni hashes. */
   diff?: Record<string, unknown> | null;
 }
@@ -23,12 +25,18 @@ export interface ActorDirectory {
   namesByIds(ids: string[]): Promise<Map<string, string>>;
 }
 
+/** Dice qué registros auditados siguen existiendo y vigentes (para enlazar a su ficha). */
+export interface RecordLookup {
+  liveIds(entity: string, ids: string[]): Promise<Set<string>>;
+}
+
 /** Servicio de auditoría (RF-30, RF-31). */
 export class AuditService {
   constructor(
     private readonly repo: AuditRepository,
     private readonly db: Executor,
     private readonly actors: ActorDirectory,
+    private readonly records: RecordLookup,
   ) {}
 
   /**
@@ -42,6 +50,7 @@ export class AuditService {
       action: entry.action,
       entity: entry.entity,
       entityId: entry.entityId ?? null,
+      entityLabel: entry.entityLabel ?? null,
       diff: entry.diff ?? null,
       ip: entry.ip,
     });
@@ -57,6 +66,7 @@ export class AuditService {
         action: entry.action,
         entity: entry.entity,
         entityId: entry.entityId ?? null,
+        entityLabel: entry.entityLabel ?? null,
         diff: entry.diff ?? null,
         ip: entry.ip,
       })),
@@ -75,6 +85,17 @@ export class AuditService {
     const names = await this.actors.namesByIds([
       ...new Set(rows.flatMap((r) => (r.actorId ? [r.actorId] : []))),
     ]);
+    // Un registro solo es «enlazable» si todavía existe y sigue vigente; si no, la auditoría muestra su rótulo sin enlace.
+    const byEntity = new Map<string, string[]>();
+    for (const r of rows) {
+      if (r.entityId) byEntity.set(r.entity, [...(byEntity.get(r.entity) ?? []), r.entityId]);
+    }
+    const linkable = new Set<string>();
+    for (const [entity, ids] of byEntity) {
+      for (const id of await this.records.liveIds(entity, [...new Set(ids)])) {
+        linkable.add(`${entity}:${id}`);
+      }
+    }
     return {
       data: rows.map((r) => ({
         id: r.id.toString(),
@@ -85,6 +106,8 @@ export class AuditService {
         action: r.action,
         entity: r.entity,
         entityId: r.entityId,
+        entityLabel: r.entityLabel,
+        entityLinkable: linkable.has(`${r.entity}:${r.entityId}`),
         diff: r.diff,
         ip: r.ip,
       })),

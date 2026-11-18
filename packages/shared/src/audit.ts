@@ -10,12 +10,17 @@ import {
 export const ASSIGNEE_TYPES = ['user', 'location'] as const;
 export type AssigneeType = (typeof ASSIGNEE_TYPES)[number];
 
+/** Situación de un activo respecto de su vida útil en el inventario (alta vigente o dado de baja). */
+export const ASSET_SITUATIONS = ['vigente', 'baja'] as const;
+export type AssetSituation = (typeof ASSET_SITUATIONS)[number];
+
 /**
  * Campos del diff de auditoría cuyo valor es una enumeración, con todos sus valores posibles. La web traduce cada
  * uno (mapa `AUDIT_VALUE_LABELS`) y un test falla si falta alguna traducción.
  */
 export const AUDIT_ENUM_FIELDS = {
   assignedToType: ASSIGNEE_TYPES,
+  situation: ASSET_SITUATIONS,
   kind: STATUS_KINDS,
   type: LOCATION_TYPES,
   extension: CATEGORY_EXTENSIONS,

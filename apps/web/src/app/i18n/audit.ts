@@ -97,6 +97,7 @@ export const AUDIT_FIELD_LABELS: Record<string, string> = {
   notes: 'Notas',
   assignedTo: 'Asignado a',
   assignedToType: 'Tipo de destino',
+  situation: 'Situación',
   expectedReturnOn: 'Devolución esperada',
   returnedTo: 'Devuelto a',
   note: 'Nota',
@@ -130,6 +131,7 @@ export const AUDIT_VALUE_LABELS: {
   [F in AuditEnumField]: Record<(typeof AUDIT_ENUM_FIELDS)[F][number], string>;
 } = {
   assignedToType: { user: 'Usuario', location: 'Ubicación' },
+  situation: { vigente: 'Vigente', baja: 'Dado de baja' },
   kind: messages.catalog.kinds,
   type: messages.catalog.locationTypes,
   extension: {

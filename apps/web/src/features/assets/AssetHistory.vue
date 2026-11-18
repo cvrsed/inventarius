@@ -6,7 +6,7 @@ import { computed, toRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { formatDateTime } from '@/shared/format/format';
 import { useAssetHistory } from './api';
-import { auditActionLabel } from '@/app/i18n/audit';
+import { auditActionLabel, auditValueLabel } from '@/app/i18n/audit';
 import { describeEntry } from './history';
 
 const props = defineProps<{ assetId: string }>();
@@ -32,7 +32,10 @@ const items = computed(() =>
 );
 const fieldLabel = (f: string) =>
   te(`assets.history.fields.${f}`) ? t(`assets.history.fields.${f}`) : f;
-const show = (v: unknown) => (v === null || v === '' ? t('assets.history.empty_value') : String(v));
+const show = (field: string, v: unknown) =>
+  v === null || v === ''
+    ? t('assets.history.empty_value')
+    : (auditValueLabel(field, String(v)) ?? String(v));
 </script>
 
 <template>
@@ -64,9 +67,9 @@ const show = (v: unknown) => (v === null || v === '' ? t('assets.history.empty_v
           <ul v-if="view.changes.length" class="m-0 mt-1 flex list-none flex-col gap-1 p-0 text-sm">
             <li v-for="c in view.changes" :key="c.field" class="break-words">
               <UBadge :label="fieldLabel(c.field)" color="neutral" variant="subtle" class="mr-1" />
-              <span class="text-muted">{{ show(c.before) }}</span>
+              <span class="text-muted">{{ show(c.field, c.before) }}</span>
               <span aria-hidden="true"> → </span><span class="sr-only">a</span>
-              <span class="text-default">{{ show(c.after) }}</span>
+              <span class="text-default">{{ show(c.field, c.after) }}</span>
             </li>
           </ul>
         </div>

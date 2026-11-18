@@ -62,20 +62,30 @@ export function describeAuditDetail(
   const before = isRecord(diff['before']) ? diff['before'] : null;
   const after = isRecord(diff['after']) ? diff['after'] : null;
   const row = (field: string) => ({ field, label: auditFieldLabel(field) });
+  // `context`: datos que no cambiaron pero ayudan a entender el evento (p. ej. el estado de un activo dado de baja).
+  const context = isRecord(diff['context'])
+    ? Object.entries(diff['context']).map(([f, v]) => ({
+        ...row(f),
+        value: formatDetailValue(f, v, text),
+      }))
+    : [];
 
   if (before && after) {
     const fields = [...new Set([...Object.keys(before), ...Object.keys(after)])];
-    return fields
+    const changes = fields
       .filter((f) => JSON.stringify(before[f] ?? null) !== JSON.stringify(after[f] ?? null))
       .map((f) => ({
         ...row(f),
         before: formatDetailValue(f, before[f], text),
         after: formatDetailValue(f, after[f], text),
       }));
+    return [...changes, ...context];
   }
   const single = after ?? before ?? diff;
-  return Object.entries(single).map(([f, v]) => ({
-    ...row(f),
-    value: formatDetailValue(f, v, text),
-  }));
+  return [
+    ...Object.entries(single)
+      .filter(([f]) => single !== diff || f !== 'context')
+      .map(([f, v]) => ({ ...row(f), value: formatDetailValue(f, v, text) })),
+    ...context,
+  ];
 }

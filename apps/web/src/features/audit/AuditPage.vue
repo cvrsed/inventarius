@@ -13,6 +13,7 @@ import { formatDateTime } from '@/shared/format/format';
 import AppSelect from '@/shared/ui/AppSelect.vue';
 import PagedFooter from '@/shared/ui/PagedFooter.vue';
 import AuditDetail from './AuditDetail.vue';
+import AuditRecord from './AuditRecord.vue';
 import { useAuditList, type AuditQuery } from './api';
 
 const { t } = useI18n();
@@ -37,6 +38,7 @@ const columns = computed(() => [
   { id: 'who', header: t('audit.who') },
   { id: 'action', header: t('audit.action') },
   { id: 'entity', header: t('audit.entity') },
+  { id: 'record', header: t('audit.record') },
   { accessorKey: 'ip', header: t('audit.ip') },
 ]);
 
@@ -155,6 +157,7 @@ function toggleCard(id: string): void {
       <template #who-cell="{ row }">{{ who(row.original) }}</template>
       <template #action-cell="{ row }">{{ actionLabel(row.original.action) }}</template>
       <template #entity-cell="{ row }">{{ entityLabel(row.original.entity) }}</template>
+      <template #record-cell="{ row }"><AuditRecord :entry="row.original" /></template>
       <template #expanded="{ row }">
         <AuditDetail :entry="row.original" />
       </template>
@@ -163,7 +166,11 @@ function toggleCard(id: string): void {
           <span class="font-semibold text-highlighted">{{ actionLabel(item.action) }}</span>
           <span class="shrink-0 text-xs text-muted">{{ formatDateTime(item.at) }}</span>
         </div>
-        <p class="m-0 text-sm text-muted">{{ entityLabel(item.entity) }} · {{ who(item) }}</p>
+        <p class="m-0 text-sm">
+          <span class="text-muted">{{ entityLabel(item.entity) }}:</span>
+          <AuditRecord :entry="item" />
+        </p>
+        <p class="m-0 text-sm text-muted">{{ who(item) }}</p>
         <UButton
           v-if="item.diff"
           :label="t('audit.detail')"

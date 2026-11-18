@@ -66,6 +66,8 @@ async function mountAsset(
           action: 'asset.create',
           entity: 'asset',
           entityId: ID,
+          entityLabel: 'INV-000001 Notebook de Ana',
+          entityLinkable: true,
           diff: { after: { name: 'Notebook de Ana' } },
           ip: null,
         },

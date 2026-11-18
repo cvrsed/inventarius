@@ -133,6 +133,8 @@ export const auditLog = pgTable(
     action: text('action').notNull(),
     entity: text('entity').notNull(),
     entityId: uuid('entity_id'),
+    /** Rótulo legible del registro afectado, congelado al momento del evento (sobrevive a renombres y borrados). */
+    entityLabel: text('entity_label'),
     diff: jsonb('diff').$type<Record<string, unknown>>(),
     ip: inet('ip'),
     at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
