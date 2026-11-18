@@ -535,61 +535,83 @@ test.describe('listado de activos (RF-22, RF-26, RF-40)', () => {
     await expect(page.getByText('1 resultado')).toBeVisible();
     expect(await horizontalOverflow(page)).toBe(false);
 
-    if (info.project.name === 'mobile') {
+    const mobile = info.project.name === 'mobile';
+    if (mobile) {
       // En 360 px el listado son tarjetas, no tabla (RF-40).
       await expect(page.getByRole('table')).toBeHidden();
       await expect(page.locator('ul a[href^="/activos/"]').first()).toBeVisible();
-      await page.getByRole('button', { name: 'Filtros' }).click();
     } else {
       await expect(page.getByRole('table')).toBeVisible();
     }
 
-    // Modelo está tras «Más filtros»; a la vista solo hay Estado, Categoría y Ubicación base [P22].
-    await expect(page.getByRole('button', { name: /^Categoría/ })).toBeVisible();
-    await expect(page.locator('#filter-modelId')).toBeHidden();
-    await page.getByRole('button', { name: 'Más filtros' }).click();
-    await page.locator('#filter-modelId').click();
+    // [P41] Escritorio: barra con «Estado ▾», «Categoría ▾», «Ubicación ▾» y «+ Filtros», sin etiquetas encima.
+    // Móvil: un botón «Filtros (n)» que abre un panel inferior con todos los filtros.
+    const modelField = page.locator('#filter-modelId');
+    if (mobile) {
+      await expect(page.locator('#filters-panel-button')).toContainText('Filtros (0)');
+      await page.locator('#filters-panel-button').click();
+      await expect(page.getByRole('dialog', { name: 'Filtros' })).toBeVisible();
+      await expectNoA11yViolations(page); // panel inferior ABIERTO
+    } else {
+      for (const id of ['statusId', 'categoryId', 'baseLocationId']) {
+        await expect(page.locator(`#filter-${id}`)).toBeVisible();
+      }
+      await expect(page.locator('#filter-baseLocationId')).toHaveText('Ubicación');
+      await expect(modelField).toHaveCount(0); // Modelo está tras «+ Filtros»
+      await page.locator('#filters-more').click();
+      await expectNoA11yViolations(page); // «+ Filtros» ABIERTO
+    }
+    await modelField.click();
     await expect(page.getByRole('listbox')).toBeVisible();
     await expectNoA11yViolations(page); // filtro con búsqueda ABIERTO
     await page.getByPlaceholder(/Buscar…/).fill(fixture.modelName.slice(0, 14));
     await page.getByRole('option', { name: fixture.modelName }).click();
     await expect(page).toHaveURL(new RegExp(`modelId=${fixture.modelId}`));
-    await page.reload();
-    // Con filtros en la URL el panel ya viene abierto; en móvil solo se abre si sigue cerrado.
-    const toggle = page.getByRole('button', { name: 'Filtros', exact: true });
-    if (info.project.name === 'mobile' && (await toggle.getAttribute('aria-expanded')) !== 'true')
-      await toggle.click();
-    // El nombre accesible del selector es su rótulo; lo elegido se lee en su contenido.
-    await expect(page.locator('#filter-modelId')).toContainText(fixture.modelName.slice(0, 20));
+    if (mobile) {
+      await page.getByRole('button', { name: /^Ver \d+ resultado/ }).click();
+      await expect(page.getByRole('dialog', { name: 'Filtros' })).toBeHidden();
+    } else {
+      await page.keyboard.press('Escape');
+    }
 
+    // El filtro activo es un chip removible con nombre accesible; «Limpiar todo» solo aparece con filtros.
+    const chip = page.locator('[data-filter-chip]').filter({ hasText: 'Modelo:' });
+    await expect(chip).toContainText(fixture.modelName.slice(0, 20));
+    await expect(page.getByRole('button', { name: 'Limpiar todo' })).toBeVisible();
+    await page.reload();
+    await expect(chip).toContainText(fixture.modelName.slice(0, 20)); // sobrevive a recargar (URL)
     await eachTheme(page, () => expectNoA11yViolations(page));
+
+    await page.getByRole('button', { name: /^Quitar filtro Modelo:/ }).click();
+    await expect(page).not.toHaveURL(/modelId=/);
+    await expect(chip).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Limpiar todo' })).toHaveCount(0);
   });
 
-  test('«Limpiar filtros» sin filtros activos está atenuado, no tachado [P26]', async ({
-    page,
-  }, info) => {
-    await page.goto('/activos');
-    if (info.project.name === 'mobile') await page.getByRole('button', { name: 'Filtros' }).click();
-    const clear = page.getByRole('button', { name: 'Limpiar filtros' });
-    await expect(clear).toBeDisabled();
-    const style = await clear.evaluate((el) => {
-      const cs = getComputedStyle(el);
-      return { line: cs.textDecorationLine, opacity: Number(cs.opacity), cursor: cs.cursor };
-    });
-    expect(style.line).toBe('none');
-    expect(style.opacity).toBeLessThan(1);
-    expect(style.cursor).not.toBe('not-allowed');
+  test('menú de filtro con teclado, chips y «Limpiar todo» [P41]', async ({ page }, info) => {
+    test.skip(info.project.name === 'mobile', 'el menú de la barra es de escritorio');
+    const fixture = await createCatalogFixture(page.request);
+    await createAssetViaApi(page.request, fixture);
+    await page.goto(`/activos?modelId=${fixture.modelId}`);
 
-    await page.goto('/activos?statusKind=deployable');
-    if (
-      info.project.name === 'mobile' &&
-      (await page
-        .getByRole('button', { name: 'Filtros', exact: true })
-        .getAttribute('aria-expanded')) !== 'true'
-    ) {
-      await page.getByRole('button', { name: 'Filtros' }).click();
-    }
-    await expect(page.getByRole('button', { name: 'Limpiar filtros' })).toBeEnabled();
+    // Teclado: Enter abre el menú, flechas mueven, Enter elige, Esc cierra.
+    const status = page.locator('#filter-statusId');
+    await status.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('listbox')).toBeVisible();
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/statusId=/);
+    await expect(page.locator('[data-filter-chip]').filter({ hasText: 'Estado:' })).toBeVisible();
+    await expect(page.locator('[data-filter-chip]')).toHaveCount(2);
+
+    // El conteo va en la misma línea que los chips.
+    const line = page.locator('p[aria-live="polite"]').locator('..');
+    await expect(line.locator('[data-filter-chip]')).toHaveCount(2);
+
+    await page.getByRole('button', { name: 'Limpiar todo' }).click();
+    await expect(page).not.toHaveURL(/statusId=|modelId=/);
+    await expect(page.locator('[data-filter-chip]')).toHaveCount(0);
   });
 
   test('orden por encabezados (escritorio) o campo + dirección (móvil) [P27]', async ({

@@ -28,5 +28,9 @@ const onOpen = useInertWhileOpen();
 </script>
 
 <template>
-  <USelect v-bind="$attrs" v-model="shown" :items="items" value-key="value" @update:open="onOpen" />
+  <USelect v-bind="$attrs" v-model="shown" :items="items" value-key="value" @update:open="onOpen">
+    <template v-for="(_, name) in $slots" :key="name" #[name]="slotProps">
+      <slot :name="name" v-bind="slotProps ?? {}" />
+    </template>
+  </USelect>
 </template>

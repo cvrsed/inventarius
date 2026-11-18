@@ -83,5 +83,27 @@ test('ninguna pantalla tiene campos sin id ni name [P31]', async ({ page }) => {
   await expect(page.getByRole('listbox')).toBeVisible();
   await check('selector con búsqueda abierto');
 
+  // Barra de filtros [P41]: menú de la barra (escritorio) o panel inferior (móvil), y «+ Filtros».
+  for (const path of ['/auditoria', '/activos']) {
+    await page.goto(path);
+    const mobile = (page.viewportSize()?.width ?? 0) < 768;
+    if (mobile) {
+      await page.locator('#filters-panel-button').click();
+      await expect(page.getByRole('dialog')).toBeVisible();
+      await check(`panel de filtros ${path}`);
+      await page.keyboard.press('Escape');
+    } else {
+      await page.locator(path === '/auditoria' ? '#filter-action' : '#filter-categoryId').click();
+      await expect(page.getByRole('listbox')).toBeVisible();
+      await check(`menú de filtro ${path}`);
+      await page.keyboard.press('Escape');
+      if (path === '/activos') {
+        await page.locator('#filters-more').click();
+        await check('«+ Filtros»');
+        await page.keyboard.press('Escape');
+      }
+    }
+  }
+
   expect(found).toEqual({});
 });

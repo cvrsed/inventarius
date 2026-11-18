@@ -88,7 +88,19 @@ describe('AssetsPage (RF-22, RF-40)', () => {
       overdue: 'true',
       baseLocationId: '018f0000-0000-7000-8000-0000000000d1',
     });
-    expect(wrapper.find('#filter-status-kind').exists()).toBe(true);
+    // Cada filtro activo se ve como chip legible (sin jerga de tipos) con su nombre accesible.
+    const chips = wrapper.findAll('[data-filter-chip]').map((c) => c.text());
+    expect(chips).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('Grupo de estados: Estados pendientes'),
+        expect.stringContaining('Asignación: Sin asignar'),
+        expect.stringContaining('Devolución: Atrasada'),
+      ]),
+    );
+    expect(
+      wrapper.find('button[aria-label="Quitar filtro Asignación: Sin asignar"]').exists(),
+    ).toBe(true);
+    expect(wrapper.text()).toContain('Limpiar todo');
   });
 
   it('sin filtros la API recibe solo página y tamaño', async () => {

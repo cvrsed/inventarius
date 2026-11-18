@@ -3,6 +3,8 @@ import {
   ADMIN,
   STRONG_PASSWORD,
   apiDelete,
+  chooseFilter,
+  filterControl,
   apiPost,
   createAssetViaApi,
   createCatalogFixture,
@@ -151,10 +153,15 @@ test.describe('auditoría (RF-31)', () => {
     await expectNoA11yViolations(page);
     expect(await horizontalOverflow(page)).toBe(false);
 
-    await page.getByRole('combobox', { name: 'Acción' }).click();
+    // Escritorio: menú «Acción ▾» de la barra; móvil: campo del panel «Filtros (n)» [P41].
+    const mobile = (page.viewportSize()?.width ?? 0) < 768;
+    if (mobile) await page.locator('#filters-panel-button').click();
+    await filterControl(page, 'Acción').click();
     await expect(page.getByRole('listbox')).toBeVisible();
-    await expectNoA11yViolations(page); // select de página ABIERTO
+    await expectNoA11yViolations(page); // menú de filtro ABIERTO
     await page.getByRole('option', { name: 'Inicio de sesión', exact: true }).click();
+    if (mobile) await page.getByRole('button', { name: /^Ver \d+ resultado/ }).click();
+    await expect(page.locator('[data-filter-chip]').filter({ hasText: 'Acción:' })).toBeVisible();
     await expect(page.locator('#app')).not.toHaveAttribute('inert', '');
     await expect(page.getByText('Inicio de sesión').locator('visible=true').first()).toBeVisible();
     await expect(page.getByText('Alta de usuario').locator('visible=true')).toHaveCount(0);
@@ -178,8 +185,7 @@ test.describe('auditoría (RF-31)', () => {
     await expect(page.getByRole('link', { name: label })).toHaveCount(0);
 
     // El detalle de la baja: situación antes/después, motivo y estado.
-    await page.getByRole('combobox', { name: 'Acción' }).click();
-    await page.getByRole('option', { name: 'Baja', exact: true }).click();
+    await chooseFilter(page, 'Acción', 'Baja');
     await page
       .locator('tr:visible, li:visible')
       .filter({ hasText: label })
@@ -203,8 +209,7 @@ test.describe('auditoría (RF-31)', () => {
     const me = (await (await page.request.get('/api/v1/auth/me')).json()) as { id: string };
     await apiPost(page.request, `/api/v1/assets/${asset.id}/checkout`, { userId: me.id });
     await page.goto('/auditoria');
-    await page.getByRole('combobox', { name: 'Acción' }).click();
-    await page.getByRole('option', { name: 'Asignación', exact: true }).click();
+    await chooseFilter(page, 'Acción', 'Asignación');
     await page
       .getByRole('button', { name: /^Detalle/ })
       .locator('visible=true')
@@ -219,8 +224,7 @@ test.describe('auditoría (RF-31)', () => {
   test('el detalle es una lista campo → valor en español, no JSON [P25]', async ({ page }) => {
     const fixture = await createCatalogFixture(page.request);
     await page.goto('/auditoria');
-    await page.getByRole('combobox', { name: 'Acción' }).click();
-    await page.getByRole('option', { name: 'Alta de categoría', exact: true }).click();
+    await chooseFilter(page, 'Acción', 'Alta de categoría');
     await page
       .getByRole('button', { name: /^Detalle/ })
       .locator('visible=true')

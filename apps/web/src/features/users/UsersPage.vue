@@ -3,7 +3,7 @@ import type { UserDto } from '@inventarius/shared';
 import UAlert from '@nuxt/ui/components/Alert.vue';
 import UBadge from '@nuxt/ui/components/Badge.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
-import UInput from '@nuxt/ui/components/Input.vue';
+import FilterToolbar from '@/shared/filters/FilterToolbar.vue';
 import { useToast } from '@nuxt/ui/composables/useToast';
 import { computed, ref, watchEffect } from 'vue';
 import IconAction from '@/shared/ui/IconAction.vue';
@@ -88,13 +88,13 @@ function askReset(user: UserDto): void {
       <UButton icon="i-lucide-plus" :label="t('users.new')" @click="openCreate" />
     </div>
 
-    <UInput
-      id="users-search"
-      v-model="search"
-      type="search"
-      :placeholder="t('users.search')"
-      :aria-label="t('users.search')"
-      class="w-full"
+    <FilterToolbar
+      v-model:search="search"
+      search-id="users-search"
+      :search-placeholder="t('users.search')"
+      :defs="[]"
+      :values="{}"
+      :total="data?.meta.total"
     />
 
     <UAlert v-if="isError" color="error" variant="subtle" role="alert">

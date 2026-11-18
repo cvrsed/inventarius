@@ -156,3 +156,12 @@ export function useOptionById(section: Section, id: Ref<string>) {
     staleTime: 60_000,
   });
 }
+
+/** Opción de un id (para mostrar en un filtro lo que viene de la URL), o `null` si ya no existe. */
+export async function fetchOptionById(section: Section, id: string): Promise<RemoteOption | null> {
+  try {
+    return optionOf(section, await api(`/api/v1/${PATHS[section]}/${id}`, SCHEMAS[section]));
+  } catch {
+    return null;
+  }
+}

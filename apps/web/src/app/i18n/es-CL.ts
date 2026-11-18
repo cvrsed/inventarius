@@ -20,6 +20,17 @@ export const messages = {
   errors: {
     unexpected: 'Algo salió mal. Si la pantalla no responde, recarga la página.',
   },
+  filters: {
+    title: 'Filtros',
+    panelHint: 'Los cambios se aplican al instante.',
+    more: 'Filtros',
+    withCount: 'Filtros ({n})',
+    clearAll: 'Limpiar todo',
+    clearOne: 'Quitar',
+    remove: 'Quitar filtro {name}',
+    all: 'Todos',
+    showResults: 'Ver {n} resultado | Ver {n} resultados',
+  },
   common: {
     save: 'Guardar',
     cancel: 'Cancelar',
@@ -48,7 +59,6 @@ export const messages = {
     noOptions: 'Sin resultados',
     all: 'Todos',
     none: 'Ninguno',
-    clearFilters: 'Limpiar filtros',
     back: 'Volver',
     active: 'Activo',
     inactive: 'Inactivo',
@@ -253,7 +263,6 @@ export const messages = {
     export: 'Exportar CSV',
     search: 'Buscar por etiqueta, nombre o serie',
     filters: 'Filtros',
-    moreFilters: 'Más filtros',
     filterStatus: 'Estado',
     filterCategory: 'Categoría',
     filterModel: 'Modelo',
@@ -261,6 +270,7 @@ export const messages = {
     filterAssignee: 'Asignado a',
     filterDeleted: 'Dados de baja',
     filterBaseLocation: 'Ubicación base',
+    filterLocationShort: 'Ubicación',
     filterStatusKind: 'Grupo de estados',
     statusKindOptions: {
       deployable: 'Estados asignables',
@@ -487,7 +497,6 @@ export const messages = {
     filterTo: 'Hasta',
     filterUser: 'Usuario',
     all: 'Todas',
-    clear: 'Limpiar filtros',
     empty: 'No hay registros de auditoría con estos filtros',
   },
   theme: {

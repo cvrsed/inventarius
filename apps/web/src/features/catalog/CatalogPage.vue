@@ -2,7 +2,6 @@
 import UAlert from '@nuxt/ui/components/Alert.vue';
 import UBadge from '@nuxt/ui/components/Badge.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
-import UInput from '@nuxt/ui/components/Input.vue';
 import { useToast } from '@nuxt/ui/composables/useToast';
 import { computed, onBeforeUnmount, ref, toRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -10,6 +9,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { errorMessage } from '@/features/auth/errors';
 import { useAuthStore } from '@/features/auth/useAuthStore';
 import { useListQuery } from '@/shared/list/useListQuery';
+import FilterToolbar from '@/shared/filters/FilterToolbar.vue';
+import type { FilterDef } from '@/shared/filters/types';
 import AppSelect from '@/shared/ui/AppSelect.vue';
 import IconAction from '@/shared/ui/IconAction.vue';
 import ResponsiveTable from '@/shared/ui/ResponsiveTable.vue';
@@ -39,7 +40,12 @@ const goToSection = (value: string | number) =>
   router.push({ name: 'catalog', params: { section: String(value) } });
 const canWrite = computed(() => auth.can('catalog:write'));
 
-const { query, update, setPage } = useListQuery({ page: 1, pageSize: 25, q: '', active: '' });
+const { query, update, setPage, reset } = useListQuery({
+  page: 1,
+  pageSize: 25,
+  q: '',
+  active: '',
+});
 const search = ref(query.value.q);
 watch(section, () => (search.value = ''));
 watch(search, (value) => {
@@ -60,10 +66,17 @@ type CellKey = 'second' | 'third' | 'fourth';
 const cardColumns = computed(() =>
   columns.value.filter((c) => ['second', 'third', 'fourth'].includes(c.id)),
 );
-const activeItems = computed(() => [
-  { label: t('common.all'), value: '' },
-  { label: t('common.active'), value: 'true' },
-  { label: t('common.inactive'), value: 'false' },
+const filterDefs = computed<FilterDef[]>(() => [
+  {
+    kind: 'choice',
+    key: 'active',
+    label: t('catalog.stateFilter'),
+    placement: 'bar',
+    options: [
+      { value: 'true', label: t('common.active') },
+      { value: 'false', label: t('common.inactive') },
+    ],
+  },
 ]);
 
 const formVisible = ref(false);
@@ -149,27 +162,18 @@ const toggleActive = (item: CatalogItem) =>
       </ul>
     </nav>
 
-    <div class="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_12rem]">
-      <UInput
-        id="catalog-search"
-        v-model="search"
-        name="q"
-        type="search"
-        :placeholder="
-          t('catalog.searchLabel', { section: t(`catalog.sections.${section}`).toLowerCase() })
-        "
-        :aria-label="
-          t('catalog.searchLabel', { section: t(`catalog.sections.${section}`).toLowerCase() })
-        "
-        class="w-full"
-      />
-      <AppSelect
-        :model-value="query.active"
-        :items="activeItems"
-        :aria-label="t('catalog.stateFilter')"
-        @update:model-value="(v: string | number) => update({ active: String(v) })"
-      />
-    </div>
+    <FilterToolbar
+      v-model:search="search"
+      search-id="catalog-search"
+      :search-placeholder="
+        t('catalog.searchLabel', { section: t(`catalog.sections.${section}`).toLowerCase() })
+      "
+      :defs="filterDefs"
+      :values="query"
+      :total="data?.meta.total"
+      @change="update"
+      @clear="reset"
+    />
 
     <UAlert v-if="isError" color="error" variant="subtle" role="alert">
       <template #description>

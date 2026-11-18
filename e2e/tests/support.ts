@@ -230,3 +230,22 @@ export async function createAssetViaApi(
   });
   return { id: asset.id, assetTag: asset.assetTag, name, serial };
 }
+
+/**
+ * Elige una opción de un filtro de lista (P41): en escritorio, el menú «Acción ▾» de la barra; en móvil, el campo del
+ * panel inferior «Filtros (n)», que se cierra al terminar con «Ver N resultados».
+ */
+export async function chooseFilter(page: Page, label: string, option: string): Promise<void> {
+  const mobile = (page.viewportSize()?.width ?? 0) < 768;
+  if (mobile) await page.locator('#filters-panel-button').click();
+  await filterControl(page, label).click();
+  await page.getByRole('option', { name: option, exact: true }).click();
+  if (mobile) await page.getByRole('button', { name: /^Ver \d+ resultado/ }).click();
+}
+
+/** Control de un filtro: botón del menú de la barra (escritorio) o campo del panel (móvil: select o botón de búsqueda). */
+export const filterControl = (page: Page, label: string) =>
+  page
+    .getByRole('button', { name: new RegExp(`^${label}$`) })
+    .or(page.getByRole('combobox', { name: new RegExp(`^${label}`) }))
+    .or(page.getByRole('dialog').getByRole('button', { name: new RegExp(`^${label}`) }));

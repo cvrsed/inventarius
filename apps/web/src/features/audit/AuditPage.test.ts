@@ -1,9 +1,13 @@
 import { flushPromises, mount } from '@vue/test-utils';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { router } from '@/app/router';
 import { mockApi, pagePlugins, useMobileViewport } from '@/test-utils';
 import AuditPage from './AuditPage.vue';
 
 afterEach(() => vi.unstubAllGlobals());
+beforeEach(async () => {
+  await router.push('/auditoria');
+});
 
 const entry = (n: number, over: Record<string, unknown> = {}) => ({
   id: String(n),
@@ -65,13 +69,19 @@ describe('AuditPage', () => {
     const fetchMock = mockApi({
       'GET /api/v1/audit': () => ({ data: [], meta: { page: 1, pageSize: 25, total: 0 } }),
     });
+    // Los filtros viven en la URL: una fecha de un enlace compartido filtra y se ve como chip.
+    await router.push('/auditoria?from=2026-11-01&entity=asset');
     const w = mount(AuditPage, { global: pagePlugins() });
-    await flushPromises();
-    await w.get('#f-from').setValue('2026-11-01');
     await flushPromises();
     const last = String(fetchMock.mock.calls.at(-1)![0]);
     expect(last).toContain('from=2026-11-01T');
+    expect(last).toContain('entity=asset');
+    expect(w.findAll('[data-filter-chip]').map((c) => c.text())).toEqual([
+      'Entidad: Activo',
+      'Desde: 01-11-2026',
+    ]);
     expect(w.text()).toContain('No hay registros de auditoría');
+    await router.push('/auditoria');
   });
 
   describe('columna «Registro» [P40]', () => {

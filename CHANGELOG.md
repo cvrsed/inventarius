@@ -7,6 +7,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). D
 
 ### F2 — Inventario
 
+#### Quinta tanda de revisión (PR #5)
+
+- Auditoría: columna «Registro» con el rótulo guardado en el evento, enlazado solo si el registro sigue vigente; baja con situación
+  antes/después y motivo; migración 0011 con backfill [P40].
+- Barra de filtros común (buscador + menús compactos, chips removibles, «Limpiar todo», panel inferior en móvil) en activos, catálogo,
+  usuarios y auditoría [P41].
+
 #### Correcciones de la ficha técnica (PR #5)
 
 - El login revoca la sesión previa que traía la cookie [P32].

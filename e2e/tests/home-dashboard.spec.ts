@@ -46,12 +46,10 @@ test.describe('Inicio con resumen (RF-28)', () => {
     await expect(page).toHaveURL(/statusKind=deployable/);
     await expect(page).toHaveURL(/assigned=no/);
     await expect(page.getByRole('heading', { level: 1, name: 'Activos' })).toBeVisible();
-    // Llegar desde el Inicio abre «Más filtros» porque el grupo de estados está ahí [P22].
-    await expect(page.getByRole('button', { name: 'Más filtros' })).toHaveAttribute(
-      'aria-expanded',
-      'true',
-    );
-    await expect(page.locator('#filter-status-kind')).toContainText('Estados asignables');
+    // Llegar desde el Inicio muestra los filtros como chips legibles, sin jerga de tipos [P20, P41].
+    const chips = page.locator('[data-filter-chip]');
+    await expect(chips.filter({ hasText: 'Grupo de estados: Estados asignables' })).toBeVisible();
+    await expect(chips.filter({ hasText: 'Asignación: Sin asignar' })).toBeVisible();
   });
 
   test('un lote queda como «Pendientes de configuración» (por tipo de estado) [P19]', async ({

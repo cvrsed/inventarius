@@ -25,6 +25,10 @@ const props = defineProps<{
   id?: string;
   clearable?: boolean;
   disabled?: boolean;
+  /** Botón compacto de barra de filtros: muestra este texto en lugar de lo elegido. */
+  triggerLabel?: string;
+  /** Color del botón (en barras de filtros, `primary` marca el filtro activo). */
+  color?: 'primary' | 'neutral';
 }>();
 const model = defineModel<RemoteOption | null>({ default: null });
 
@@ -75,12 +79,18 @@ function onUpdateOpen(value: boolean): void {
     :placeholder="placeholder"
     :loading="isFetching"
     :disabled="disabled"
+    :color="color ?? 'primary'"
     :clear="clearable"
-    :search-input="{ placeholder: `${placeholder} — ${t('common.searchPlaceholder')}` }"
+    :search-input="{
+      placeholder: `${placeholder} — ${t('common.searchPlaceholder')}`,
+      id: `${id ?? source}-search`,
+      name: `${id ?? source}-search`,
+    }"
     ignore-filter
-    class="w-full"
+    :class="triggerLabel ? 'w-auto' : 'w-full'"
     @update:open="onUpdateOpen"
   >
+    <template v-if="triggerLabel" #default>{{ triggerLabel }}</template>
     <template #empty>{{ t('common.noOptions') }}</template>
   </USelectMenu>
 </template>

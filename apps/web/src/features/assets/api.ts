@@ -111,6 +111,10 @@ export async function fetchAssignees(q: string): Promise<RemoteOption[]> {
   return api(`/api/v1/assignees?${new URLSearchParams(q ? { q } : {})}`, z.array(assigneeSchema));
 }
 
+export async function fetchAssigneeById(id: string): Promise<RemoteOption | null> {
+  return (await api(`/api/v1/assignees?id=${id}`, z.array(assigneeSchema)))[0] ?? null;
+}
+
 export function useAssigneeById(id: Ref<string>) {
   return useQuery({
     queryKey: computed(() => ['remote-by-id', 'assignee', id.value] as const),

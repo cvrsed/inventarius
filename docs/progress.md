@@ -263,6 +263,23 @@ Marcas `[P15]` a `[P19]` al final del asunto de cada commit.
 - **Decisiones provisionales nuevas**: Q41 a Q46 en `docs/open-questions.md`.
 - **Cómo probar**: `pnpm lint && pnpm typecheck && pnpm test`, integración de la API y el e2e de `docs/development.md` (escritorio y 360 px).
 
+## Quinta tanda de revisión de F2 (2026-11-17, mismo PR #5)
+
+Marcas `[P40]` y `[P41]` al final del asunto de cada commit.
+
+- **P40** Auditoría: columna «Registro» con el rótulo del registro afectado (activo: etiqueta + nombre; usuario y catálogo: nombre).
+  Se guarda en `audit_log.entity_label` al momento del evento (migración 0011), así que sobrevive a renombres y borrados. Va enlazado a su
+  ficha solo si el registro existe y sigue vigente (`entityLinkable`, calculado en la API con `RecordDirectory`). Backfill de lo existente:
+  primero el nombre que traía el diff del evento y, si no, el nombre actual; lo irresoluble queda sin rótulo («—»). La baja y la
+  restauración guardan situación antes/después, motivo y el estado del activo como contexto.
+- **P41** Filtros y búsqueda con un solo componente (`shared/filters/FilterToolbar`) en activos, catálogo, usuarios y auditoría. Escritorio:
+  una barra con buscador y botones compactos («Estado ▾», «Categoría ▾», «Ubicación ▾», «+ Filtros»); chips removibles bajo la barra con
+  «Limpiar todo» (solo con filtros) y el conteo en la misma línea. Móvil: buscador + «Filtros (n)» que abre un panel inferior con todos los
+  filtros y «Ver N resultados». Los filtros siguen en la URL (la auditoría ahora también). Accesibilidad: menús con teclado, chips con nombre
+  accesible y axe con el menú, «+ Filtros» y el panel abiertos.
+- **Decisión a revisar:** «Limpiar todo» también limpia la búsqueda de texto; el buscador de usuarios y la lista de auditoría siguen sin
+  búsqueda en la URL / en el servidor (la auditoría no tiene búsqueda de texto).
+
 ## Correcciones de la ficha técnica (2026-11-17, mismo PR #5)
 
 Marcas `[P32]` a `[P36]` al final del asunto de cada commit.

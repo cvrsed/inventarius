@@ -1,36 +1,34 @@
 <script setup lang="ts">
-import { AUDIT_ACTIONS, AUDIT_ENTITIES, type AuditEntryDto } from '@inventarius/shared';
+import type { AuditEntryDto } from '@inventarius/shared';
 import UAlert from '@nuxt/ui/components/Alert.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
-import UFormField from '@nuxt/ui/components/FormField.vue';
-import UInput from '@nuxt/ui/components/Input.vue';
 import { computed, ref } from 'vue';
 import ResponsiveTable from '@/shared/ui/ResponsiveTable.vue';
 import IconAction from '@/shared/ui/IconAction.vue';
 import { useI18n } from 'vue-i18n';
 import { auditActionLabel, auditEntityLabel } from '@/app/i18n/audit';
+import FilterToolbar from '@/shared/filters/FilterToolbar.vue';
+import { useListQuery } from '@/shared/list/useListQuery';
 import { formatDateTime } from '@/shared/format/format';
-import AppSelect from '@/shared/ui/AppSelect.vue';
 import PagedFooter from '@/shared/ui/PagedFooter.vue';
 import AuditDetail from './AuditDetail.vue';
 import AuditRecord from './AuditRecord.vue';
 import { useAuditList, type AuditQuery } from './api';
+import { auditFilterDefs } from './filters';
 
 const { t } = useI18n();
 
-const blank: AuditQuery = { page: 1, pageSize: 25, entity: '', action: '', from: '', to: '' };
-const query = ref<AuditQuery>({ ...blank });
+const { query, update, setPage, reset } = useListQuery({
+  page: 1,
+  pageSize: 25,
+  entity: '',
+  action: '',
+  from: '',
+  to: '',
+} satisfies AuditQuery);
 const { data, isPending, isFetching, isError, refetch } = useAuditList(query);
+const filterDefs = computed(() => auditFilterDefs(t));
 const expanded = ref<Record<string, boolean>>({});
-
-const page = computed({
-  get: () => query.value.page,
-  set: (v: number) => (query.value = { ...query.value, page: v }),
-});
-const pageSize = computed({
-  get: () => query.value.pageSize,
-  set: (v: number) => (query.value = { ...query.value, pageSize: v, page: 1 }),
-});
 
 const columns = computed(() => [
   { id: 'expand', header: t('audit.detail') },
@@ -42,21 +40,9 @@ const columns = computed(() => [
   { accessorKey: 'ip', header: t('audit.ip') },
 ]);
 
-const entityOptions = computed(() => [
-  { value: '', label: t('audit.all') },
-  ...AUDIT_ENTITIES.map((value) => ({ value, label: auditEntityLabel(value) })),
-]);
-const actionOptions = computed(() => [
-  { value: '', label: t('audit.all') },
-  ...AUDIT_ACTIONS.map((value) => ({ value, label: auditActionLabel(value) })),
-]);
-
 const actionLabel = auditActionLabel;
 const entityLabel = auditEntityLabel;
 
-function setFilter(patch: Partial<AuditQuery>): void {
-  query.value = { ...query.value, ...patch, page: 1 };
-}
 /** Usuario; si no hubo (`cli`) la operación por línea de comandos; si no, el sistema. */
 const who = (e: AuditEntryDto): string =>
   e.actorName ?? (e.actorLabel === 'cli' ? t('audit.cli') : t('audit.system'));
@@ -74,53 +60,13 @@ function toggleCard(id: string): void {
   <div class="flex flex-col gap-4">
     <h1 class="m-0 text-2xl font-semibold text-highlighted">{{ t('audit.title') }}</h1>
 
-    <form class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5" @submit.prevent>
-      <UFormField :label="t('audit.filterEntity')" name="f-entity">
-        <AppSelect
-          id="f-entity"
-          :model-value="query.entity"
-          :items="entityOptions"
-          class="w-full"
-          @update:model-value="(v: string | number) => setFilter({ entity: String(v) })"
-        />
-      </UFormField>
-      <UFormField :label="t('audit.filterAction')" name="f-action">
-        <AppSelect
-          id="f-action"
-          :model-value="query.action"
-          :items="actionOptions"
-          class="w-full"
-          @update:model-value="(v: string | number) => setFilter({ action: String(v) })"
-        />
-      </UFormField>
-      <UFormField :label="t('audit.filterFrom')" name="f-from">
-        <UInput
-          id="f-from"
-          :model-value="query.from"
-          type="date"
-          class="w-full"
-          @update:model-value="(v) => setFilter({ from: String(v ?? '') })"
-        />
-      </UFormField>
-      <UFormField :label="t('audit.filterTo')" name="f-to">
-        <UInput
-          id="f-to"
-          :model-value="query.to"
-          type="date"
-          class="w-full"
-          @update:model-value="(v) => setFilter({ to: String(v ?? '') })"
-        />
-      </UFormField>
-      <div class="flex items-end">
-        <UButton
-          type="button"
-          :label="t('audit.clear')"
-          color="neutral"
-          variant="outline"
-          @click="query = { ...blank }"
-        />
-      </div>
-    </form>
+    <FilterToolbar
+      :defs="filterDefs"
+      :values="query"
+      :total="data?.meta.total"
+      @change="update"
+      @clear="reset"
+    />
 
     <UAlert v-if="isError" color="error" variant="subtle" role="alert">
       <template #description>
@@ -188,10 +134,12 @@ function toggleCard(id: string): void {
     </ResponsiveTable>
 
     <PagedFooter
-      v-model:page="page"
-      v-model:page-size="pageSize"
+      :page="query.page"
+      :page-size="query.pageSize"
       :total="data?.meta.total ?? 0"
       :page-sizes="[25, 50, 100]"
+      @update:page="setPage"
+      @update:page-size="(n: number) => update({ pageSize: n })"
     />
   </div>
 </template>

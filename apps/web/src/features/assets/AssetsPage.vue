@@ -4,7 +4,6 @@ import UAlert from '@nuxt/ui/components/Alert.vue';
 import UBadge from '@nuxt/ui/components/Badge.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
 import UIcon from '@nuxt/ui/components/Icon.vue';
-import UInput from '@nuxt/ui/components/Input.vue';
 import UTable from '@nuxt/ui/components/Table.vue';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -13,7 +12,8 @@ import { useAuthStore } from '@/features/auth/useAuthStore';
 import { useListQuery } from '@/shared/list/useListQuery';
 import AppSelect from '@/shared/ui/AppSelect.vue';
 import PagedFooter from '@/shared/ui/PagedFooter.vue';
-import AssetFilters from './AssetFilters.vue';
+import FilterToolbar from '@/shared/filters/FilterToolbar.vue';
+import { assetFilterDefs } from './assetFilters';
 import { ASSET_LIST_DEFAULTS, exportUrl, useAssetsList, type AssetListState } from './api';
 import { statusColor } from './status';
 
@@ -40,7 +40,6 @@ watch(
   },
 );
 
-const showFilters = ref(false);
 const SORTS = [
   'assetTag',
   'name',
@@ -103,12 +102,7 @@ const filtered = computed(
     query.value.overdue !== '' ||
     query.value.deleted !== 'exclude',
 );
-// Un enlace con filtros (p. ej. desde el Inicio) abre el panel para que se vean los que están aplicados.
-const NOT_FILTERS = ['page', 'pageSize', 'q', 'sort'];
-const hasPanelFilters = (Object.keys(ASSET_LIST_DEFAULTS) as (keyof AssetListState)[]).some(
-  (k) => !NOT_FILTERS.includes(k) && query.value[k] !== ASSET_LIST_DEFAULTS[k],
-);
-if (hasPanelFilters) showFilters.value = true;
+const filterDefs = computed(() => assetFilterDefs(t));
 </script>
 
 <template>
@@ -133,48 +127,33 @@ if (hasPanelFilters) showFilters.value = true;
       </div>
     </div>
 
-    <div class="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_14rem_auto]">
-      <UInput
-        id="assets-search"
-        v-model="search"
-        name="q"
-        type="search"
-        icon="i-lucide-search"
-        :placeholder="t('assets.search')"
-        :aria-label="t('assets.search')"
-        class="w-full"
+    <FilterToolbar
+      v-model:search="search"
+      search-id="assets-search"
+      :search-placeholder="t('assets.search')"
+      :defs="filterDefs"
+      :values="state"
+      :total="data?.meta.total"
+      @change="update"
+      @clear="reset"
+    />
+
+    <!-- En escritorio se ordena con los encabezados de la tabla; en móvil, campo + dirección. -->
+    <div class="flex gap-2 md:hidden">
+      <AppSelect
+        :model-value="sortField"
+        :items="sortFieldItems"
+        :aria-label="t('assets.sortBy')"
+        class="min-w-0 flex-1"
+        @update:model-value="(v: string | number) => setSort(String(v), sortDesc)"
       />
-      <!-- En escritorio se ordena con los encabezados de la tabla; en móvil, campo + dirección. -->
-      <div class="flex gap-2 md:hidden">
-        <AppSelect
-          :model-value="sortField"
-          :items="sortFieldItems"
-          :aria-label="t('assets.sortBy')"
-          class="min-w-0 flex-1"
-          @update:model-value="(v: string | number) => setSort(String(v), sortDesc)"
-        />
-        <UButton
-          :icon="sortDesc ? 'i-lucide-arrow-down-wide-narrow' : 'i-lucide-arrow-up-narrow-wide'"
-          :aria-label="sortDesc ? t('assets.sortDescending') : t('assets.sortAscending')"
-          color="neutral"
-          variant="outline"
-          @click="setSort(sortField, !sortDesc)"
-        />
-      </div>
       <UButton
-        class="md:hidden"
-        icon="i-lucide-list-filter"
-        :label="t('assets.filters')"
+        :icon="sortDesc ? 'i-lucide-arrow-down-wide-narrow' : 'i-lucide-arrow-up-narrow-wide'"
+        :aria-label="sortDesc ? t('assets.sortDescending') : t('assets.sortAscending')"
         color="neutral"
         variant="outline"
-        :aria-expanded="showFilters"
-        aria-controls="asset-filters"
-        @click="showFilters = !showFilters"
+        @click="setSort(sortField, !sortDesc)"
       />
-    </div>
-
-    <div id="asset-filters" :class="showFilters ? 'block' : 'hidden md:block'">
-      <AssetFilters :state="state" @change="update" @clear="reset" />
     </div>
 
     <UAlert v-if="isError" color="error" variant="subtle" role="alert">
@@ -189,10 +168,6 @@ if (hasPanelFilters) showFilters.value = true;
         />
       </template>
     </UAlert>
-
-    <p v-if="data" class="m-0 text-sm text-muted" aria-live="polite">
-      {{ t('common.total', { n: data.meta.total }, data.meta.total) }}
-    </p>
 
     <div class="hidden md:block">
       <UTable
