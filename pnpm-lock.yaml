@@ -210,7 +210,7 @@ importers:
     dependencies:
       '@chirpstack/chirpstack-api':
         specifier: 4.20.0
-        version: 4.20.0
+        version: 4.20.0(@types/google-protobuf@3.15.12)(google-protobuf@3.21.4)
       '@fastify/cookie':
         specifier: 11.1.5
         version: 11.1.5
@@ -247,6 +247,9 @@ importers:
       fastify-type-provider-zod:
         specifier: 7.0.0
         version: 7.0.0(@fastify/swagger@9.9.4)(fastify@5.12.8)(openapi-types@12.1.3)(zod@4.6.7)
+      google-protobuf:
+        specifier: 3.21.4
+        version: 3.21.4
       pg:
         specifier: 8.23.1
         version: 8.23.1
@@ -263,6 +266,9 @@ importers:
       '@testcontainers/postgresql':
         specifier: 12.2.1
         version: 12.2.1(bare-buffer@3.7.2)
+      '@types/google-protobuf':
+        specifier: 3.15.12
+        version: 3.15.12
       '@types/node':
         specifier: 26.6.6
         version: 26.6.6
@@ -2050,6 +2056,9 @@ packages:
 
   '@types/estree@1.0.10':
     resolution: {integrity: sha512-lTyOMnOcmRBzdCv6/4zUZCrEhV0xrqQiUZBZtVcbmLHBXKLnN8q89v/wKRF/Q0HbwVsqbIG3o5HDoFl9sduM+g==}
+
+  '@types/google-protobuf@3.15.12':
+    resolution: {integrity: sha512-40um9QqwHjRS92qnOaDpL7RmDK15NuZYo9HihiJRbYkMQZlWnuH8AdvbMy8/o6lgLmKbDUKa+OALCltHdbOTpQ==}
 
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
@@ -4961,9 +4970,11 @@ snapshots:
     dependencies:
       fontkitten: 1.0.3
 
-  '@chirpstack/chirpstack-api@4.20.0':
+  '@chirpstack/chirpstack-api@4.20.0(@types/google-protobuf@3.15.12)(google-protobuf@3.21.4)':
     dependencies:
       '@grpc/grpc-js': 1.14.7
+    optionalDependencies:
+      '@types/google-protobuf': 3.15.12
       google-protobuf: 3.21.4
 
   '@commitlint/cli@21.2.4(conventional-commits-parser@7.1.4)(typescript@6.0.3)':
@@ -6424,6 +6435,8 @@ snapshots:
   '@types/esrecurse@4.3.1': {}
 
   '@types/estree@1.0.10': {}
+
+  '@types/google-protobuf@3.15.12': {}
 
   '@types/json-schema@7.0.15': {}
 

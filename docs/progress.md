@@ -362,10 +362,10 @@ Marcas `[P20]` a `[P26]` al final del asunto de cada commit.
 - [ ] Extensión LoRaWAN del activo: alta/edición, validación y unicidad de DevEUI, defaults desde el modelo (RF-21)
 - [ ] Reveal de claves con `lorawan:keys:reveal`, auditado (RF-30)
 - [ ] Perfiles LNS: CRUD, credencial enmascarada, «Probar conexión» (RF-50 a RF-52)
-- [ ] Contrato `LnsAdapter` y adaptador ChirpStack v4 (gRPC)
-- [ ] Adaptador TTN v3 (REST) con compensación AS → NS → JS → IS
+- [x] Contrato `LnsAdapter` y adaptador ChirpStack v4 (gRPC)
+- [x] Adaptador TTN v3 (REST) con compensación AS → NS → JS → IS
 - [ ] Cola pg-boss y worker: registro, baja, reintento, idempotencia, conflicto/vincular (RF-60 a RF-65)
-- [ ] Compensación probada simulando fallo en cada paso
+- [x] Compensación probada simulando fallo en cada paso (a nivel de adaptador; el flujo completo se prueba con el worker)
 - [ ] Importación CSV por número de serie (RF-66)
 - [ ] Filtros «estado LNS» y búsqueda por DevEUI en el listado (RF-22)
 - [ ] UI: sección LoRaWAN de la ficha, registrar/baja/reintentar/vincular, perfiles LNS, importación CSV (360 px, i18n)
