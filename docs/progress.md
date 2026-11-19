@@ -7,7 +7,7 @@
 | F0 Fundaciones | En curso    | `phase/f0-fundaciones` |
 | F1 Identidad   | Pendiente   | —                      |
 | F2 Inventario  | En revisión | `phase/f2-inventario`  |
-| F3 LoRaWAN     | Pendiente   | —                      |
+| F3 LoRaWAN     | En curso    | `phase/f3-lorawan`     |
 | F4 Cierre      | Pendiente   | —                      |
 
 ## Bitácora
@@ -350,3 +350,25 @@ Marcas `[P20]` a `[P26]` al final del asunto de cada commit.
 - **Verificación**: lint, typecheck, 250 pruebas web, 103 unitarias y 165 de integración del API, e2e completo en escritorio y 360 px.
   En una corrida el axe de «alta por la UI» falló una vez por el `aria-hidden` del enlace de salto con un select abierto (el patrón
   ya conocido de `useInertWhileOpen`) y pasó al reintentar y en 6 repeticiones.
+
+## F3 — LoRaWAN (rama `phase/f3-lorawan`, desde `main`)
+
+**Checklist**
+
+- [x] Dependencias del cliente gRPC de ChirpStack (`@chirpstack/chirpstack-api`, `@grpc/grpc-js`), versiones exactas
+- [ ] Dominio compartido: formatos EUI/clave, esquemas Zod, estados de registro, acciones de auditoría (RF-21, 5.2)
+- [ ] Cifrado AES-256-GCM con `APP_ENCRYPTION_KEY` + `key_id` y rotación (RNF, 10.1)
+- [ ] Migración: `asset_lorawan`, `lns_profiles`, `lns_registrations`
+- [ ] Extensión LoRaWAN del activo: alta/edición, validación y unicidad de DevEUI, defaults desde el modelo (RF-21)
+- [ ] Reveal de claves con `lorawan:keys:reveal`, auditado (RF-30)
+- [ ] Perfiles LNS: CRUD, credencial enmascarada, «Probar conexión» (RF-50 a RF-52)
+- [ ] Contrato `LnsAdapter` y adaptador ChirpStack v4 (gRPC)
+- [ ] Adaptador TTN v3 (REST) con compensación AS → NS → JS → IS
+- [ ] Cola pg-boss y worker: registro, baja, reintento, idempotencia, conflicto/vincular (RF-60 a RF-65)
+- [ ] Compensación probada simulando fallo en cada paso
+- [ ] Importación CSV por número de serie (RF-66)
+- [ ] Filtros «estado LNS» y búsqueda por DevEUI en el listado (RF-22)
+- [ ] UI: sección LoRaWAN de la ficha, registrar/baja/reintentar/vincular, perfiles LNS, importación CSV (360 px, i18n)
+- [ ] ChirpStack de prueba en `compose.yml` y `compose.e2e.yml` + e2e
+- [ ] Job manual contra TTN real (sin credenciales)
+- [ ] `.env.example`, docs, ADR, CHANGELOG, resumen y PR
