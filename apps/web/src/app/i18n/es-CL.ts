@@ -509,7 +509,9 @@ export const messages = {
       useModel: 'Usar valor del modelo',
       saved: 'Datos LoRaWAN guardados',
       lockedRegistered:
-        'El dispositivo está registrado en un LNS: dalo de baja allí antes de cambiar DevEUI, JoinEUI o claves.',
+        'El dispositivo está registrado (o vinculado) en un LNS: DevEUI, JoinEUI y claves no se pueden editar. Para cambiarlos hay que dar de baja (o desvincular) y volver a registrar.',
+      notSynced:
+        'Cambiaste la versión, la clase o la región de un dispositivo que ya está en el LNS: el LNS no se actualiza. Esos valores viven en el device profile del LNS; si no calzan con el activo, la próxima vez que lo registres se te avisará.',
     },
     reveal: {
       action: 'Mostrar claves',
@@ -569,6 +571,13 @@ export const messages = {
       profile: 'Perfil LNS',
       profilePlaceholder: 'Elige un perfil',
       needProfile: 'Elige un perfil para ver lo que se enviará',
+      mismatch: {
+        title: 'El activo no coincide con el device profile «{profile}» del LNS',
+        lorawanVersion: 'Versión de LoRaWAN: el activo tiene {asset} y el device profile {lns}',
+        region: 'Región: el activo tiene {asset} y el device profile {lns}',
+        deviceClass: 'Clase: el activo tiene {asset} y el device profile admite {lns}',
+        blocked: 'Corrige el activo o elige otro perfil para poder registrar',
+      },
       noProfiles: 'No hay perfiles LNS activos. Pide a un administrador que cree uno.',
       previewTitle: 'Se enviará',
       deviceName: 'Nombre del dispositivo',

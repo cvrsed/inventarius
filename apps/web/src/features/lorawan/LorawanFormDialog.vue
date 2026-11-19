@@ -48,19 +48,37 @@ const identityLocked = computed(() =>
   ),
 );
 
-watch(visible, (open) => {
-  if (!open) return;
-  form.value = {
-    ...emptyForm(),
-    devEui: props.data.devEui ?? '',
-    joinEui: props.data.joinEui ?? '',
-    deviceClass: props.data.deviceClass ?? '',
-    lorawanVersion: props.data.lorawanVersion ?? '',
-    region: props.data.region ?? '',
-  };
-  error.value = '';
-  fieldErrors.value = {};
-});
+/** Versión, clase y región viven en el device profile del LNS: editarlas aquí no las cambia allá (P2). */
+const onLns = computed(() =>
+  ['registered', 'registering', 'deregistering', 'partial'].includes(
+    props.data.registration?.status ?? '',
+  ),
+);
+const profileFieldsEdited = computed(
+  () =>
+    onLns.value &&
+    (String(form.value.deviceClass) !== (props.data.deviceClass ?? '') ||
+      String(form.value.lorawanVersion) !== (props.data.lorawanVersion ?? '') ||
+      String(form.value.region) !== (props.data.region ?? '')),
+);
+
+watch(
+  visible,
+  (open) => {
+    if (!open) return;
+    form.value = {
+      ...emptyForm(),
+      devEui: props.data.devEui ?? '',
+      joinEui: props.data.joinEui ?? '',
+      deviceClass: props.data.deviceClass ?? '',
+      lorawanVersion: props.data.lorawanVersion ?? '',
+      region: props.data.region ?? '',
+    };
+    error.value = '';
+    fieldErrors.value = {};
+  },
+  { immediate: true },
+);
 
 const withBlank = (opts: readonly { value: string; label: string }[]) => [
   { value: '', label: t('lorawan.notSet') },
@@ -114,6 +132,13 @@ async function submit(): Promise<void> {
           color="info"
           variant="subtle"
           :description="t('lorawan.edit.lockedRegistered')"
+        />
+        <UAlert
+          v-if="profileFieldsEdited"
+          color="warning"
+          variant="subtle"
+          role="status"
+          :description="t('lorawan.edit.notSynced')"
         />
         <UFormField
           :label="t('lorawan.fields.devEui')"

@@ -8,6 +8,7 @@ import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ReasonButton from '@/shared/ui/ReasonButton.vue';
 import { errorMessage } from '@/features/auth/errors';
+import { ApiError } from '@/shared/api/http';
 import AppSelect from '@/shared/ui/AppSelect.vue';
 import { useLnsProfileOptions, useLorawanMutations } from './api';
 
@@ -54,6 +55,15 @@ const fieldLabel = (key: string) =>
     ? t(`lorawan.registerDialog.previewFields.${key}`)
     : key;
 
+const mismatches = computed(() => preview.data.value?.mismatches ?? []);
+const mismatchText = (m: { field: string; asset: string; lns: string }) =>
+  t(`lorawan.registerDialog.mismatch.${m.field}`, { asset: m.asset, lns: m.lns });
+const confirmBlocked = computed(() => {
+  if (!preview.data.value) return t('lorawan.registerDialog.needProfile');
+  if (mismatches.value.length) return t('lorawan.registerDialog.mismatch.blocked');
+  return undefined;
+});
+
 async function confirm(): Promise<void> {
   error.value = '';
   try {
@@ -61,8 +71,19 @@ async function confirm(): Promise<void> {
     toast.add({ title: t('lorawan.registerDialog.queued'), color: 'success', duration: 4000 });
     visible.value = false;
   } catch (e) {
-    error.value = errorMessage(e, t);
+    error.value = failureText(e);
   }
+}
+
+/** Un 422 por diferencias con el device profile trae una explicación por campo: se muestran todas. */
+function failureText(e: unknown): string {
+  if (e instanceof ApiError) {
+    const specific = ['lorawanVersion', 'region', 'deviceClass'].flatMap(
+      (f) => e.fieldErrors[f] ?? [],
+    );
+    if (specific.length) return specific.join(' · ');
+  }
+  return errorMessage(e, t);
 }
 </script>
 
@@ -90,6 +111,24 @@ async function confirm(): Promise<void> {
             class="w-full"
           />
         </UFormField>
+
+        <UAlert
+          v-if="mismatches.length"
+          color="error"
+          variant="subtle"
+          role="alert"
+          :title="
+            t('lorawan.registerDialog.mismatch.title', {
+              profile: preview.data.value?.deviceProfile.name ?? '',
+            })
+          "
+        >
+          <template #description>
+            <ul class="m-0 list-disc pl-5">
+              <li v-for="m in mismatches" :key="m.field">{{ mismatchText(m) }}</li>
+            </ul>
+          </template>
+        </UAlert>
 
         <section v-if="preview.data.value" aria-labelledby="reg-preview-title">
           <h3 id="reg-preview-title" class="m-0 mb-2 text-base font-semibold text-highlighted">
@@ -119,7 +158,7 @@ async function confirm(): Promise<void> {
         />
         <ReasonButton
           :label="t('lorawan.registerDialog.confirm')"
-          :reason="preview.data.value ? undefined : t('lorawan.registerDialog.needProfile')"
+          :reason="confirmBlocked"
           :loading="register.isPending.value"
           @click="confirm"
         />
