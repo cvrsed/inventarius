@@ -564,7 +564,7 @@ test.describe('listado de activos (RF-22, RF-26, RF-40)', () => {
     await modelField.click();
     await expect(page.getByRole('listbox')).toBeVisible();
     await expectNoA11yViolations(page); // filtro con búsqueda ABIERTO
-    await page.getByPlaceholder(/Buscar…/).fill(fixture.modelName.slice(0, 14));
+    await page.getByPlaceholder('Buscar modelo…').fill(fixture.modelName.slice(0, 14));
     await page.getByRole('option', { name: fixture.modelName }).click();
     await expect(page).toHaveURL(new RegExp(`modelId=${fixture.modelId}`));
     if (mobile) {
