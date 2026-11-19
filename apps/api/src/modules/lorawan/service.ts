@@ -115,13 +115,15 @@ export class LorawanService {
 
   /**
    * Aplica el cambio dentro de la transacción del llamador (también se usa al crear el activo con datos
-   * LoRaWAN, RF-21). Con una fila nueva, clase/versión/región vacías se completan con las del modelo.
+   * LoRaWAN, RF-21). Con una fila nueva, clase/versión/región vacías se completan con las del modelo; con
+   * `fillEmptyFromModel` (importación CSV, RF-66) también las vacías de una fila que ya existía.
    */
   async apply(
     tx: Executor,
     actor: Actor,
     assetId: string,
     input: UpdateLorawanInput,
+    options: { fillEmptyFromModel?: boolean } = {},
   ): Promise<LorawanDto> {
     const asset = await this.requireAsset(tx, assetId, true);
     const current = await this.repo.get(tx, assetId);
@@ -156,7 +158,8 @@ export class LorawanService {
     }
     for (const f of ['deviceClass', 'lorawanVersion', 'region'] as const) {
       if (input[f] !== undefined) values[f] = input[f];
-      else if (!current && asset.modelDefaults[f]) values[f] = asset.modelDefaults[f];
+      else if ((!current || (options.fillEmptyFromModel && !current[f])) && asset.modelDefaults[f])
+        values[f] = asset.modelDefaults[f];
     }
 
     try {

@@ -144,4 +144,44 @@ describe('importación CSV de datos LoRaWAN (RF-66)', () => {
       expect((await c.post(`${base}/lorawan/import`, { csv: HEAD })).statusCode).toBe(403);
     }
   });
+
+  it('sin clase, versión ni región en el CSV aplica los valores por defecto del modelo, como el alta manual', async () => {
+    const [serial] = await batch('DEF', 1);
+    const csv = [HEAD, line(serial!, 500)].join('\n');
+    const res = await fx.operator.post(`${base}/lorawan/import`, { csv });
+    expect(res.statusCode, res.body).toBe(200);
+    const list = (await fx.reader.get(`${base}/assets?q=${serial}`)).json().data as {
+      id: string;
+    }[];
+    const lw = (await fx.reader.get(`${base}/assets/${list[0]!.id}/lorawan`)).json();
+    expect(lw).toMatchObject({ deviceClass: 'A', lorawanVersion: '1.0.3', region: 'AU915' });
+  });
+
+  it('un activo que ya tenía datos sin clase, versión ni región los recibe del modelo; lo que ya tenía no se pisa', async () => {
+    const [empty, kept] = await batch('DEF2', 2);
+    const idOf = async (serial: string) =>
+      ((await fx.reader.get(`${base}/assets?q=${serial}`)).json().data as { id: string }[])[0]!.id;
+    // Fila existente con la clase borrada a propósito en uno y distinta del modelo en el otro.
+    await fx.operator.patch(`${base}/assets/${await idOf(empty!)}/lorawan`, {
+      devEui: devEui(600),
+      deviceClass: null,
+      lorawanVersion: null,
+      region: null,
+    });
+    await fx.operator.patch(`${base}/assets/${await idOf(kept!)}/lorawan`, {
+      devEui: devEui(601),
+      deviceClass: 'C',
+    });
+    const csv = [HEAD, line(empty!, 600), line(kept!, 601)].join('\n');
+    const res = await fx.operator.post(`${base}/lorawan/import`, { csv });
+    expect(res.statusCode, res.body).toBe(200);
+    const get = async (serial: string) =>
+      (await fx.reader.get(`${base}/assets/${await idOf(serial)}/lorawan`)).json();
+    expect(await get(empty!)).toMatchObject({
+      deviceClass: 'A',
+      lorawanVersion: '1.0.3',
+      region: 'AU915',
+    });
+    expect(await get(kept!)).toMatchObject({ deviceClass: 'C', region: 'AU915' });
+  });
 });

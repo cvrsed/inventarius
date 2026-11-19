@@ -468,7 +468,7 @@ Revisión manual del PR #6 contra ChirpStack 4.20.0 (2026-11-19). Cada punto va 
 - [x] P17 Botones desactivados se ven desactivados y con tooltip del motivo
 - [x] P18 Número de serie único sin distinguir mayúsculas
 - [ ] P19 Los eventos de auditoría por activo de una importación CSV referencian el id del lote
-- [ ] P20 La importación aplica los defaults del modelo (clase, versión, región)
+- [x] P20 La importación aplica los defaults del modelo (clase, versión, región)
 - [ ] P21 Auditoría sin scroll horizontal en escritorio; tarjetas en 360 px
 - [x] P22 En producción la app no arranca sin `APP_ENCRYPTION_KEY` o con el valor por defecto de `compose.yml`
 - [x] P23 Informe: TLS con CA propia en el adaptador de ChirpStack (`docs/open-questions.md`)

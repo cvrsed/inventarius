@@ -52,7 +52,9 @@ export class LorawanImportService {
           csv: [...fileErrors, ...(invalid.length ? [`${invalid.length} filas con errores`] : [])],
         });
       }
-      for (const row of rows) await this.lorawan.apply(tx, actor, row.assetId!, row.data);
+      for (const row of rows) {
+        await this.lorawan.apply(tx, actor, row.assetId!, row.data, { fillEmptyFromModel: true });
+      }
       await this.audit.record(tx, {
         ...actor,
         action: 'lorawan.import',
