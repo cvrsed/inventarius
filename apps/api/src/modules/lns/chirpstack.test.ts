@@ -226,6 +226,15 @@ describe('ChirpStack: registro', () => {
     expect((err.cause as { details: string }).details).toContain('device_dp_fkey');
   });
 
+  it('un código sin mensaje propio (default) es genérico y no incluye e.details', async () => {
+    fake.failures.set('create', status.FAILED_PRECONDITION);
+    fake.failureDetails.set('create', 'constraint "device_profile_fkey" detalle crudo');
+    const err = await failure();
+    expect(err.message).not.toContain('device_profile_fkey');
+    expect(err.message).toContain('FAILED_PRECONDITION');
+    expect((err.cause as { details: string }).details).toContain('device_profile_fkey');
+  });
+
   it('UNAVAILABLE y DEADLINE_EXCEEDED son transitorios; INVALID_ARGUMENT y UNAUTHENTICATED no', async () => {
     for (const [code, transient] of [
       [status.UNAVAILABLE, true],

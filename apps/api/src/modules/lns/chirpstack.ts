@@ -31,7 +31,7 @@ const TRANSIENT = new Set<number>([
 ]);
 
 /**
- * Lee un error gRPC y lo vuelve un texto en español sin exponer la credencial. En `INTERNAL` no se incluye `details`:
+ * Lee un error gRPC y lo vuelve un texto en español sin exponer la credencial. En `INTERNAL` y en los códigos sin mensaje propio no se incluye `details`:
  * puede traer texto crudo de Postgres (nombres de constraints). El error original viaja como `cause` y el servicio lo
  * registra en el log.
  */
@@ -56,7 +56,7 @@ function describe(e: ServiceError): string {
     case status.DEADLINE_EXCEEDED:
       return 'ChirpStack no respondió a tiempo';
     default:
-      return `ChirpStack respondió con un error (${status[e.code] ?? e.code}): ${e.details}`;
+      return `ChirpStack respondió con un error (${status[e.code] ?? e.code})`;
   }
 }
 
