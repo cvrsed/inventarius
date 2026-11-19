@@ -5,6 +5,19 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). D
 
 ## [Sin publicar]
 
+### F3 — LoRaWAN
+
+- Datos LoRaWAN del activo (DevEUI, JoinEUI, AppKey, NwkKey, clase, versión, región): opcionales al crear, obligatorios solo al
+  registrar en el LNS; formato normalizado, DevEUI único y valores por defecto del modelo (RF-21).
+- Cifrado AES-256-GCM de AppKey, NwkKey y credenciales LNS con `APP_ENCRYPTION_KEY` y `key_id` para rotar; `cli reencrypt-secrets`.
+- Reveal de claves con `lorawan:keys:reveal`, auditado y sin caché (RF-30).
+- Perfiles LNS para ChirpStack v4 (gRPC) y TTN v3 (REST) con credencial enmascarada y «Probar conexión» (RF-50 a RF-52).
+- Registro, baja, reintento, idempotencia, conflicto/vincular y compensación por pasos con cola pg-boss y worker (RF-60 a RF-65).
+- Importación CSV de datos LoRaWAN por número de serie, con vista previa, errores por fila y aplicación todo o nada (RF-66).
+- Listado: filtro por estado LNS y búsqueda por DevEUI (RF-22). La ficha no deja dar de baja un activo registrado en un LNS.
+- ChirpStack v4 real en el compose de desarrollo (perfil `chirpstack`) y en el de e2e; job manual `ttn-real` sin credenciales.
+- ADR 0007.
+
 ### F2 — Inventario
 
 #### Sexta tanda de revisión (PR #5)

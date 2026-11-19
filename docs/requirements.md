@@ -171,7 +171,7 @@ Extensión 1:1 del activo: **DevEUI** (16 hex, único), **JoinEUI / AppEUI** (16
 
 1. `DeviceService.Get(dev_eui)` para chequear existencia.
 2. `DeviceService.Create` con `dev_eui`, `name`, `application_id`, `device_profile_id`, `description` y tag `inventarius_asset_id`.
-3. `DeviceService.CreateKeys`: en dispositivos LoRaWAN 1.0.x la AppKey va en el campo `nwk_key` (así lo muestra la UI de ChirpStack como Application key); en 1.1 van `nwk_key` y `app_key`. **Verificar contra la versión instalada en la primera prueba de integración.**
+3. `DeviceService.CreateKeys`: en dispositivos LoRaWAN 1.0.x la AppKey va en el campo `nwk_key` (así lo muestra la UI de ChirpStack como Application key); en 1.1 van `nwk_key` y `app_key`. **Verificado contra ChirpStack 4.20.0 en F3** (`chirpstack.real.int.test.ts`; ver ADR 0007).
 4. Si falla el paso 3, compensar con `DeviceService.Delete`.
 
 **TTN / The Things Stack v3** (REST, el dispositivo vive repartido en cuatro componentes):

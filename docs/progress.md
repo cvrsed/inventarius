@@ -371,4 +371,69 @@ Marcas `[P20]` a `[P26]` al final del asunto de cada commit.
 - [x] UI: sección LoRaWAN de la ficha, registrar/baja/reintentar/vincular, perfiles LNS, importación CSV (360 px, i18n)
 - [x] ChirpStack de prueba en `compose.yml` y `compose.e2e.yml` + e2e
 - [x] Job manual contra TTN real (sin credenciales)
-- [ ] `.env.example`, docs, ADR, CHANGELOG, resumen y PR
+- [x] `.env.example`, docs, ADR, CHANGELOG, resumen y PR
+
+**Resumen**
+
+- **Datos LoRaWAN (RF-21):** extensión 1:1 del activo con DevEUI único, JoinEUI, AppKey/NwkKey cifradas, clase, versión y región;
+  opcional al crear (también por API en el alta) y obligatoria solo al registrar. Defaults desde el modelo.
+- **Secretos:** AES-256-GCM con `APP_ENCRYPTION_KEY` + `key_id`, rotación con `cli reencrypt-secrets`, reveal auditado con
+  `lorawan:keys:reveal`. Ninguna clave en respuestas, historial, auditoría ni logs (las pruebas revisan `audit_log` completo).
+- **Perfiles LNS (RF-50 a RF-52):** ChirpStack v4 (gRPC) y TTN v3 (REST), credencial `•••• últimos4`, Probar conexión con latencia.
+- **Registro (RF-60 a RF-65):** estados `registrando → registrado | error | parcial | conflicto`, baja, reintento (automático solo
+  para errores transitorios), idempotencia, Vincular/Cancelar y compensación por pasos; cola pg-boss y worker.
+- **Importación CSV (RF-66):** vista previa con errores por fila y aplicación todo o nada; probada con 100 series.
+- **Listado (RF-22):** filtro por estado LNS y búsqueda por DevEUI; un activo registrado en un LNS no se da de baja.
+
+**Criterio de aceptación de F3 (sección 13)**
+
+| Criterio                                                                   | Cómo se probó                                                                                                                                                                         |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Registro y baja OK contra ChirpStack de prueba en Docker                   | `e2e/tests/lorawan.spec.ts` (ChirpStack 4.20.0 real en `compose.e2e.yml`, cola y worker reales, desktop y 360 px) y `chirpstack.real.int.test.ts`                                     |
+| TTN con mock en CI                                                         | `ttn.test.ts` (servidor HTTP de prueba, 17 casos)                                                                                                                                     |
+| TTN con una aplicación real en el job manual                               | Preparado: `.github/workflows/ttn-real.yml` + `ttn.real.int.test.ts`; **sin credenciales** (secretos `TTN_TEST_*`, Q48)                                                               |
+| Compensación simulando fallo en cada paso                                  | TTN: fallo en IS, JS, NS y AS (con y sin fallo del borrado anterior, 409, 5xx, timeout); ChirpStack: fallo en `CreateKeys`; flujo completo (parcial → reintento) en `lns.int.test.ts` |
+| CSV de 100 series asocia a los activos correctos y rechaza filas inválidas | `import.int.test.ts` (100 series; filas inexistentes, repetidas, formato, DevEUI ajeno, baja, categoría; nada se aplica con errores) y e2e                                            |
+
+**Pruebas**
+
+- Shared 42, API 166 unitarias + 222 de integración con Postgres 18 (+5 opt-in contra ChirpStack/TTN reales), Web 300.
+- e2e (Playwright + axe, escritorio y 360 px, claro y oscuro): 14 nuevos de LoRaWAN; suite completa en verde.
+- Cobertura de la API sobre los umbrales (líneas 91,7 %, ramas 82,5 %).
+
+**Hallazgos de las pruebas contra un ChirpStack real** (corregidos, con su prueba; detalle en el ADR 0007)
+
+- Con una API key de tenant, `Get`/`Delete` de un dispositivo inexistente responden `UNAUTHENTICATED`, no `NOT_FOUND`.
+- Un DevEUI repetido responde `INTERNAL` («duplicate key»), no `ALREADY_EXISTS`: es conflicto, no un error a reintentar.
+- En LoRaWAN 1.0.x la AppKey queda en `nwk_key` (verificado leyendo las claves de vuelta); `DeviceService.List` no busca por DevEUI.
+- El e2e detectó íconos Lucide fuera del bundle (se habrían pedido a un dominio externo): ahora hay una prueba que lo impide y
+  se corrigieron tres de F2 que ya estaban en ese caso.
+
+**Decisiones provisionales** (detalle en `docs/open-questions.md`, Q40 a Q50): `asset:write` edita datos y claves (de solo
+escritura), sin permiso nuevo; clase/versión/región se copian del modelo; un perfil con dispositivos no cambia de destino;
+dar de baja un vinculado solo lo desvincula; 5 intentos con 30 s de espera creciente; la ficha consulta cada 2 s; el alta en
+lote y el formulario de alta individual no llevan campos LoRaWAN (se completan en la ficha o por CSV); formato del CSV;
+ChirpStack de prueba fijado por digest; sin barrido de registros atascados.
+
+**Pendiente / no verificado**
+
+- **TTN contra una aplicación real:** los `field_mask` y atributos siguen la documentación, no se pudieron verificar sin
+  credenciales. El responsable del proyecto debe agregar los secretos `TTN_TEST_*` y ejecutar el workflow «TTN real (manual)»
+  (ver `docs/development.md`).
+- El workflow de CI no se ha ejecutado en GitHub todavía con los cambios de F3 (job `e2e` ahora levanta ChirpStack; la primera
+  corrida real es la del PR).
+- Dependencias nuevas a revisar (justificadas en el PR): `@chirpstack/chirpstack-api` 4.20.0, `@grpc/grpc-js` 1.14.7,
+  `google-protobuf` 3.21.4 y `@types/google-protobuf` 3.15.12 (dev).
+
+**Cómo probarlo**
+
+```bash
+pnpm install
+pnpm lint && pnpm typecheck && pnpm test
+pnpm --filter @inventarius/api test:int                      # Postgres 18 en contenedor
+docker compose -f compose.e2e.yml up -d --build --wait web worker
+docker compose -f compose.e2e.yml run --rm --build e2e       # incluye LoRaWAN contra ChirpStack real
+docker compose -f compose.e2e.yml down --volumes
+```
+
+Desarrollo manual con ChirpStack: ver `docs/development.md` (perfil `chirpstack` de `compose.yml`).
