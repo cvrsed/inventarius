@@ -91,6 +91,28 @@ describe('AuditPage', () => {
     await router.push('/auditoria');
   });
 
+  it('la IP no es una columna (la tabla no debe desbordar): va en el detalle expandido, y en la tarjeta', async () => {
+    mockApi({
+      'GET /api/v1/audit': () => ({ data: [entry(1)], meta: { page: 1, pageSize: 25, total: 1 } }),
+    });
+    const w = mount(AuditPage, { global: pagePlugins() });
+    await flushPromises();
+    expect(w.findAll('th').map((th) => th.text())).not.toContain('IP');
+    expect(w.text()).not.toContain('10.0.0.1');
+    await w.get('button[aria-label^="Detalle"]').trigger('click');
+    expect(w.text()).toContain('IP');
+    expect(w.text()).toContain('10.0.0.1');
+    w.unmount();
+
+    useMobileViewport();
+    const card = mount(AuditPage, { global: pagePlugins() });
+    await flushPromises();
+    expect(card.text()).not.toContain('10.0.0.1');
+    await card.get('ul > li button').trigger('click');
+    expect(card.get('ul > li dl').text()).toContain('10.0.0.1');
+    await router.push('/auditoria');
+  });
+
   describe('columna «Registro» [P40]', () => {
     const ASSET = '018f0000-0000-7000-8000-0000000000a1';
     const rows = [
@@ -129,6 +151,18 @@ describe('AuditPage', () => {
       expect(w.text()).toContain('INV-000008 Sensor viejo');
       expect(w.findAll('a').some((a) => a.text() === 'INV-000008 Sensor viejo')).toBe(false);
       expect(w.text()).toContain('—'); // sin rótulo
+    });
+
+    it('el rótulo se trunca en la tabla y el texto completo está en su tooltip', async () => {
+      mockApi({
+        'GET /api/v1/audit': () => ({ data: rows, meta: { page: 1, pageSize: 25, total: 3 } }),
+      });
+      const w = mount(AuditPage, { global: pagePlugins() });
+      await flushPromises();
+      const cells = w.findAll('[data-testid="audit-record"]');
+      expect(cells[0]!.classes()).toContain('truncate');
+      const tips = w.findAllComponents({ name: 'UTooltip' }).map((c) => c.props('text'));
+      expect(tips).toContain('INV-000007 Notebook de Ana');
     });
 
     it('en móvil la tarjeta también identifica el registro', async () => {
