@@ -27,6 +27,8 @@ const existing = {
   assignedUser: null,
   assignedLocation: null,
   deleted: false,
+  devEui: null,
+  lnsStatus: null,
   purchaseDate: '2026-01-31',
   purchaseCost: 1500,
   purchaseCurrency: 'CLP',

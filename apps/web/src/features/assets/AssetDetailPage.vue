@@ -13,6 +13,7 @@ import { useAuthStore } from '@/features/auth/useAuthStore';
 import { useConfirm } from '@/shared/ui/useConfirm';
 import AssetActionDialog from './AssetActionDialog.vue';
 import AssetHistory from './AssetHistory.vue';
+import LorawanSection from '@/features/lorawan/LorawanSection.vue';
 import CheckoutDialog from './CheckoutDialog.vue';
 import { useAsset, useAssetMutations } from './api';
 import { statusColor } from './status';
@@ -230,6 +231,8 @@ const rows = computed(() => {
           </template>
         </dl>
       </section>
+
+      <LorawanSection v-if="asset.category.extension === 'lorawan'" :asset="asset" />
 
       <AssetHistory :asset-id="asset.id" />
 

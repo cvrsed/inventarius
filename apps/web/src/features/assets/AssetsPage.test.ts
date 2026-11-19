@@ -24,6 +24,8 @@ const asset = (n: number, over: Record<string, unknown> = {}) => ({
   assignedUser: n === 2 ? { id: '018f0000-0000-7000-8000-0000000000e1', name: 'Olga' } : null,
   assignedLocation: null,
   deleted: false,
+  devEui: null,
+  lnsStatus: null,
   updatedAt: '2026-11-16T12:00:00.000Z',
   ...over,
 });

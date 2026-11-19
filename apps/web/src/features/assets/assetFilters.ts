@@ -101,6 +101,16 @@ export function assetFilterDefs(t: Translate): FilterDef[] {
     },
     {
       kind: 'choice',
+      key: 'lnsStatus',
+      label: t('assets.filterLnsStatus'),
+      placement: 'more',
+      options: options(
+        ['none', 'registering', 'registered', 'error', 'partial', 'conflict', 'deregistering'],
+        'assets.lnsStatusOptions',
+      ),
+    },
+    {
+      kind: 'choice',
       key: 'overdue',
       label: t('assets.filterOverdue'),
       placement: 'more',

@@ -54,6 +54,14 @@ export const navigationItems: readonly NavigationItem[] = [
     permissions: ['role:manage'],
   },
   {
+    routeName: 'lns-profiles',
+    placement: 'more',
+    path: '/perfiles-lns',
+    labelKey: 'nav.lnsProfiles',
+    icon: 'i-lucide-radio-tower',
+    permissions: ['lns_profile:manage'],
+  },
+  {
     routeName: 'audit',
     placement: 'more',
     path: '/auditoria',
