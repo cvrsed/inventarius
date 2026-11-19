@@ -187,7 +187,7 @@ export class ChirpstackAdapter implements LnsAdapter {
       } catch (e) {
         if (!isServiceError(e)) throw e;
         if (e.code === status.NOT_FOUND) return null;
-        if (e.code === status.UNAUTHENTICATED || e.code === status.PERMISSION_DENIED) {
+        if (e.code === status.UNAUTHENTICATED) {
           await this.confirmAbsent(profile);
           return null;
         }
@@ -270,7 +270,7 @@ export class ChirpstackAdapter implements LnsAdapter {
         if (!isServiceError(e)) throw e;
         // Borrar lo que ya no existe no es error (ver `confirmAbsent`).
         if (e.code === status.NOT_FOUND) return;
-        if (e.code === status.UNAUTHENTICATED || e.code === status.PERMISSION_DENIED) {
+        if (e.code === status.UNAUTHENTICATED) {
           await this.confirmAbsent(profile);
           return;
         }

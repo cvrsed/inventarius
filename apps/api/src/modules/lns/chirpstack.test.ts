@@ -262,6 +262,19 @@ describe('ChirpStack: consulta, baja y conexión', () => {
     await adapter.deregisterDevice(profile, { externalId: DEV_EUI.toLowerCase(), devEui: DEV_EUI });
   });
 
+  it('PERMISSION_DENIED en get y en delete es error de permisos, no «no existe»: no se consulta la aplicación', async () => {
+    const ref = { externalId: DEV_EUI.toLowerCase(), devEui: DEV_EUI };
+    fake.failures.set('get', status.PERMISSION_DENIED);
+    const getErr = await rejection(adapter.findDevice(profile, DEV_EUI));
+    expect(getErr.message).toMatch(/permisos/);
+    expect(getErr.transient).toBe(false);
+    fake.failures.set('delete', status.PERMISSION_DENIED);
+    const delErr = await rejection(adapter.deregisterDevice(profile, ref));
+    expect(delErr.message).toMatch(/permisos/);
+    expect(delErr.transient).toBe(false);
+    expect(fake.calls).not.toContain('application.get');
+  });
+
   it('UNAUTHENTICATED con la credencial realmente inválida sigue siendo error de credencial', async () => {
     fake.failures.set('get', status.UNAUTHENTICATED);
     fake.failures.set('application.get', status.UNAUTHENTICATED);
