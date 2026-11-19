@@ -37,6 +37,7 @@ class FakeChirpstack {
   device: { name: string; tags: Record<string, string> } | null = null;
   /** `método` -> código gRPC a devolver. */
   failures = new Map<string, number>();
+  failureDetails = new Map<string, string>();
   authSeen: string[] = [];
   server = new Server();
   port = 0;
@@ -49,7 +50,8 @@ class FakeChirpstack {
       this.calls.push(method);
       this.authSeen.push(String(call.metadata.get('authorization')[0]));
       const code = this.failures.get(method);
-      if (code !== undefined) return cb({ code, details: 'falla simulada' });
+      if (code !== undefined)
+        return cb({ code, details: this.failureDetails.get(method) ?? 'falla simulada' });
       ok(call, cb);
     };
   }
@@ -202,6 +204,19 @@ describe('ChirpStack: registro', () => {
     expect(err.conflict).toBe(true);
   });
 
+  it('ChirpStack real responde INTERNAL con «duplicate key» ante un DevEUI repetido: es conflicto, no se reintenta', async () => {
+    fake.failures.set('create', status.INTERNAL);
+    fake.failureDetails.set(
+      'create',
+      'duplicate key value violates unique constraint "device_pkey"',
+    );
+    const err = await failure();
+    expect(err.conflict).toBe(true);
+    expect(err.transient).toBe(false);
+    fake.failureDetails.clear();
+    expect((await failure()).transient).toBe(true); // otro INTERNAL sí es transitorio
+  });
+
   it('UNAVAILABLE y DEADLINE_EXCEEDED son transitorios; INVALID_ARGUMENT y UNAUTHENTICATED no', async () => {
     for (const [code, transient] of [
       [status.UNAVAILABLE, true],
@@ -238,6 +253,21 @@ describe('ChirpStack: consulta, baja y conexión', () => {
     );
     expect(err.orphans).toEqual(['device']);
     expect(err.transient).toBe(true);
+  });
+
+  it('UNAUTHENTICATED al pedir un dispositivo inexistente: con la credencial válida es «no existe»', async () => {
+    fake.failures.set('get', status.UNAUTHENTICATED);
+    expect(await adapter.findDevice(profile, DEV_EUI)).toBeNull();
+    fake.failures.set('delete', status.UNAUTHENTICATED);
+    await adapter.deregisterDevice(profile, { externalId: DEV_EUI.toLowerCase(), devEui: DEV_EUI });
+  });
+
+  it('UNAUTHENTICATED con la credencial realmente inválida sigue siendo error de credencial', async () => {
+    fake.failures.set('get', status.UNAUTHENTICATED);
+    fake.failures.set('application.get', status.UNAUTHENTICATED);
+    const err = await rejection(adapter.findDevice(profile, DEV_EUI));
+    expect(err.message).toMatch(/credencial/);
+    expect(err.transient).toBe(false);
   });
 
   it('probar conexión valida tenant, aplicación y device profile', async () => {
