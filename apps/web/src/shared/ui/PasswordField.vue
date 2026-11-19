@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import UButton from '@nuxt/ui/components/Button.vue';
+import IconAction from '@/shared/ui/IconAction.vue';
 import UFormField from '@nuxt/ui/components/FormField.vue';
 import UInput from '@nuxt/ui/components/Input.vue';
 import { ref } from 'vue';
@@ -27,13 +27,11 @@ const shown = ref(false);
       class="w-full"
     >
       <template #trailing>
-        <UButton
+        <IconAction
           type="button"
-          color="neutral"
           variant="link"
-          size="sm"
           :icon="shown ? 'i-lucide-eye-off' : 'i-lucide-eye'"
-          :aria-label="shown ? t('common.hidePassword') : t('common.showPassword')"
+          :label="shown ? t('common.hidePassword') : t('common.showPassword')"
           :aria-pressed="shown"
           @click="shown = !shown"
         />

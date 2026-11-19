@@ -14,6 +14,14 @@ const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
  * intermedios y da falsos positivos de contraste. Se congelan transiciones y animaciones antes de medir.
  */
 export async function expectNoA11yViolations(page: Page): Promise<void> {
+  // Con un listbox abierto el fondo pasa a `inert` un instante después de mostrarse (useInertWhileOpen); medir antes da un
+  // falso `aria-hidden-focus` (enlace de salto). Se espera a que el fondo esté inerte.
+  if (await page.getByRole('listbox').isVisible()) {
+    // (en un diálogo modal el select no marca `inert`: ahí no se espera, y axe decide.)
+    await expect(page.locator('#app'))
+      .toHaveAttribute('inert', '', { timeout: 1500 })
+      .catch(() => undefined);
+  }
   await page.addStyleTag({
     content: '*, *::before, *::after { transition: none !important; animation: none !important; }',
   });
@@ -23,6 +31,23 @@ export async function expectNoA11yViolations(page: Page): Promise<void> {
 
 export const uniqueEmail = (prefix: string): string =>
   `${prefix}-${randomUUID().slice(0, 8)}@e2e.test`;
+
+/** PATCH con `If-Match` tomado del activo actual; devuelve el activo actualizado. */
+export async function apiPatchAsset(
+  request: APIRequestContext,
+  id: string,
+  data: Record<string, unknown>,
+): Promise<{ updatedAt: string }> {
+  const current = (await (await request.get(`/api/v1/assets/${id}`)).json()) as {
+    updatedAt: string;
+  };
+  const res = await request.patch(`/api/v1/assets/${id}`, {
+    data,
+    headers: { 'x-csrf-token': await csrf(request), 'if-match': `"${current.updatedAt}"` },
+  });
+  expect(res.status(), await res.text()).toBe(200);
+  return (await res.json()) as { updatedAt: string };
+}
 
 /** Token CSRF y cookie de secreto en el contexto de la petición. */
 async function csrf(request: APIRequestContext): Promise<string> {
@@ -42,6 +67,19 @@ export async function loginViaApi(
     headers: { 'x-csrf-token': token },
   });
   expect(res.status(), await res.text()).toBe(200);
+}
+
+/** DELETE con cuerpo JSON (p. ej. la baja de un activo con su motivo). */
+export async function apiDelete(
+  request: APIRequestContext,
+  url: string,
+  data?: unknown,
+): Promise<void> {
+  const res = await request.delete(url, {
+    ...(data !== undefined ? { data } : {}),
+    headers: { 'x-csrf-token': await csrf(request) },
+  });
+  expect(res.status(), await res.text()).toBeLessThan(300);
 }
 
 export async function apiPost<T>(
@@ -96,3 +134,118 @@ export async function loginViaUi(page: Page, email: string, password: string): P
 
 export const horizontalOverflow = (page: Page) =>
   page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+
+/** Nombre único para datos de prueba: la base de e2e es compartida y los tests corren en paralelo. */
+export const uniqueName = (prefix: string): string => `${prefix} ${randomUUID().slice(0, 8)}`;
+
+/** Abre el menú de usuario de la cabecera y elige una opción por su texto. */
+export async function chooseUserMenu(page: Page, option: string | RegExp): Promise<void> {
+  await page.getByRole('button', { name: /^Menú de usuario/ }).click();
+  await page.getByRole('menuitem', { name: option }).click();
+}
+
+/** Ejecuta `check` en modo claro y luego en modo oscuro (RNF-02). Debe poder repetirse sin efectos. */
+export async function eachTheme(page: Page, check: () => Promise<void>): Promise<void> {
+  // El tema se recuerda entre páginas: si un paso anterior ya lo dejó en oscuro, se parte de claro.
+  if (await page.locator('html').evaluate((el) => el.classList.contains('dark'))) {
+    await chooseUserMenu(page, 'Cambiar a modo claro');
+    await expect(page.locator('html')).not.toHaveClass(/\bdark\b/);
+  }
+  await check();
+  await chooseUserMenu(page, 'Cambiar a modo oscuro');
+  await expect(page.locator('html')).toHaveClass(/\bdark\b/);
+  await check();
+}
+
+export interface Fixture {
+  manufacturerId: string;
+  categoryId: string;
+  modelId: string;
+  modelName: string;
+  locationId: string;
+  locationName: string;
+}
+
+/** Catálogo mínimo creado por API para que un test pueda crear activos por UI. */
+export async function createCatalogFixture(request: APIRequestContext): Promise<Fixture> {
+  const manufacturer = await apiPost<{ id: string; name: string }>(
+    request,
+    '/api/v1/manufacturers',
+    {
+      name: uniqueName('Fabricante'),
+    },
+  );
+  const category = await apiPost<{ id: string }>(request, '/api/v1/categories', {
+    name: uniqueName('Categoría'),
+  });
+  const modelName = uniqueName('Modelo');
+  const model = await apiPost<{ id: string }>(request, '/api/v1/models', {
+    name: modelName,
+    manufacturerId: manufacturer.id,
+    categoryId: category.id,
+  });
+  const locationName = uniqueName('Sala');
+  const location = await apiPost<{ id: string }>(request, '/api/v1/locations', {
+    name: locationName,
+    type: 'warehouse',
+  });
+  return {
+    manufacturerId: manufacturer.id,
+    categoryId: category.id,
+    modelId: model.id,
+    modelName: `${manufacturer.name} ${modelName}`,
+    locationId: location.id,
+    locationName,
+  };
+}
+
+export async function statusIdByName(request: APIRequestContext, name: string): Promise<string> {
+  const res = await request.get(`/api/v1/status-labels?q=${encodeURIComponent(name)}&pageSize=100`);
+  const data = ((await res.json()) as { data: { id: string; name: string }[] }).data;
+  return data.find((s) => s.name === name)!.id;
+}
+
+export interface CreatedAsset {
+  id: string;
+  assetTag: string;
+  name: string;
+  serial: string;
+}
+
+/** Crea un activo por API (rápido) para los tests que ejercitan otra parte de la UI. */
+export async function createAssetViaApi(
+  request: APIRequestContext,
+  fixture: Fixture,
+  extra: Record<string, unknown> = {},
+): Promise<CreatedAsset> {
+  const name = uniqueName('Activo');
+  const serial = `SN-${randomUUID().slice(0, 8)}`;
+  const asset = await apiPost<{ id: string; assetTag: string }>(request, '/api/v1/assets', {
+    name,
+    serial,
+    modelId: fixture.modelId,
+    statusId: await statusIdByName(request, 'Disponible'),
+    baseLocationId: fixture.locationId,
+    ...extra,
+  });
+  return { id: asset.id, assetTag: asset.assetTag, name, serial };
+}
+
+/**
+ * Elige una opción de un filtro de lista (P41): en escritorio, el menú «Acción ▾» de la barra; en móvil, el campo del
+ * panel inferior «Filtros (n)», que se cierra al terminar con «Ver N resultados».
+ */
+export async function chooseFilter(page: Page, label: string, option: string): Promise<void> {
+  const mobile = (page.viewportSize()?.width ?? 0) < 768;
+  if (mobile) await page.locator('#filters-panel-button').click();
+  await filterControl(page, label).click();
+  await page.getByRole('option', { name: option, exact: true }).click();
+  if (mobile) await page.getByRole('button', { name: /^Ver \d+ resultado/ }).click();
+}
+
+/** Control de un filtro: botón del menú de la barra (escritorio) o campo del panel (móvil: select o botón de búsqueda). */
+export const filterControl = (page: Page, label: string) =>
+  page
+    .getByRole('button', { name: new RegExp(`^${label}$`) })
+    .or(page.getByRole('combobox', { name: new RegExp(`^${label}`) }))
+    .or(page.getByRole('dialog').getByRole('button', { name: new RegExp(`^${label}`) }));

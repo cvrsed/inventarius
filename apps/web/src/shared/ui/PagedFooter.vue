@@ -25,7 +25,12 @@ const sizeItems = computed(() => props.pageSizes.map((n) => ({ label: String(n),
         @update:model-value="(v: string | number) => (pageSize = Number(v))"
       />
     </div>
+    <!--
+      Sin total no hay paginador: con total 0 reka-ui acota la página a 1 y la emite, lo que mandaría a la
+      página 1 a quien abre un enlace compartido con `page=2` antes de que lleguen los datos.
+    -->
     <UPagination
+      v-if="total > 0"
       v-model:page="page"
       class="max-w-full overflow-x-auto"
       :items-per-page="pageSize"

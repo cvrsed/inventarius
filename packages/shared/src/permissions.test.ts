@@ -10,12 +10,13 @@ describe('matriz de permisos semilla', () => {
     expect(admin.isProtected).toBe(true);
   });
 
-  it('solo el administrador revela claves y gestiona usuarios, roles y perfiles LNS', () => {
+  it('solo el administrador revela claves, restaura activos y gestiona usuarios, roles y perfiles LNS', () => {
     for (const p of [
       'lorawan:keys:reveal',
       'lns_profile:manage',
       'user:manage',
       'role:manage',
+      'asset:restore',
     ] as const) {
       const holders = SEED_ROLES.filter((r) => r.permissions.includes(p)).map((r) => r.name);
       expect(holders).toEqual(['Administrador']);

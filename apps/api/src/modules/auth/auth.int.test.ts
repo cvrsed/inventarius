@@ -26,6 +26,39 @@ describe('login y sesión (RF-01)', () => {
     expect(me.json().permissions).not.toContain('user:manage');
   });
 
+  it('al iniciar sesión se revoca la sesión previa que traía la cookie [P32]', async () => {
+    const c = env.client('10.40.0.1');
+    await c.login('ana@ejemplo.cl');
+    const oldToken = c.cookie['session']!;
+    // Mismo navegador: la cookie vieja viaja en el nuevo login.
+    expect((await c.login('ana@ejemplo.cl')).statusCode).toBe(200);
+    const newToken = c.cookie['session']!;
+    expect(newToken).not.toBe(oldToken);
+    expect((await c.get('/api/v1/auth/me')).statusCode).toBe(200);
+
+    const stale = env.client('10.40.0.2');
+    stale.setCookie('session', oldToken);
+    expect((await stale.get('/api/v1/auth/me')).statusCode).toBe(401);
+  });
+
+  it('otra persona que inicia sesión sobre la cookie de la primera también la revoca [P32]', async () => {
+    const c = env.client('10.40.0.3');
+    await c.login('ana@ejemplo.cl');
+    const anaToken = c.cookie['session']!;
+    expect((await c.login('root@ejemplo.cl')).statusCode).toBe(200);
+    const stale = env.client('10.40.0.4');
+    stale.setCookie('session', anaToken);
+    expect((await stale.get('/api/v1/auth/me')).statusCode).toBe(401);
+    expect((await c.get('/api/v1/auth/me')).json().email).toBe('root@ejemplo.cl');
+  });
+
+  it('un login fallido no revoca la sesión que ya existía [P32]', async () => {
+    const c = env.client('10.40.0.5');
+    await c.login('ana@ejemplo.cl');
+    expect((await c.login('ana@ejemplo.cl', 'clave-incorrecta-123456')).statusCode).toBe(401);
+    expect((await c.get('/api/v1/auth/me')).statusCode).toBe(200);
+  });
+
   it('el email no distingue mayúsculas', async () => {
     expect((await env.client().login('ANA@Ejemplo.CL')).statusCode).toBe(200);
   });
@@ -48,6 +81,77 @@ describe('login y sesión (RF-01)', () => {
       csrf: false,
     });
     expect(res.statusCode).toBe(403);
+  });
+
+  describe('CSRF ligado a la sesión [P34]', () => {
+    const mutate = (c: ReturnType<typeof env.client>, token: string | undefined) =>
+      c.request({
+        method: 'POST',
+        url: '/api/v1/auth/change-password',
+        payload: { currentPassword: 'x', newPassword: 'y' },
+        csrf: false,
+        ...(token ? { headers: { 'x-csrf-token': token } } : {}),
+      });
+    const tokenOf = async (c: ReturnType<typeof env.client>) =>
+      (await c.get('/api/v1/auth/csrf')).json().token as string;
+
+    it('un token válido de OTRA sesión se rechaza', async () => {
+      const ana = env.client('10.41.0.1');
+      const root = env.client('10.41.0.2');
+      await ana.login('ana@ejemplo.cl');
+      await root.login('root@ejemplo.cl');
+      const anaToken = await tokenOf(ana);
+      const rootToken = await tokenOf(root);
+      expect(anaToken).not.toBe(rootToken);
+      // El token de root, bien firmado, no sirve en la sesión de ana (llega a validar la contraseña → 422).
+      expect((await mutate(ana, rootToken)).statusCode).toBe(403);
+      expect((await mutate(root, anaToken)).statusCode).toBe(403);
+      expect((await mutate(ana, anaToken)).statusCode).not.toBe(403);
+    });
+
+    it('el token de antes del login deja de valer con la sesión nueva', async () => {
+      const c = env.client('10.41.0.3');
+      const anonymous = await tokenOf(c); // ligado a la cookie anónima
+      await c.login('ana@ejemplo.cl');
+      expect((await mutate(c, anonymous)).statusCode).toBe(403);
+      expect((await mutate(c, await tokenOf(c))).statusCode).not.toBe(403);
+    });
+
+    it('un token inventado, sin firma o ausente se rechaza', async () => {
+      const c = env.client('10.41.0.4');
+      await c.login('ana@ejemplo.cl');
+      for (const bad of ['inventado', 'a'.repeat(43), undefined]) {
+        const res = await mutate(c, bad);
+        expect(res.statusCode).toBe(403);
+        expect(res.json().detail).toMatch(/CSRF/);
+      }
+    });
+
+    it('el login exige el token de la cookie anónima de ese navegador', async () => {
+      const a = env.client('10.41.0.5');
+      const b = env.client('10.41.0.6');
+      const tokenA = await tokenOf(a);
+      await tokenOf(b); // b tiene su propia cookie anónima
+      const res = await b.request({
+        method: 'POST',
+        url: '/api/v1/auth/login',
+        payload: { email: 'ana@ejemplo.cl', password: STRONG_PASSWORD },
+        csrf: false,
+        headers: { 'x-csrf-token': tokenA },
+      });
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('con la cookie de sesión de otro y el token de uno mismo no se pasa', async () => {
+      const ana = env.client('10.41.0.7');
+      const root = env.client('10.41.0.8');
+      await ana.login('ana@ejemplo.cl');
+      await root.login('root@ejemplo.cl');
+      const thief = env.client('10.41.0.9');
+      thief.setCookie('session', ana.cookie['session']!);
+      const own = await tokenOf(root); // token válido, pero de otra sesión
+      expect((await mutate(thief, own)).statusCode).toBe(403);
+    });
   });
 
   it('cada login rota el ID de sesión y solo se guarda su hash', async () => {

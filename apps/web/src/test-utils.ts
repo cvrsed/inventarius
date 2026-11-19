@@ -17,6 +17,20 @@ export function globalPlugins(): GlobalMountOptions {
   };
 }
 
+/** Simula un viewport de móvil (< 768 px) para los componentes que cambian de vista con `useIsDesktop`. */
+export function useMobileViewport(): void {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+    dispatchEvent: () => false,
+  }));
+}
+
 type Handler = (init: RequestInit | undefined, url: string) => Response | object;
 
 /**

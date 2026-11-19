@@ -82,6 +82,9 @@ export class TestClient {
       remoteAddress: this.ip,
     });
     this.absorb(res);
+    // El token CSRF va ligado a la sesión: al iniciar/cerrar sesión o cambiar la contraseña hay que pedir otro.
+    if (/\/auth\/(login|logout|change-password)$/.test(String(opts.url)))
+      this.csrfToken = undefined;
     return res;
   }
 

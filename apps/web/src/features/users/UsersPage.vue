@@ -3,13 +3,15 @@ import type { UserDto } from '@inventarius/shared';
 import UAlert from '@nuxt/ui/components/Alert.vue';
 import UBadge from '@nuxt/ui/components/Badge.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
-import UInput from '@nuxt/ui/components/Input.vue';
-import UTable from '@nuxt/ui/components/Table.vue';
+import FilterToolbar from '@/shared/filters/FilterToolbar.vue';
 import { useToast } from '@nuxt/ui/composables/useToast';
-import { computed, ref, watchEffect } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import IconAction from '@/shared/ui/IconAction.vue';
 import { useI18n } from 'vue-i18n';
 import { errorMessage } from '@/features/auth/errors';
+import ResponsiveTable from '@/shared/ui/ResponsiveTable.vue';
 import PagedFooter from '@/shared/ui/PagedFooter.vue';
+import { useListQuery } from '@/shared/list/useListQuery';
 import { useConfirm } from '@/shared/ui/useConfirm';
 import { useUserMutations, useUsersList, type UsersQuery } from './api';
 import TempPasswordDialog from './TempPasswordDialog.vue';
@@ -19,19 +21,31 @@ const { t } = useI18n();
 const confirm = useConfirm();
 const toast = useToast();
 
-const search = ref('');
-const query = ref<UsersQuery>({ page: 1, pageSize: 10, q: '' });
+// Búsqueda, página y tamaño viven en la URL, como en los demás listados (RF-22).
+const { query, update, setPage, reset } = useListQuery({
+  page: 1,
+  pageSize: 10,
+  q: '',
+} satisfies UsersQuery);
 const { data, isPending, isError, isFetching, refetch } = useUsersList(query);
 const { resetPassword } = useUserMutations();
 
-const page = computed({
-  get: () => query.value.page,
-  set: (v: number) => (query.value = { ...query.value, page: v }),
+const search = ref(query.value.q);
+let timer: ReturnType<typeof setTimeout> | undefined;
+onBeforeUnmount(() => clearTimeout(timer));
+watch(search, (value) => {
+  clearTimeout(timer);
+  // Sin cambio real no se toca la URL: así un «atrás» del navegador no se convierte en una búsqueda nueva.
+  timer = setTimeout(() => {
+    if (value.trim() !== query.value.q) void update({ q: value.trim() });
+  }, 300);
 });
-const pageSize = computed({
-  get: () => query.value.pageSize,
-  set: (v: number) => (query.value = { ...query.value, pageSize: v, page: 1 }),
-});
+watch(
+  () => query.value.q,
+  (q) => {
+    if (q !== search.value.trim()) search.value = q;
+  },
+);
 
 const columns = computed(() => [
   { accessorKey: 'name', header: t('users.name') },
@@ -40,13 +54,6 @@ const columns = computed(() => [
   { id: 'status', header: t('users.status') },
   { id: 'actions', header: t('common.actions') },
 ]);
-
-let timer: ReturnType<typeof setTimeout> | undefined;
-watchEffect(() => {
-  const q = search.value.trim();
-  clearTimeout(timer);
-  timer = setTimeout(() => (query.value = { ...query.value, q, page: 1 }), 300);
-});
 
 const formVisible = ref(false);
 const editing = ref<UserDto | null>(null);
@@ -87,13 +94,14 @@ function askReset(user: UserDto): void {
       <UButton icon="i-lucide-plus" :label="t('users.new')" @click="openCreate" />
     </div>
 
-    <UInput
-      id="users-search"
-      v-model="search"
-      type="search"
-      :placeholder="t('users.search')"
-      :aria-label="t('users.search')"
-      class="w-full"
+    <FilterToolbar
+      v-model:search="search"
+      search-id="users-search"
+      :search-placeholder="t('users.search')"
+      :defs="[]"
+      :values="{}"
+      :total="data?.meta.total"
+      @clear="reset"
     />
 
     <UAlert v-if="isError" color="error" variant="subtle" role="alert">
@@ -109,7 +117,7 @@ function askReset(user: UserDto): void {
       </template>
     </UAlert>
 
-    <UTable
+    <ResponsiveTable
       :data="data?.data ?? []"
       :columns="columns"
       :loading="isPending || isFetching"
@@ -137,29 +145,69 @@ function askReset(user: UserDto): void {
       </template>
       <template #actions-cell="{ row }">
         <span class="flex gap-1">
-          <UButton
+          <IconAction
             icon="i-lucide-pencil"
-            :aria-label="`${t('common.edit')} ${row.original.name}`"
-            color="neutral"
-            variant="ghost"
+            :label="t('common.edit')"
+            :target="row.original.name"
             @click="openEdit(row.original)"
           />
-          <UButton
+          <IconAction
             icon="i-lucide-key-round"
-            :aria-label="`${t('users.reset')} ${row.original.name}`"
-            color="neutral"
-            variant="ghost"
+            :label="t('users.reset')"
+            :target="row.original.name"
             @click="askReset(row.original)"
           />
         </span>
       </template>
-    </UTable>
+      <template #card="{ item }">
+        <div class="flex items-start justify-between gap-2">
+          <span class="min-w-0 font-semibold text-highlighted break-words">{{ item.name }}</span>
+          <UBadge
+            :label="item.active ? t('users.active') : t('users.inactive')"
+            :color="item.active ? 'success' : 'warning'"
+            variant="subtle"
+          />
+        </div>
+        <p class="m-0 text-sm break-all text-muted">{{ item.email }}</p>
+        <span class="flex flex-wrap gap-1">
+          <UBadge
+            v-for="r in item.roles"
+            :key="r.id"
+            :label="r.name"
+            color="neutral"
+            variant="subtle"
+          />
+        </span>
+        <div class="flex flex-wrap gap-2">
+          <UButton
+            icon="i-lucide-pencil"
+            :label="t('common.edit')"
+            :aria-label="`${t('common.edit')} ${item.name}`"
+            color="neutral"
+            variant="outline"
+            size="sm"
+            @click="openEdit(item)"
+          />
+          <UButton
+            icon="i-lucide-key-round"
+            :label="t('users.reset')"
+            :aria-label="`${t('users.reset')} ${item.name}`"
+            color="neutral"
+            variant="outline"
+            size="sm"
+            @click="askReset(item)"
+          />
+        </div>
+      </template>
+    </ResponsiveTable>
 
     <PagedFooter
-      v-model:page="page"
-      v-model:page-size="pageSize"
+      :page="query.page"
+      :page-size="query.pageSize"
       :total="data?.meta.total ?? 0"
       :page-sizes="[10, 25, 50]"
+      @update:page="setPage"
+      @update:page-size="(n: number) => update({ pageSize: n })"
     />
 
     <UserFormDialog v-model:visible="formVisible" :user="editing" :creating="editing === null" />

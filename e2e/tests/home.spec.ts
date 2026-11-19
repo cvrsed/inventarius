@@ -1,5 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { ADMIN, expectNoA11yViolations, horizontalOverflow, loginViaApi } from './support';
+import {
+  ADMIN,
+  expectNoA11yViolations,
+  horizontalOverflow,
+  loginViaApi,
+  chooseUserMenu,
+} from './support';
 
 test.describe('página de inicio (con sesión)', () => {
   test.beforeEach(async ({ page }) => {
@@ -17,9 +23,46 @@ test.describe('página de inicio (con sesión)', () => {
     await page.goto('/');
     await expect(page.getByText('Todo funciona con normalidad')).toBeVisible();
     await expectNoA11yViolations(page);
-    await page.getByRole('button', { name: 'Cambiar a modo oscuro' }).click();
+    await chooseUserMenu(page, 'Cambiar a modo oscuro');
     await expect(page.locator('html')).toHaveClass(/\bdark\b/);
     await expectNoA11yViolations(page);
+  });
+
+  test('el menú de usuario agrupa contraseña, tema y salir con texto y pasa axe abierto', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: /^Menú de usuario/ }).click();
+    const items = page.getByRole('menuitem');
+    await expect(items).toHaveText([
+      'Cambiar contraseña',
+      'Cambiar a modo oscuro',
+      'Cerrar sesión',
+    ]);
+    await expectNoA11yViolations(page);
+    await items.first().click();
+    await expect(page).toHaveURL(/cambiar-contrasena/);
+  });
+
+  test('en móvil la barra inferior tiene 4 destinos y «Más» abre el resto, con axe', async ({
+    page,
+  }) => {
+    test.skip((page.viewportSize()?.width ?? 0) >= 768, 'solo en móvil');
+    await page.goto('/');
+    const bar = page.locator('.app-bottom-nav');
+    await expect(bar.locator('li')).toHaveText(['Inicio', 'Activos', 'Catálogo', 'Más']);
+    await bar.getByRole('button', { name: 'Más' }).click();
+    const sheet = page.getByRole('dialog', { name: 'Más' });
+    for (const name of ['Usuarios', 'Roles', 'Auditoría']) {
+      await expect(sheet.getByRole('link', { name })).toBeVisible();
+    }
+    for (const name of ['Cambiar contraseña', 'Cambiar a modo oscuro', 'Cerrar sesión']) {
+      await expect(sheet.getByRole('button', { name })).toBeVisible();
+    }
+    await expectNoA11yViolations(page);
+    await sheet.getByRole('link', { name: 'Roles' }).click();
+    await expect(page).toHaveURL(/\/roles$/);
+    await expect(sheet).toBeHidden();
   });
 
   test('no hay scroll horizontal', async ({ page }) => {
@@ -78,7 +121,7 @@ test.describe('íconos y recursos (RNF-08)', () => {
       // Los íconos se dibujan como SVG en línea, no como imágenes remotas.
       await expect(page.locator('svg.iconify:visible').first()).toBeVisible();
     }
-    await page.getByRole('button', { name: 'Cambiar a modo oscuro' }).click();
+    await chooseUserMenu(page, 'Cambiar a modo oscuro');
     expect(external, `Peticiones a otros orígenes: ${external.join(', ')}`).toEqual([]);
   });
 });

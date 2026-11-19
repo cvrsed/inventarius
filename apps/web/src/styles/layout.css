@@ -42,3 +42,17 @@
 .app-bottom-nav {
   padding-block-end: env(safe-area-inset-bottom, 0px);
 }
+
+/*
+ * Controles deshabilitados: atenuados, nunca tachados. Se atenúan (sin subrayar ni tachar el texto) y el cursor
+ * no cambia a «prohibido». Va fuera de las capas de Tailwind para ganarle a las utilidades de Nuxt UI.
+ */
+button:disabled,
+[role='button'][aria-disabled='true'],
+a[aria-disabled='true'],
+input:disabled,
+textarea:disabled {
+  opacity: 0.5;
+  text-decoration: none;
+  cursor: default;
+}

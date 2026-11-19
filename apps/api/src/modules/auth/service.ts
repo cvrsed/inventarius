@@ -18,6 +18,8 @@ const DUMMY_HASH_PASSWORD = 'contraseña-señuelo-para-igualar-tiempos';
 const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
 /** Se actualiza `last_seen_at` como máximo cada tantos ms para no escribir en cada petición. */
 const TOUCH_INTERVAL_MS = 30_000;
+/** Fracción de la inactividad máxima que puede pasar entre un refresco y el siguiente. */
+const TOUCH_FRACTION_OF_IDLE = 4;
 
 export interface SessionStart {
   token: string;
@@ -43,7 +45,16 @@ export class AuthService {
     private readonly throttle: LoginThrottle,
     private readonly cfg: AppConfig['session'],
     private readonly clock: Clock,
-  ) {}
+  ) {
+    // Con una inactividad corta (8 h en producción, 15 s en e2e) el refresco no puede ser más lento que
+    // ella: si lo fuera, la sesión moriría por «inactiva» aunque el usuario esté trabajando.
+    this.touchIntervalMs = Math.min(
+      TOUCH_INTERVAL_MS,
+      (cfg.idleTimeoutSeconds * 1000) / TOUCH_FRACTION_OF_IDLE,
+    );
+  }
+
+  private readonly touchIntervalMs: number;
 
   private async sessionUser(userId: string, exec: Executor = this.db): Promise<SessionUser | null> {
     const user = await this.users.findById(userId, exec);
@@ -77,12 +88,15 @@ export class AuthService {
   }
 
   /**
-   * Valida credenciales. Siempre abre una sesión nueva (rotación del ID al hacer login).
+   * Valida credenciales. Siempre abre una sesión nueva (rotación del ID al hacer login) y, en la misma
+   * transacción, revoca la sesión previa que traía la petición (`previousSessionId`), si había: así el token
+   * anterior del navegador deja de valer en cuanto se inicia otra sesión. Un login fallido no revoca nada.
    * Los fallos devuelven el mismo mensaje exista o no la cuenta, y cuentan para el bloqueo.
    */
   async login(
     input: { email: string; password: string },
     client: ClientInfo,
+    previousSessionId?: string,
   ): Promise<SessionStart> {
     const accountKey = LoginThrottle.accountKey(input.email);
     const ipKey = LoginThrottle.ipKey(client.ip);
@@ -103,6 +117,7 @@ export class AuthService {
         action: 'auth.login_failed',
         entity: 'user',
         entityId: found?.id ?? null,
+        entityLabel: found?.name ?? input.email,
         diff: { email: input.email },
       });
       throw new UnauthorizedError('Correo o contraseña incorrectos');
@@ -110,6 +125,7 @@ export class AuthService {
 
     await this.throttle.clearAccount(accountKey);
     const token = await this.db.transaction(async (tx) => {
+      if (previousSessionId) await this.repo.deleteSession(tx, previousSessionId);
       const t = await this.openSession(tx, found.id, client);
       await this.audit.record(tx, {
         actorId: found.id,
@@ -117,6 +133,7 @@ export class AuthService {
         action: 'auth.login',
         entity: 'user',
         entityId: found.id,
+        entityLabel: found.name,
       });
       return t;
     });
@@ -142,13 +159,13 @@ export class AuthService {
       await this.repo.deleteSession(this.db, id);
       return null;
     }
-    if (now.getTime() - session.lastSeenAt.getTime() > TOUCH_INTERVAL_MS) {
+    if (now.getTime() - session.lastSeenAt.getTime() > this.touchIntervalMs) {
       await this.repo.touchSession(this.db, id, now);
     }
     return { sessionId: id, user };
   }
 
-  async logout(actor: Actor, sessionId: string): Promise<void> {
+  async logout(actor: Actor, sessionId: string, label: string): Promise<void> {
     await this.db.transaction(async (tx) => {
       await this.repo.deleteSession(tx, sessionId);
       await this.audit.record(tx, {
@@ -156,6 +173,7 @@ export class AuthService {
         action: 'auth.logout',
         entity: 'user',
         entityId: actor.actorId,
+        entityLabel: label,
       });
     });
   }
@@ -189,6 +207,7 @@ export class AuthService {
         action: 'auth.change_password',
         entity: 'user',
         entityId: found.id,
+        entityLabel: found.name,
       });
       return t;
     });

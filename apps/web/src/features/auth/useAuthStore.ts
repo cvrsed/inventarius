@@ -1,8 +1,14 @@
-import { sessionUserSchema, type Permission, type SessionUser } from '@inventarius/shared';
+import {
+  appSettingsSchema,
+  sessionUserSchema,
+  type Permission,
+  type SessionUser,
+} from '@inventarius/shared';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { z } from 'zod';
 import { ApiError, api, resetCsrfToken } from '@/shared/api/http';
+import { setFormatSettings } from '@/shared/format/format';
 
 /** Sesión del usuario actual. El front solo oculta lo que no se puede hacer; el backend es la barrera. */
 export const useAuthStore = defineStore('auth', () => {
@@ -11,9 +17,19 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => user.value !== null);
 
+  /** Zona horaria de la instalación para formatear fechas. Si falla se siguen usando los valores por defecto. */
+  async function loadSettings(): Promise<void> {
+    try {
+      setFormatSettings(await api('/api/v1/settings', appSettingsSchema));
+    } catch {
+      // Sin ajustes se muestran las fechas en la zona por defecto; no vale la pena interrumpir la sesión.
+    }
+  }
+
   async function load(): Promise<void> {
     try {
       user.value = await api('/api/v1/auth/me', sessionUserSchema, { silent401: true });
+      await loadSettings();
     } catch (e) {
       if (!(e instanceof ApiError) || e.status !== 401) {
         user.value = null;
@@ -32,6 +48,7 @@ export const useAuthStore = defineStore('auth', () => {
       silent401: true,
     });
     resetCsrfToken();
+    await loadSettings();
   }
 
   async function logout(): Promise<void> {

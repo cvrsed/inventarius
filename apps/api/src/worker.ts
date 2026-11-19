@@ -2,6 +2,7 @@ import { pino } from 'pino';
 import { PgBoss } from 'pg-boss';
 import { loadConfig } from './core/config.js';
 import { buildServices } from './core/container.js';
+import { shutdown } from './core/shutdown.js';
 import { createDb } from './core/db/client.js';
 import { buildLoggerOptions } from './core/logger.js';
 import { startMaintenanceJobs } from './jobs/maintenance.js';
@@ -14,10 +15,11 @@ const boss = new PgBoss({
   connectionString: config.databaseUrl,
   migrate: false,
   createSchema: false,
+  connectionTimeoutMillis: config.db.connectionTimeoutMs,
 });
 boss.on('error', (err) => log.error({ err }, 'error de pg-boss'));
 
-const { pool, db } = createDb(config.databaseUrl);
+const { pool, db } = createDb(config.databaseUrl, config.db);
 pool.on('error', (err) => log.error({ err }, 'error en una conexión inactiva de la BD'));
 const services = buildServices({ db, config });
 
@@ -28,9 +30,12 @@ log.info('worker iniciado: purga de sesiones cada hora');
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.once(signal, () => {
     log.info({ signal }, 'cerrando worker');
-    void boss
-      .stop({ graceful: true })
-      .then(() => pool.end())
-      .then(() => process.exit(0));
+    void shutdown(
+      async () => {
+        await boss.stop({ graceful: true, timeout: config.shutdownTimeoutMs });
+        await pool.end();
+      },
+      { timeoutMs: config.shutdownTimeoutMs, log, exit: (code) => process.exit(code) },
+    );
   });
 }

@@ -1,9 +1,10 @@
 import { buildApp } from './app.js';
 import { loadConfig } from './core/config.js';
+import { shutdown } from './core/shutdown.js';
 import { createDb, pingDatabase, pingQueue } from './core/db/client.js';
 
 const config = loadConfig();
-const { pool, db, close } = createDb(config.databaseUrl);
+const { pool, db, close } = createDb(config.databaseUrl, config.db);
 
 const app = await buildApp({
   config,
@@ -19,7 +20,11 @@ app.addHook('onClose', async () => close());
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.once(signal, () => {
     app.log.info({ signal }, 'cerrando');
-    void app.close().then(() => process.exit(0));
+    void shutdown(() => app.close(), {
+      timeoutMs: config.shutdownTimeoutMs,
+      log: app.log,
+      exit: (code) => process.exit(code),
+    });
   });
 }
 

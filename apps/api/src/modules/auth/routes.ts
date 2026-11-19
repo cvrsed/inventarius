@@ -12,6 +12,7 @@ import type { AppConfig } from '../../core/config.js';
 import { UnauthorizedError } from '../../core/errors.js';
 import { actorOf } from '../../core/http.js';
 import type { AuthService, ClientInfo } from './service.js';
+import { csrfToken, newAnonymousBinding } from './csrf.js';
 import { cookieNames, setSessionCookie, clearSessionCookie } from './cookies.js';
 
 export interface AuthRoutesOptions {
@@ -31,13 +32,25 @@ export const authRoutes: FastifyPluginAsyncZod<AuthRoutesOptions> = async (app, 
   const startSession = (reply: FastifyReply, token: string) =>
     setSessionCookie(reply, names.session, token, config);
 
-  /** Entrega un token CSRF y fija su cookie de secreto (patrón de doble envío). */
+  /** Entrega un token CSRF firmado (HMAC) y ligado a la sesión, o a una cookie anónima si aún no hay sesión. */
   app.get(
     '/auth/csrf',
     { ...publicRoute(), schema: { tags: ['auth'], response: { 200: csrfResponseSchema } } },
-    async (_req, reply) => {
-      const token = reply.generateCsrf();
-      return reply.header('cache-control', 'no-store').send({ token });
+    async (req, reply) => {
+      // Con sesión, el token queda ligado a su id; sin ella, a una cookie anónima que se crea aquí si falta.
+      let binding = req.auth?.sessionId;
+      if (!binding) {
+        binding = req.cookies[names.csrf] || newAnonymousBinding();
+        reply.setCookie(names.csrf, binding, {
+          httpOnly: true,
+          secure: config.session.cookieSecure,
+          sameSite: 'strict',
+          path: '/',
+        });
+      }
+      return reply
+        .header('cache-control', 'no-store')
+        .send({ token: csrfToken(config.csrfSecret, binding) });
     },
   );
 
@@ -52,7 +65,7 @@ export const authRoutes: FastifyPluginAsyncZod<AuthRoutesOptions> = async (app, 
       schema: { tags: ['auth'], body: loginRequestSchema, response: { 200: sessionUserSchema } },
     },
     async (req, reply) => {
-      const { token, user } = await auth.login(req.body, client(req));
+      const { token, user } = await auth.login(req.body, client(req), req.auth?.sessionId);
       startSession(reply, token);
       return reply.header('cache-control', 'no-store').send(user);
     },
@@ -66,7 +79,7 @@ export const authRoutes: FastifyPluginAsyncZod<AuthRoutesOptions> = async (app, 
     },
     async (req, reply) => {
       if (!req.auth) throw new UnauthorizedError();
-      await auth.logout(actorOf(req), req.auth.sessionId);
+      await auth.logout(actorOf(req), req.auth.sessionId, req.auth.user.name);
       clearSessionCookie(reply, names.session, config);
       return reply.code(204).send(null);
     },

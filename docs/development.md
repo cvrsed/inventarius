@@ -2,7 +2,7 @@
 
 ## Requisitos
 
-- Node.js 26.13.1 (ver `.nvmrc`; funciona también en 24 LTS) y pnpm 12.21.0 (`corepack enable` o `npm i -g pnpm@12.21.0`).
+- Node.js 24.22.3 LTS (ver `.nvmrc`; el CI también prueba Node 26 como alerta temprana) y pnpm 12.21.0 (`corepack enable` o `npm i -g pnpm@12.21.0`).
 - Docker con Compose (Postgres, e2e y las imágenes).
 
 ## Levantar todo
@@ -80,3 +80,32 @@ de un usuario) están en `docs/operations.md`.
 (por defecto `true` solo en producción; con `true` la cookie usa el prefijo `__Host-` y exige HTTPS),
 `LOGIN_MAX_FAILURES_PER_ACCOUNT` (5), `LOGIN_MAX_FAILURES_PER_IP` (20), `LOGIN_LOCK_BASE_SECONDS` (60),
 `LOGIN_LOCK_MAX_SECONDS` (1800), `LOGIN_RATE_LIMIT_PER_MINUTE` (20), `RATE_LIMIT_MAX_PER_MINUTE` (600).
+
+`TRUSTED_PROXIES` (por defecto `loopback,uniquelocal`) y, para Caddy, `TRUSTED_PROXY_RANGES` (por defecto
+`private_ranges`) fijan de qué proxies se acepta la IP del cliente; ver `docs/security.md` y `docs/operations.md`.
+
+## Topes de BD y apagado (todos opcionales)
+
+`DB_CONNECTION_TIMEOUT_MS` (5000), `DB_STATEMENT_TIMEOUT_MS` (30000) y `DB_IDLE_IN_TRANSACTION_TIMEOUT_MS` (30000) acotan
+cada conexión de la API, el worker y el CLI (`0` = sin tope). `SHUTDOWN_TIMEOUT_MS` (10000) es el tiempo máximo del apagado
+ordenado de la API y del worker: pasado ese tope el proceso termina igual con código 1. La migración usa sus propios pools
+sin topes (puede tardar).
+
+## Etiquetas de activo (RF-20)
+
+`ASSET_TAG_PREFIX` (por defecto `INV`) fija el prefijo de las etiquetas autogeneradas: `INV-000123`. Debe tener solo
+letras y números (hasta 10). Cambiarlo no renumera los activos existentes. Agrégala a tu `.env` si quieres otro prefijo.
+
+## Fechas y moneda (RNF-05, RF-20)
+
+`APP_TIMEZONE` (por defecto `America/Santiago`, zona IANA validada al arrancar) es la zona en que la web muestra todas las
+fechas con el formato `dd-mm-aaaa HH:mm` (24 h); en la base y en la API siguen en UTC. `DEFAULT_CURRENCY` (por defecto
+`CLP`; una de `CLP USD EUR BRL ARS PEN COP MXN`) es la moneda que propone el formulario del costo de compra. La web
+lee ambas de `GET /api/v1/settings` al iniciar sesión. Ambas se pasan por `compose.yml`; agrégalas a tu `.env` si quieres
+otro valor (`.env.example` no se puede editar desde la sesión: ver Q32).
+
+## Datos de prueba de rendimiento (RNF-06)
+
+`pnpm --filter @inventarius/api exec vitest run --project int assets.perf --disableConsoleIntercept` siembra 10.000 activos
+en un Postgres 18 temporal, mide ocho consultas típicas del listado y falla si algún p95 supera 300 ms. Imprime la tabla de
+tiempos al terminar.

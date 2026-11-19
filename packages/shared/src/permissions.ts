@@ -4,6 +4,7 @@ export const PERMISSIONS = [
   'asset:write',
   'asset:checkout',
   'asset:delete',
+  'asset:restore',
   'catalog:write',
   'lorawan:read',
   'lorawan:register',

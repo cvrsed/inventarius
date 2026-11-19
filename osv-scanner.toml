@@ -20,3 +20,8 @@ reason = "minimatch transitivo de herramientas de dev; sin entrada no confiable"
 id = "GHSA-g7r4-m6w7-qqqr"
 ignoreUntil = 2027-02-16
 reason = "esbuild 0.27.7 transitivo de @nuxt/ui > @nuxt/fonts > fontless; solo el servidor de desarrollo en Windows, y el plugin de fuentes no se usa"
+
+[[IgnoredVulns]]
+id = "GHSA-fc5q-39xc-vjpf"
+ignoreUntil = 2027-02-16
+reason = "picomatch 2.3.2 y 4.0.7 (ReDoS con extglobs repetidos): lo usan Vite, Vitest y otras herramientas de build con patrones fijos del repo, sin entrada de usuarios; sin versión corregida aún"

@@ -4,7 +4,7 @@
 - Fecha: 2026-11-16
 
 ## Contexto
-La propuesta inicial (Carlos, Zensi) fue Vue + Volt. Volt no se instala como librería: cada componente es un
+La propuesta inicial (el proveedor del stack sugerido) fue Vue + Volt. Volt no se instala como librería: cada componente es un
 wrapper sobre PrimeVue sin estilos, con clases Tailwind, que se copia al repositorio con su CLI y desde ahí
 pasa a ser código propio.
 

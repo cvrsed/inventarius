@@ -3,7 +3,7 @@ import { Pool } from 'pg';
 
 /** Misma imagen (por digest) que usa `compose.yml`. */
 export const POSTGRES_IMAGE =
-  'postgres:18@sha256:2ea8630df176ad090ec92136dee850397c5af8781e4bcf2e4162593691c61bbc';
+  'postgres:18-trixie@sha256:2ea8630df176ad090ec92136dee850397c5af8781e4bcf2e4162593691c61bbc';
 
 export interface TestDatabase {
   container: StartedPostgreSqlContainer;

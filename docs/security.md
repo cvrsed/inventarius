@@ -11,17 +11,77 @@ Referencia: sección 10 del requerimiento. Este documento crece por fase; aquí 
 
 ## Sesiones
 
-- Token aleatorio de 256 bits en cookie `HttpOnly`, `SameSite=Strict`, `Secure` y prefijo `__Host-` (producción).
-- En la BD solo se guarda el SHA-256 del token. Cada login crea una sesión nueva (rotación).
+- Token aleatorio de 256 bits en cookie `HttpOnly` y `SameSite=Strict`, sin `Max-Age` (cookie de sesión del navegador).
+- `Secure` y el prefijo `__Host-` se activan **solo en producción** (o con `SESSION_COOKIE_SECURE=true`). Motivo: los
+  navegadores rechazan las cookies `Secure` y `__Host-` sin HTTPS, y en desarrollo local y en la red interna de Compose
+  (e2e) se llega por HTTP. En producción el túnel hacia Internet termina TLS, por lo que se exige.
+- En la BD solo se guarda el SHA-256 del token. Cada login crea una sesión nueva (rotación) y **revoca en la misma
+  transacción la sesión previa que traía la cookie**; un login fallido no revoca nada.
 - Expiración inactiva (8 h por defecto) y absoluta (24 h). Se invalidan al desactivar al usuario, al resetear o cambiar
   su contraseña, y al cambiar su correo. Las vencidas se purgan cada hora (job de pg-boss).
 
 ## CSRF, fuerza bruta y límites
 
-- Token CSRF de doble envío (`@fastify/csrf-protection`) en toda petición que cambia estado, además de `SameSite=Strict`.
+- Token CSRF firmado: HMAC-SHA256, con el secreto `CSRF_SECRET` (obligatorio en producción, mínimo 32 caracteres), del id
+  de la sesión; antes del login, de una cookie anónima aleatoria. Se envía en la cabecera `x-csrf-token` y se valida en
+  todo método no seguro de `/api/v1`, incluido el login, antes de validar el cuerpo. Un token válido de otra sesión, o el
+  anterior al login, se rechaza (403). Se complementa con `SameSite=Strict`.
 - Bloqueo progresivo por cuenta (5 fallos) y por IP (20), con tope; las claves no revelan si la cuenta existe y la respuesta
   de error es idéntica para cuenta inexistente o contraseña incorrecta (se iguala también el tiempo de hash).
 - Rate limit global por IP y específico en el login.
+
+## IP del cliente (proxies de confianza)
+
+La IP que queda en la auditoría y que usan el bloqueo por IP y el rate limit es la del **cliente real**, sin que
+nadie pueda falsearla con una cabecera:
+
+- Fastify solo cree en `X-Forwarded-For` cuando la conexión viene de un proxy de la lista `TRUSTED_PROXIES` (IP, CIDR o
+  `loopback`/`linklocal`/`uniquelocal`, separados por coma; valor por defecto `loopback,uniquelocal`: localhost y las
+  redes privadas de Compose). De cualquier otro origen se usa la IP del socket y la cabecera se ignora. Una lista
+  vacía desactiva la confianza. En producción conviene acotarla a la IP de Caddy.
+- Caddy (el proxy de producción) solo acepta las cabeceras de IP de quien conecte desde `TRUSTED_PROXY_RANGES`
+  (por defecto `private_ranges`) y prefiere `CF-Connecting-IP` (túnel de cloudflared) sobre `X-Forwarded-For`; de un
+  origen no confiable las descarta y reenvía a la API la IP del socket.
+- En desarrollo el proxy de Vite añade `X-Forwarded-For` (`xfwd`).
+- Test: `trusted-proxy.int.test.ts` comprueba que una petición con `X-Forwarded-For` falso desde un origen no confiable
+  registra la IP del socket, y que desde el proxy conocido se registra la del cliente.
+- Requisito: la API no debe ser alcanzable desde fuera sin pasar por el proxy (en Compose de producción no publica puertos).
+
+## Barrido de información sensible (2026-11-17)
+
+Alcance: el árbol actual y **todo el historial** (todas las ramas, 105 commits, también autores y mensajes) con las reglas de
+`.gitleaks.toml` (por defecto + IPs 192.168/16 y 10/8, dominios reales, hex de 16/32 caracteres) y con búsquedas de nombres de
+infraestructura, clientes y correos. No se reescribió historial ni se borró nada; esto es el reporte y mi recomendación. Los
+hallazgos históricos ya revisados están en `.gitleaksignore` para que el CI no falle por ellos.
+
+Resultado: **ninguna credencial, DevEUI, JoinEUI ni AppKey real**; ningún secreto en código, tests, fixtures ni mensajes de commit.
+Sí hay información de infraestructura y de terceros, casi toda en `docs/requirements.md`.
+
+| #   | Hallazgo                                                                                                                                                | Dónde (archivo, commit)                                                                                                      | Qué es                                                                                                                 | Estado y recomendación                                                                                                                                                                                                                                                                               |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Dominio real de producción (3 apariciones)                                                                                                              | `docs/requirements.md` líneas 9, 481 y 558 del commit `a996fb5d` (documento original)                                        | Dominio de la app y de su despliegue                                                                                   | **Corregido en el árbol** (sección 12 y menciones de las secciones 1 y 8 ahora genéricas). Queda en el historial: **no reescribir**; un dominio público no es secreto, solo da contexto.                                                                                                             |
+| 2   | Rango de red local con máscara (1)                                                                                                                      | `docs/requirements.md` línea 550 del commit `a996fb5d`                                                                       | Subred interna del homelab en la regla de firewall de la VM                                                            | **Corregido en el árbol.** Queda en el historial; riesgo bajo (RFC 1918, sin ruta desde Internet). Reescribir solo si el repo pasa a ser público.                                                                                                                                                    |
+| 3   | Nombres de infraestructura: nombre del túnel, ID del contenedor de cloudflared, nombre del host de virtualización, monitor externo y monitoreo previsto | `docs/requirements.md` líneas 248-249, 269, 278-279, 515, 550, 660, 672 (árbol actual) y `docs/adr/0001-monolito-modular.md` | Nombres de VM/CT y de servicios del homelab                                                                            | **Corregido** en `docs/requirements.md` y en los ADR (descripciones por rol). Queda en el historial; no reescribir.                                                                                                                                                                                  |
+| 4   | Nombre de la empresa cliente, de una persona del cliente y de otro repositorio del homelab                                                              | `docs/requirements.md` líneas 293, 298, 313, 550, 655, 667; `docs/adr/0003-ui-primevue-styled.md`                            | Identifica al cliente y a quien propuso el stack                                                                       | **Corregido** en `docs/requirements.md` y en los ADR («el cliente», «el proveedor del stack sugerido»). Queda en el historial; no reescribir.                                                                                                                                                        |
+| 5   | Correo personal en metadatos de commit                                                                                                                  | Commits de merge `ce63b76` y `5c425e0` (PR #1 y #2, hechos desde la web de GitHub)                                           | El autor de esos 2 merges usa un correo personal (dominio gmail) en lugar del `noreply` que usan los otros 103 commits | **No reescribir** (rompería los PR). Activar «Keep my email addresses private» y «Block command line pushes that expose my email» en GitHub, para que no se repita.                                                                                                                                  |
+| 6   | IPs `10.x.x.x` en tests (≈40 apariciones en 17 archivos de `apps/api` y `AuditPage.test.ts`)                                                            | Archivos `*.test.ts` y `apps/api/test/app.ts`                                                                                | IPs de cliente **inventadas** para probar el bloqueo por IP y la lista de proxies; no son de la red real               | **Aceptado.** Las pruebas de rango privado necesitan IPs privadas y las de bloqueo, IPs distintas. Si se quiere uniformar, migrar a `192.0.2.0/24` donde no se pruebe «privado». La allowlist de tests cubre todas las reglas (limitación de gitleaks 8.24: no admite excepciones por regla y ruta). |
+| 7   | Hex de 32 caracteres en `pnpm-lock.yaml` (2)                                                                                                            | `pnpm-lock.yaml`                                                                                                             | Hashes de integridad, no claves                                                                                        | Falso positivo: archivo en la allowlist.                                                                                                                                                                                                                                                             |
+| 8   | Nombres de equipos reales: SDM530-LR                                                                                                                    | `docs/requirements.md` D2 y fixtures de modelo                                                                               | Modelo de medidor comercial                                                                                            | Información de producto, no sensible. Sin acción.                                                                                                                                                                                                                                                    |
+
+Sin hallazgos en: mensajes de commit, `compose*.yml`, `deploy/`, `scripts/`, `.github/`, `.env.example`, fixtures de e2e.
+
+Cómo repetirlo: `pnpm gitleaks` (historial completo), `scripts/gitleaks.sh staged` (lo que se va a commitear) y
+`pnpm test:gitleaks` (comprueba que cada regla salta y que los fixtures inventados de `e2e/` y `*.test.ts` no).
+
+## Topes de BD, apagado y cadena de suministro
+
+- Cada conexión de la API, el worker y el CLI lleva `connectionTimeoutMillis` (5 s), `statement_timeout` (30 s) e
+  `idle_in_transaction_session_timeout` (30 s), configurables con `DB_CONNECTION_TIMEOUT_MS`, `DB_STATEMENT_TIMEOUT_MS` y
+  `DB_IDLE_IN_TRANSACTION_TIMEOUT_MS` (`0` = sin tope). Tests: `apps/api/src/core/db/timeouts.int.test.ts`.
+- El apagado ordenado de la API y del worker tiene un tope (`SHUTDOWN_TIMEOUT_MS`, 10 s): pasado, el proceso termina igual
+  con código 1 (`apps/api/src/core/shutdown.ts`).
+- Las acciones de GitHub del CI van fijadas por SHA de commit con la versión en comentario; un script del CI falla si alguna
+  no lo está y Renovate las actualiza agrupadas.
 
 ## Autorización
 
@@ -36,6 +96,20 @@ Referencia: sección 10 del requerimiento. Este documento crece por fase; aquí 
   entidad, diff) en la misma transacción que el cambio. Nunca se guardan contraseñas ni hashes en el diff.
 - Append-only: el usuario de BD de la aplicación no tiene `UPDATE`, `DELETE` ni `TRUNCATE` sobre la tabla (verificado en test).
 
+## Inventario (F2)
+
+- **Permisos por ruta:** lectura de activos y catálogo con `asset:read`; escritura de activos `asset:write`; asignar y devolver
+  `asset:checkout`; baja `asset:delete`; restaurar `asset:restore` (solo Administrador); catálogo `catalog:write`. El test de
+  permisos por rol recorre todas las rutas nuevas y falla si alguna no declara su acceso.
+- **Exportación CSV (RF-26):** exige `asset:read`, nunca incluye claves ni secretos y neutraliza las celdas que empiezan con
+  `=`, `+`, `-`, `@`, tab o retorno (inyección de fórmulas al abrir en una planilla). Respuesta con `Cache-Control: no-store`.
+- **Búsqueda y orden:** los comodines `%` y `_` del texto buscado se escapan; el orden solo acepta columnas de una lista
+  blanca (nunca se interpola texto del usuario en `ORDER BY`).
+- **Concurrencia:** `PATCH` con `If-Match`; la asignación bloquea la fila del activo y un índice único parcial impide dos
+  asignaciones abiertas del mismo activo.
+- **Datos personales:** `GET /assignees` entrega solo id y nombre (no correo) de usuarios activos, a quien puede asignar.
+- **Auditoría:** toda escritura de catálogo y activos queda en `audit_log` dentro de la misma transacción (RF-30).
+
 ## Excepciones de vulnerabilidades
 
 Cada hallazgo que el CI ignora está aquí, con motivo y fecha de revisión. Al vencer la fecha el CI vuelve a fallar
@@ -48,6 +122,7 @@ Cada hallazgo que el CI ignora está aquí, con motivo y fecha de revisión. Al 
 | `minimatch` 5.1.9, 9.0.9 y 10.2.6 (vía `archiver`, `typescript-eslint`, `js-beautify`)             | GHSA-g3hv-75wg-m249 (CVE-2026-118764) | Media           | Denegación de servicio con patrones glob malintencionados. Los patrones vienen de la configuración del propio repositorio, nunca de entrada de usuarios; solo herramientas de desarrollo.                                            | Sí, 11.0.1; los paquetes padre aún no lo adoptan                                           | 2027-02-16                                                                  |
 | `esbuild` 0.27.7 (vía `@nuxt/ui` → `@nuxt/fonts` → `fontless`)                                     | GHSA-g7r4-m6w7-qqqr                   | Baja (CVSS 2,5) | Lectura arbitraria de archivos solo en el servidor de desarrollo de esbuild **en Windows**. Es una dependencia de build de la UI: el modo Vue + Vite de Nuxt UI no activa el plugin de fuentes y no entra a las imágenes de runtime. | Sí, 0.28.1; `fontless` aún no lo adopta                                                    | 2027-02-16                                                                  |
 | `golang.org/x/net` 0.60.0 (dentro de Caddy 2.11.9, imagen `web`)                                   | CVE-2026-78661                        | Alta            | Está en el parser `net/html`; Caddy solo sirve estáticos y hace proxy a la API y no parsea HTML de terceros.                                                                                                                         | Sí, `x/net` 0.62.0, pero la imagen oficial de Caddy (2.11.9, 2026-11-13) aún no lo incluye | **2026-12-16** ([issue #3](https://github.com/cvrsed/inventarius/issues/3)) |
+| `stdlib` de Go 1.27.3 (dentro de Caddy 2.11.9, imagen `web`)                                       | CVE-2026-97054                        | Alta            | Un servidor HTTP/1 que supera el límite de `http.MaxBytesReader` no cierra la conexión como debería. Caddy solo sirve estáticos y hace proxy, y no configura `request_body max_size`, así que no usa `MaxBytesReader`.               | Sí, Go 1.27.4 (o 1.26.11), pero la imagen oficial de Caddy 2.11.9 aún no lo incluye        | **2026-12-16** ([issue #3](https://github.com/cvrsed/inventarius/issues/3)) |
 
 Configuración: `osv-scanner.toml` (las cuatro primeras) y `.trivyignore` (la última). Q11 y Q22 en `docs/open-questions.md`.
 

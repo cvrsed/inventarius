@@ -6,7 +6,7 @@ Nov 16, 2026 · @Yatto · Estado: borrador v0.1
 
 **Inventarius** es una aplicación web de inventario de activos (estilo Snipe-IT), construida desde cero, simple y modular. Su diferencia: los activos de tipo **dispositivo LoRaWAN** se pueden registrar directamente en un Network Server (**ChirpStack v4** o **The Things Stack / TTN v3**) desde la ficha del activo, usando conexiones configuradas previamente como **perfiles LNS** dentro de la app.
 
-Despliegue inicial: `inventarius.supporti.cl` (homelab pve-z420). Requisito de diseño: debe poder migrarse sin cambios de código a otra infraestructura (por ejemplo, servidores de Zensi), solo cambiando configuración.
+Despliegue inicial: una VM de producción detrás de un túnel hacia Internet (ver sección 12). Requisito de diseño: debe poder migrarse sin cambios de código a otra infraestructura (por ejemplo, servidores del cliente), solo cambiando configuración.
 
 ### Objetivos del MVP
 
@@ -18,7 +18,7 @@ Despliegue inicial: `inventarius.supporti.cl` (homelab pve-z420). Requisito de d
 
 ### Fuera de alcance del MVP
 
-- Licencias de software, consumibles, accesorios y componentes (módulos de Snipe-IT que vienen después).
+- Licencias de software, accesorios y componentes (módulos de Snipe-IT que vienen después). Los consumibles entran en la fase F3.5.
 - Campos personalizados genéricos por categoría (el MVP solo trae la extensión LoRaWAN fija).
 - Activación ABP, registro masivo, sincronización bidireccional con el LNS, lectura de uplinks o telemetría.
 - Modo offline, app nativa, SSO/LDAP, API tokens para terceros, multiempresa.
@@ -41,7 +41,7 @@ Todo lo que salió, clasificado con MoSCoW. **Must** = MVP. **Should** = entra s
 | Búsqueda y filtros en listados, paginación del lado servidor | Must |  |
 | Etiqueta con QR por activo e impresión | Should | Clave para terreno |
 | Escanear QR con la cámara para abrir la ficha | Should |  |
-| Importación CSV de activos LoRaWAN (DevEUI, JoinEUI, AppKey) | Should | Lotes de medidores |
+| Importación CSV de datos LoRaWAN por número de serie (DevEUI, JoinEUI, AppKey) | Must (F3) | Lotes de medidores: se dan de alta en lote (RF-27) y los datos LoRaWAN se completan por CSV (RF-66) |
 | 2FA TOTP para usuarios administradores | Should |  |
 | Registro masivo en LNS desde un lote importado | Could |  |
 | Verificación de estado contra el LNS (último visto, joined) | Could |  |
@@ -50,6 +50,7 @@ Todo lo que salió, clasificado con MoSCoW. **Must** = MVP. **Should** = entra s
 | Mantenimientos y garantías con alertas | Could |  |
 | API tokens con alcance para integraciones (n8n, GLPI) | Could |  |
 | Dashboard de resumen | Could |  |
+| Consumibles por cantidad (EPP, etc.): ingreso a bodega, entrega, stock y mínimo | Must (F3.5) | Fase propia después de F3 (RF-70 a RF-74) |
 | Modo offline en terreno | Won't por ahora | Complejidad alta (sincronización, conflictos) |
 | SSO (OIDC), LDAP | Won't por ahora | Se deja la capa de auth desacoplada |
 | Otros LNS (Loriot, Actility, Helium) | Won't por ahora | Entran como nuevos adaptadores |
@@ -96,19 +97,20 @@ Cada requerimiento tiene ID para trazarlo en issues, commits y tests (`RF-xx`).
 
 - **RF-10** CRUD de **categorías** (nombre, tipo de extensión: `ninguna` | `lorawan`).
 - **RF-11** CRUD de **fabricantes** y **modelos** (nombre, número de modelo, fabricante, categoría). En modelos LoRaWAN: clase por defecto (A/B/C), versión LoRaWAN y regional parameters por defecto.
-- **RF-12** CRUD de **ubicaciones** jerárquicas (ej.: Cliente > Edificio > Piso > Sala) con dirección opcional.
+- **RF-12** CRUD de **ubicaciones** jerárquicas (ej.: Cliente > Edificio > Piso > Sala) con dirección opcional y **tipo** (bodega, sitio de cliente, oficina u otro). Las bodegas guardan equipos; los demás tipos son lugares donde un equipo se instala o se usa.
 - **RF-13** CRUD de **estados** con tipo: `desplegable`, `pendiente`, `no desplegable`, `archivado`. Semilla: Disponible, Asignado, En reparación, Dañado, Dado de baja.
 - **RF-14** No se puede borrar un elemento del catálogo en uso; se puede desactivar.
 
 ### 4.3 Activos
 
-- **RF-20** Alta de activo: etiqueta (asset tag, única, autogenerable con prefijo configurable), nombre, modelo, número de serie, estado, ubicación, fecha y costo de compra, proveedor, garantía (meses), notas.
-- **RF-21** Si la categoría del modelo es `lorawan`, la ficha agrega la sección LoRaWAN (ver 5.2), con validación de formato y unicidad de DevEUI.
+- **RF-20** Alta de activo: etiqueta (asset tag, única, autogenerable con prefijo configurable), nombre, modelo, número de serie, estado, **ubicación base** (la bodega donde vive; la ubicación actual parte igual a ella), fecha y costo de compra (con moneda, CLP por defecto y configurable), proveedor, garantía (meses), notas.
+- **RF-21** Si la categoría del modelo es `lorawan`, la ficha agrega la sección LoRaWAN (ver 5.2), con validación de formato y unicidad de DevEUI. **Los datos LoRaWAN son opcionales al crear el activo** (se pueden completar después, a mano o por CSV, RF-66); son obligatorios solo al **registrar en el LNS** (RF-60), que es lo que valida F3.
 - **RF-22** Listado con búsqueda de texto (etiqueta, nombre, serie, DevEUI), filtros (categoría, modelo, estado, ubicación, asignado a, estado LNS), orden y paginación del lado servidor. Los filtros quedan en la URL (compartibles).
-- **RF-23** Check-out a usuario o a ubicación, con fecha esperada de devolución opcional y nota; check-in con nota y nuevo estado. Solo activos en estado `desplegable` pueden asignarse.
+- **RF-23** Check-out a usuario o a ubicación, con fecha esperada de devolución opcional y nota; check-in con nota, nuevo estado y **«Devolver a»** (obligatorio, solo bodegas, precargado con la ubicación base). Al asignar a un usuario la ubicación actual queda vacía (la ficha muestra «Con <persona>»); a una ubicación solo se asigna a sitios que no sean bodega (equipo instalado). Solo activos en estado `desplegable` pueden asignarse.
 - **RF-24** Historial por activo: línea de tiempo con creación, cambios de campos (antes/después), asignaciones y operaciones LNS.
 - **RF-25** Baja lógica (soft delete) con motivo; restaurable por un administrador.
 - **RF-26** Exportación CSV del listado filtrado (sin claves).
+- **RF-27** Alta en lote de activos: modelo, cantidad (1 a 500), bodega base, estado (por defecto el estado semilla «Pendiente de configuración», tipo `pendiente`) y lista opcional de números de serie (uno por línea; si se entrega, la cantidad debe coincidir). Crea los N activos en una sola transacción con etiquetas correlativas, un evento de historial por activo y un único registro de auditoría del lote. Rechaza series repetidas en la lista o que ya existan en la base. Pantalla propia, accesible desde «Nuevo activo», usable desde 360 px.
 
 ### 4.4 Auditoría
 
@@ -120,6 +122,16 @@ Cada requerimiento tiene ID para trazarlo en issues, commits y tests (`RF-xx`).
 - **RF-40** Todas las vistas usables desde 360 px de ancho. En móvil: navegación inferior o menú colapsable, listados como tarjetas, acciones principales al alcance del pulgar.
 - **RF-41** Ficha de activo optimizada para terreno: datos clave arriba, botones Asignar, Cambiar estado y Registrar en LNS visibles sin scroll.
 - **RF-42** PWA instalable (manifest e íconos). Sin modo offline en el MVP: si no hay red, se muestra un aviso claro.
+
+### 4.6 Consumibles (fase F3.5)
+
+Ítems que se manejan por **cantidad** y no uno a uno (p. ej. EPP: guantes, cascos). Van en una fase propia después de F3.
+
+- **RF-70** CRUD de **consumibles**: nombre, categoría, unidad de medida y **stock mínimo** (global o por bodega). Un consumible en uso no se borra, solo se desactiva.
+- **RF-71** **Ingreso a bodega**: suma cantidad a una bodega con fecha, proveedor opcional y nota.
+- **RF-72** **Entrega a una persona**: descuenta de una bodega y deja constancia de quién recibió, cuánto y cuándo; no permite entregar más que el stock de esa bodega.
+- **RF-73** **Stock por bodega**: cantidad disponible de cada consumible en cada bodega, derivada del libro de movimientos (ingresos, entregas, ajustes), con historial por consumible.
+- **RF-74** **Stock mínimo**: aviso visible (listado e Inicio) cuando el stock de un consumible queda por debajo de su mínimo.
 
 ## 5. Integración LoRaWAN
 
@@ -141,7 +153,7 @@ Un **perfil LNS** es una conexión guardada a un Network Server más los valores
 
 ### 5.2 Datos LoRaWAN del activo
 
-Extensión 1:1 del activo: **DevEUI** (16 hex, único), **JoinEUI / AppEUI** (16 hex), **AppKey** (32 hex, cifrada), **NwkKey** (32 hex, cifrada, solo LoRaWAN 1.1), activación (`OTAA` en el MVP), clase, versión LoRaWAN, región. Los hex se normalizan a mayúsculas sin separadores.
+Extensión 1:1 del activo: **DevEUI** (16 hex, único), **JoinEUI / AppEUI** (16 hex), **AppKey** (32 hex, cifrada), **NwkKey** (32 hex, cifrada, solo LoRaWAN 1.1), activación (`OTAA` en el MVP), clase, versión LoRaWAN, región. Los hex se normalizan a mayúsculas sin separadores. Todos son opcionales mientras el activo no se registre en el LNS: el alta (incluida el alta en lote, RF-27) no los exige; el registro (RF-60) exige DevEUI, JoinEUI, AppKey (y NwkKey en 1.1) y los valida antes de encolar el job.
 
 ### 5.3 Registro y baja
 
@@ -151,6 +163,7 @@ Extensión 1:1 del activo: **DevEUI** (16 hex, único), **JoinEUI / AppEUI** (16
 - **RF-63** **Reintentar** desde `error` o `parcial`. Reintentos automáticos con backoff solo para errores transitorios (timeout, 5xx, `UNAVAILABLE`); los 4xx / `INVALID_ARGUMENT` / `ALREADY_EXISTS` no se reintentan.
 - **RF-64** Idempotencia: antes de crear se consulta si el DevEUI ya existe en el destino. Si existe y no fue creado por Inventarius, el job termina en `conflicto` y ofrece **Vincular** (tomarlo como registrado sin tocarlo) o cancelar.
 - **RF-65** Un activo solo puede estar registrado en un perfil a la vez en el MVP.
+- **RF-66** **Importación CSV de datos LoRaWAN por número de serie** (F3): el archivo trae `serial`, DevEUI, JoinEUI y AppKey (más opcionales: NwkKey, clase, versión, región). Cada fila se asocia al activo que tiene ese número de serie, con vista previa y errores por fila (serie inexistente o repetida, formato, DevEUI duplicado) antes de confirmar. Se aplica en una transacción y deja un registro de auditoría; las claves no se escriben en logs ni en la auditoría.
 
 ### 5.4 Pasos por proveedor
 
@@ -232,9 +245,9 @@ Los adaptadores se prueban contra dobles (fake gRPC server y mock HTTP) en CI, y
 | RNF-04 | Patrones de UX | Estados vacíos, de carga (skeleton) y de error en cada vista. Confirmación solo en acciones destructivas. Feedback de cada acción (toast). Mensajes de error accionables, sin jerga técnica. |
 | RNF-05 | Idioma | Español (Chile) por defecto; todo texto pasa por i18n desde el día 1 para poder agregar inglés. Fechas en zona horaria configurable (por defecto `America/Santiago`), guardadas en UTC. |
 | RNF-06 | Rendimiento | API p95 < 300 ms en lecturas con 10.000 activos; listados siempre paginados (máx. 100 por página). Bundle inicial del frontend < 250 KB gzip; rutas con carga diferida. |
-| RNF-07 | Disponibilidad | Objetivo homelab: reinicio automático de contenedores, arranque sin intervención tras reboot del host. Sin HA en el MVP. |
-| RNF-08 | Portabilidad | Toda configuración por variables de entorno (12-factor). Sin dominio, IP ni ruta del homelab escritos en código. Despliegue completo con `docker compose up` + migraciones. Guía de instalación en `docs/`. |
-| RNF-09 | Versiones trabadas | Lockfile commiteado, dependencias con versión exacta, Node y pnpm fijados, imágenes Docker fijadas por digest. Actualizaciones solo vía PR (Renovate) con CI en verde. |
+| RNF-07 | Disponibilidad | Objetivo de infraestructura propia: reinicio automático de contenedores, arranque sin intervención tras reboot del host. Sin HA en el MVP. |
+| RNF-08 | Portabilidad | Toda configuración por variables de entorno (12-factor). Sin dominio, IP ni ruta de la infraestructura escritos en código. Despliegue completo con `docker compose up` + migraciones. Guía de instalación en `docs/`. |
+| RNF-09 | Versiones trabadas | Lockfile commiteado, dependencias con versión exacta, Node y pnpm fijados, imágenes Docker fijadas por digest y acciones de GitHub fijadas por SHA de commit (versión en comentario; lo verifica `scripts/check-actions-pinned.mjs`). Actualizaciones solo vía PR (Renovate) con CI en verde. |
 | RNF-10 | Versionamiento | SemVer para la app, Conventional Commits, CHANGELOG generado, tags `vX.Y.Z` e imágenes etiquetadas con la misma versión. Esquema de BD versionado por migraciones. API bajo prefijo `/api/v1`. |
 | RNF-11 | Calidad de código | TypeScript estricto en todo el repo, ESLint + Prettier, sin `any` implícito, módulos con límites claros, funciones pequeñas, comentarios donde explican el porqué (no el qué). |
 | RNF-12 | Pruebas | Cobertura mínima 80 % en dominio y servicios del backend, 70 % global. Tests de integración contra Postgres real (contenedor). E2E de los flujos críticos en escritorio y móvil. |
@@ -253,7 +266,7 @@ Reglas de módulos: cada módulo expone un plugin Fastify (rutas) y un servicio 
 ```mermaid
 flowchart LR
     U[Usuario<br/>navegador o celular] --> CF[Cloudflare<br/>DNS + Access opcional]
-    CF --> T[Tunnel supporti-home<br/>cloudflared en CT102]
+    CF --> T[Túnel hacia Internet<br/>cloudflared]
     T --> C
     subgraph VM[VM inventarius - Docker Compose]
         C[Caddy<br/>sirve SPA y proxya /api] --> A[API Fastify]
@@ -262,27 +275,27 @@ flowchart LR
     end
     W --> TTN[TTN / The Things Stack<br/>REST]
     W --> CS[ChirpStack v4<br/>gRPC]
-    K[Uptime Kuma GCP] -.-> CF
-    M[Prometheus / Zabbix<br/>futuro] -.-> A
+    K[Monitoreo externo] -.-> CF
+    M[Monitoreo centralizado<br/>futuro] -.-> A
 ```
 
 SPA y API se sirven en el **mismo origen** (`/` y `/api`): cookies de sesión sin CORS ni tokens en el navegador.
 
 ### 7.2 Stack y versiones
 
-Regla: se fija la versión exacta en la Fase 0 con el lockfile y se registra en `docs/adr/0002-stack.md`. Lo de abajo es la línea base.
+Regla: se fija la versión exacta en la Fase 0 con el lockfile y se registra en `docs/adr/0002-stack.md`. Política de bases: Node 24 LTS y Debian 13 (trixie) con la variante explícita y fijadas por digest; las excepciones (Caddy en Alpine, Playwright en Ubuntu solo para pruebas) están justificadas en `docs/adr/0006-version-de-runtime-y-bases-debian.md`. Lo de abajo es la línea base.
 
 | Capa | Elección | Motivo |
 | --- | --- | --- |
-| Runtime | Node.js 26 LTS (CI también en 24 LTS como respaldo) | 26 pasó a LTS en octubre 2026, soporte hasta abril 2029; 24 queda hasta abril 2028 |
+| Runtime | Node.js 24 LTS (24.22.3; imagen `node:24-trixie-slim`, Debian 13; CI también en 26 como alerta temprana de compatibilidad) | Política de versiones de la organización: Node 24 LTS (soporte hasta abril 2028); ver ADR 0006 |
 | Gestor de paquetes | pnpm (fijado con `packageManager` + corepack), workspaces | Monorepo, lockfile estricto |
 | Lenguaje | TypeScript estricto en front, back y paquete compartido | Tipos de punta a punta |
-| Frontend | Vue 3 (Composition API, `<script setup>`), Vite, Vue Router, Pinia, vue-i18n, TanStack Query (Vue) | Recomendación de Carlos (Zensi) + caché y estados de carga sin código repetido |
-| UI | Nuxt UI v4 (MIT) en modo Vue + Vite, sin Nuxt (`@nuxt/ui/vite`), tema propio por design tokens; Tailwind CSS v4 solo para layout; íconos Lucide (`@iconify-json/lucide`) empaquetados en el build | Reemplaza a Volt, propuesto por Carlos, y a PrimeVue, que desde la v5 exige licencia con clave (ver 7.3 y ADR 0004) |
-| Backend | Fastify 5.x con `fastify-type-provider-zod`, `@fastify/helmet`, `@fastify/rate-limit`, `@fastify/cookie`, `@fastify/csrf-protection`, `@fastify/swagger`, `@fastify/under-pressure` | Recomendación de Carlos; Fastify 6 sigue en alpha, no se usa |
+| Frontend | Vue 3 (Composition API, `<script setup>`), Vite, Vue Router, Pinia, vue-i18n, TanStack Query (Vue) | Recomendación del proveedor del stack sugerido + caché y estados de carga sin código repetido |
+| UI | Nuxt UI v4 (MIT) en modo Vue + Vite, sin Nuxt (`@nuxt/ui/vite`), tema propio por design tokens; Tailwind CSS v4 solo para layout; íconos Lucide (`@iconify-json/lucide`) empaquetados en el build | Reemplaza a Volt, propuesto por el proveedor del stack sugerido, y a PrimeVue, que desde la v5 exige licencia con clave (ver 7.3 y ADR 0004) |
+| Backend | Fastify 5.x con `fastify-type-provider-zod`, `@fastify/helmet`, `@fastify/rate-limit`, `@fastify/cookie`, `@fastify/swagger`, `@fastify/under-pressure` | Recomendación del proveedor del stack sugerido; Fastify 6 sigue en alpha, no se usa |
 | Validación | Zod en `packages/shared`, mismo esquema en API y formularios | Una sola fuente de verdad |
 | Contrato API | OpenAPI 3.1 generado desde las rutas; cliente del front tipado generado desde ese OpenAPI | El front no puede desalinearse de la API |
-| Base de datos | PostgreSQL 18 | Recomendación de Carlos |
+| Base de datos | PostgreSQL 18 (18.7; imagen `postgres:18-trixie`, Debian 13) | Recomendación del proveedor del stack sugerido |
 | ORM / migraciones | Drizzle ORM + drizzle-kit (migraciones SQL versionadas en el repo) | SQL explícito, tipos, migraciones revisables |
 | Cola de jobs | pg-boss (sobre el mismo Postgres); primer uso: purga horaria de sesiones vencidas | Sin Redis: un servicio menos |
 | Cliente ChirpStack | `@chirpstack/chirpstack-api` + `@grpc/grpc-js` | Cliente oficial, gRPC recomendado |
@@ -297,7 +310,7 @@ Regla: se fija la versión exacta en la Fase 0 con el lockfile y se registra en 
 
 Se registra como `docs/adr/0004-ui-nuxt-ui-v4.md`, que reemplaza a `docs/adr/0003-ui-primevue-styled.md`.
 
-**Contexto.** Carlos (Zensi) propuso Vue + Volt; Volt copia los componentes al repositorio, por lo que pasan a ser código propio. La primera respuesta fue PrimeVue en modo styled (ADR 0003). Desde la versión 5, PrimeVue y todo PrimeTek (incluido Volt) exigen una licencia con clave: la versión gratuita solo cubre organizaciones chicas y se renueva cada año. Eso choca con RNF-08 (portabilidad a otras organizaciones).
+**Contexto.** El proveedor del stack sugerido propuso Vue + Volt; Volt copia los componentes al repositorio, por lo que pasan a ser código propio. La primera respuesta fue PrimeVue en modo styled (ADR 0003). Desde la versión 5, PrimeVue y todo PrimeTek (incluido Volt) exigen una licencia con clave: la versión gratuita solo cubre organizaciones chicas y se renueva cada año. Eso choca con RNF-08 (portabilidad a otras organizaciones).
 
 **Decisión.** Usar Nuxt UI v4 (MIT) en modo Vue + Vite, sin Nuxt, instalado por npm, con el tema propio por design tokens en `apps/web/src/theme`. Tailwind v4 se mantiene para layout y espaciado. Los íconos son Lucide, empaquetados en el build: nunca se piden en runtime a otro dominio, para mantener una CSP estricta.
 
@@ -342,7 +355,8 @@ erDiagram
         text serial
         uuid model_id FK
         uuid status_id FK
-        uuid location_id FK
+        uuid location_id FK "ubicación actual"
+        uuid base_location_id FK "bodega base"
         uuid assigned_user_id FK
         uuid assigned_location_id FK
         date purchase_date
@@ -465,19 +479,19 @@ inventarius/
 | Área | Control |
 | --- | --- |
 | Contraseñas | argon2id con parámetros OWASP vigentes; mínimo 12 caracteres; chequeo contra lista de contraseñas comunes. |
-| Sesiones | ID aleatorio guardado en Postgres (hash), cookie `HttpOnly`, `Secure`, `SameSite=Strict`, prefijo `__Host-`; rotación del ID al hacer login; expiración absoluta e inactiva; invalidación al desactivar usuario o cambiar contraseña. |
-| CSRF | Token doble (`@fastify/csrf-protection`) en toda petición que modifica estado, además de `SameSite=Strict`. |
+| Sesiones | ID aleatorio guardado en Postgres (hash), cookie `HttpOnly` y `SameSite=Strict`; `Secure` y prefijo `__Host-` en producción (con HTTPS) y desactivables con `SESSION_COOKIE_SECURE=false` donde no hay HTTPS (desarrollo local y la red interna de Compose en e2e, porque el navegador rechaza cookies `Secure`/`__Host-` sin HTTPS); rotación del ID al hacer login **con revocación de la sesión previa que traía la cookie**; expiración absoluta e inactiva; invalidación al desactivar usuario, cambiar el correo o cambiar o restablecer la contraseña. |
+| CSRF | Token firmado (HMAC-SHA256 con `CSRF_SECRET`, obligatorio en producción) y **ligado al id de sesión** (antes del login, a una cookie anónima), en la cabecera `x-csrf-token` de todo método no seguro de `/api/v1`, además de `SameSite=Strict`. Un token válido de otra sesión se rechaza. |
 | Fuerza bruta | Rate limit global y específico en login (por IP y por cuenta), bloqueo temporal progresivo. |
 | Autorización | Chequeo de permiso en cada ruta mediante un decorador declarativo (`requirePermission('asset:write')`); test que falla si una ruta no declara permiso. |
 | Entrada | Validación Zod en toda ruta (body, query, params); SQL siempre parametrizado vía Drizzle; nada de SQL concatenado. |
 | Cabeceras | Helmet con CSP estricta (sin `unsafe-inline` en scripts), HSTS, `frame-ancestors 'none'`, `Referrer-Policy`. |
 | Secretos en BD | AppKey, NwkKey y credenciales LNS cifradas con AES-256-GCM (IV aleatorio por valor, AAD = tabla + id). Clave maestra `APP_ENCRYPTION_KEY` (32 bytes) solo en el `.env` del servidor; soporta rotación con `key_id`. Nunca salen en logs, exportaciones ni respuestas salvo el reveal autorizado y auditado. |
 | Logs | Redacción en pino de `authorization`, `cookie`, `password`, `*key*`, `*token*`. |
-| Base de datos | Dos usuarios: `inventarius_migrator` (DDL, solo al migrar) e `inventarius_app` (DML, sin `UPDATE`/`DELETE` en `audit_log`). Postgres no expuesto fuera de la red de Compose. |
+| Base de datos | Dos usuarios: `inventarius_migrator` (DDL, solo al migrar) e `inventarius_app` (DML, sin `UPDATE`/`DELETE` en `audit_log`). Postgres no expuesto fuera de la red de Compose. Topes por conexión configurables (espera de conexión 5 s, consulta 30 s, transacción inactiva 30 s) y apagado ordenado de la API y del worker con tope de 10 s. |
 | Contenedores | Usuario no root, sistema de archivos de solo lectura donde se pueda, `no-new-privileges`, sin capacidades extra, imágenes base mínimas fijadas por digest. |
 | Cadena de suministro | Lockfile, `pnpm audit` y OSV-Scanner en CI, Trivy sobre las imágenes, gitleaks contra secretos commiteados, Renovate para parches, revisión humana de toda dependencia nueva. |
 | Repositorio | `.env` en `.gitignore` desde el primer commit; solo `.env.example`. Rama `main` protegida: PR + CI verde. |
-| Exposición | Solo por Cloudflare Tunnel; ningún puerto abierto en el router. Recomendado durante el MVP: Cloudflare Access delante de `inventarius.supporti.cl` (segunda barrera antes del login de la app). |
+| Exposición | Solo por Cloudflare Tunnel; ningún puerto abierto en el router. Recomendado durante el MVP: Cloudflare Access delante del dominio de la app (segunda barrera antes del login de la app). |
 
 ### 10.2 Amenazas principales
 
@@ -495,10 +509,10 @@ inventarius/
 ### 11.1 Observabilidad
 
 - **Logs**: JSON con pino; cada línea con `reqId`, usuario (id, no email), ruta, status y duración. Nivel configurable por entorno. En producción van a stdout y Docker los rota (`max-size`, `max-file`).
-- **Health**: `GET /api/health/live` (proceso vivo) y `GET /api/health/ready` (BD y cola disponibles). Los usa Docker (healthcheck) y Uptime Kuma.
+- **Health**: `GET /api/health/live` (proceso vivo) y `GET /api/health/ready` (BD y cola disponibles). Los usa Docker (healthcheck) y el monitoreo externo.
 - **Métricas** Prometheus en `/api/metrics`, accesible solo desde la red interna o con token: latencia y conteo por ruta, errores, conexiones a BD, tamaño de cola, jobs LNS por resultado y proveedor, logins fallidos.
 - **Sobrecarga**: `@fastify/under-pressure` responde `503` si el event loop o la memoria se degradan.
-- **Post-MVP**: trazas OpenTelemetry, panel Grafana o integración con el Zabbix previsto para el homelab, captura de errores del frontend (GlitchTip).
+- **Post-MVP**: trazas OpenTelemetry, panel Grafana o integración con el monitoreo centralizado previsto, captura de errores del frontend (GlitchTip).
 
 ### 11.2 Pruebas
 
@@ -533,51 +547,54 @@ flowchart LR
 ```
 
 - Despliegue: el servidor hace `pull` de una versión etiquetada (nunca `latest`), corre migraciones como paso separado y reinicia. Rollback = volver a la versión anterior (las migraciones se escriben compatibles hacia atrás una versión).
-- Este flujo reemplaza, para esta app, el patrón `git fetch` + `reset --hard` de supporti-web: con backend y BD conviene desplegar imágenes construidas y probadas en CI.
+- Este flujo reemplaza, para esta app, el patrón `git fetch` + `reset --hard` de otros sitios estáticos del mismo operador: con backend y BD conviene desplegar imágenes construidas y probadas en CI.
 
 ## 12. Entornos
 
+Hay dos entornos: una VM de desarrollo aislada y una VM de producción. Este documento no registra IPs, identificadores de VM ni nombres de la infraestructura real; viven en la documentación privada de quien la opera.
+
 ### 12.1 VM de desarrollo para Claude Code
 
-Claude Code trabaja en una VM dedicada dentro del Proxmox, aislada del resto del homelab. Respeta la regla vigente del homelab: Claude Code no tiene shell en el host ni en los CTs existentes; solo en su VM.
+Claude Code trabaja en una VM dedicada, aislada del resto de la infraestructura: sin shell en el host de virtualización ni en otros servidores, solo en su VM.
 
 | Aspecto | Propuesta |
 | --- | --- |
-| Tipo | VM (no LXC): Docker dentro de una VM aísla mejor y evita relajar un LXC unprivileged |
+| Tipo | VM (no contenedor de sistema): Docker dentro de una VM aísla mejor y evita relajar un contenedor sin privilegios |
 | SO | Debian 13 |
-| Recursos | 4 vCPU, 8 GB RAM, 60 GB en `local-lvm` (Postgres, Playwright con navegadores y una instancia ChirpStack de prueba en Docker) |
-| Red | IP fija fuera del DHCP. Firewall de Proxmox en la NIC de la VM: salida a Internet permitida, **todo `192.168.100.0/24` bloqueado** salvo gateway y DNS. Sin montajes NFS. |
+| Recursos | 4 vCPU, 8 GB RAM, 60 GB de disco (Postgres, Playwright con navegadores y una instancia ChirpStack de prueba en Docker) |
+| Red | IP fija fuera del rango DHCP. Firewall en la NIC de la VM: salida a Internet permitida y toda la red local bloqueada, salvo puerta de enlace y DNS. Sin montajes de red compartidos. |
 | Software | Docker + Compose, Node vía la versión fijada del repo (corepack), git, `gh`, Claude Code |
-| Credenciales | Solo las del repo: token fine-grained de GitHub limitado a `inventarius` (contenido y PRs). Ninguna credencial de producción, del homelab ni de Zensi. Credenciales LNS solo de aplicaciones de prueba. |
-| Control | Rama `main` protegida: Claude Code trabaja en ramas y abre PRs; Rodrigo revisa y hace merge. Snapshot de Proxmox antes de cada fase para volver atrás rápido. |
-| Acceso | SSH con llave dedicada desde el ThinkPad (o conexión SSH de Claude Desktop), también por Tailscale si se agrega el nodo con ACL acotada |
+| Credenciales | Solo las del repo: token fine-grained de GitHub limitado a `inventarius` (contenido y PRs). Ninguna credencial de producción, de la infraestructura ni de terceros. Credenciales LNS solo de aplicaciones de prueba. |
+| Control | Rama `main` protegida: Claude Code trabaja en ramas y abre PRs; el responsable del proyecto revisa y hace merge. Snapshot de la VM antes de cada fase para volver atrás rápido. |
+| Acceso | SSH con llave dedicada desde el equipo del desarrollador, opcionalmente por una VPN con ACL acotada |
 
 La VM corre el entorno completo de desarrollo (`compose.yml`: Postgres, ChirpStack de prueba, API, worker, web con Vite) para que todas las pruebas pasen localmente antes del push.
 
-### 12.2 Producción inicial: `inventarius.supporti.cl`
+### 12.2 VM de producción
 
 | Aspecto | Propuesta |
 | --- | --- |
-| Tipo | VM Debian 13 con Docker Compose, `onboot: 1` |
-| Recursos | 2 vCPU, 3 GB RAM, 32 GB en `local-lvm` (la BD en disco local, nunca sobre NFS) |
+| Tipo | VM Debian 13 con Docker Compose, arranque automático con el host |
+| Recursos | 2 vCPU, 3 GB RAM, 32 GB de disco (la base de datos en disco local, nunca sobre un montaje de red) |
 | Servicios | `caddy` (estáticos + proxy), `api`, `worker`, `postgres`; imágenes desde GHCR con versión fija |
-| Exposición | Nueva ruta en el Tunnel `supporti-home` → `http://<ip-vm>:80`. Sin puertos en el router. Cloudflare Access recomendado. |
+| Exposición | Túnel hacia Internet (Cloudflare Tunnel) con una ruta al puerto de `caddy`; sin puertos abiertos en el router. Acceso restringido delante del login (p. ej. Cloudflare Access) recomendado. |
 | Secretos | `.env` solo en la VM (permisos 600), con copia de `APP_ENCRYPTION_KEY` en el gestor de contraseñas. Sin la clave, las AppKeys respaldadas son irrecuperables. |
-| Respaldos | `pg_dump` diario (timer systemd) a un destino fuera de la VM; vzdump semanal la cubre por el job `--all 1` existente. Ojo: el vzdump incluye el `.env`, mismo criterio ya aceptado para los otros secretos del homelab. |
-| Monitoreo | Uptime Kuma (GCP) contra `/api/health/ready`; métricas listas para el monitoreo centralizado cuando se instale. |
+| Respaldos | `pg_dump` diario (timer systemd) a un destino fuera de la VM, más el respaldo periódico de la VM completa. Ojo: ese respaldo incluye el `.env`; mismo criterio ya aceptado para los demás secretos. |
+| Monitoreo | Monitor externo de disponibilidad contra `/api/health/ready`; métricas listas para el monitoreo centralizado cuando se instale. |
 
 Portabilidad: mover la app a otro servidor = copiar `deploy/`, crear `.env`, `docker compose pull && docker compose run --rm migrate && docker compose up -d`, y restaurar el dump si se migran datos. Queda escrito paso a paso en `docs/install.md`.
 
 ## 13. Plan de entrega del MVP
 
-Cinco fases. Cada una termina en un PR revisado y un tag de pre-release (`v0.1.0`, `v0.2.0`...). El MVP es `v1.0.0`. Claude Code no empieza una fase sin el merge de la anterior.
+Seis fases (F0 a F4, con F3.5 entre F3 y F4). Cada una termina en un PR revisado y un tag de pre-release (`v0.1.0`, `v0.2.0`...). El MVP es `v1.0.0`. Claude Code no empieza una fase sin el merge de la anterior.
 
 | Fase | Contenido | Criterio de aceptación |
 | --- | --- | --- |
 | F0 Fundaciones | Monorepo pnpm, TS estricto, lint/format, hooks, `compose.yml` de desarrollo, Fastify con config validada, logger, health, métricas, Drizzle con primera migración, esqueleto Vue + Nuxt UI (tema propio) + Tailwind + i18n + layout responsivo, Vitest y Playwright funcionando, CI completo, ADRs 0001-0004, `CLAUDE.md` | `pnpm i && docker compose up` levanta todo; CI verde; `/api/health/ready` responde; una página vacía con layout pasa axe en móvil y escritorio |
 | F1 Identidad | RF-01 a RF-05, roles y permisos sembrados, decorador de permisos, sesiones, CSRF, rate limit, auditoría (RF-30, RF-31), gestión de usuarios y roles en UI | Tests de permisos por rol en todas las rutas; test que detecta rutas sin permiso; login, bloqueo y expiración probados en e2e |
 | F2 Inventario | Catálogo RF-10 a RF-14, activos RF-20 a RF-26, historial, vistas móviles RF-40 a RF-42 | CRUD completo e2e en escritorio y móvil; listado con 10.000 activos sembrados dentro del objetivo de rendimiento |
-| F3 LoRaWAN | Extensión LoRaWAN del activo, cifrado de claves, perfiles LNS RF-50 a RF-52, adaptadores ChirpStack y TTN, cola pg-boss y worker, RF-60 a RF-65 | Registro y baja OK contra ChirpStack de prueba en Docker; contra TTN con mock en CI y con una aplicación de prueba real en el job manual; compensación probada simulando fallo en cada paso |
+| F3 LoRaWAN | Extensión LoRaWAN del activo, cifrado de claves, perfiles LNS RF-50 a RF-52, adaptadores ChirpStack y TTN, cola pg-boss y worker, RF-60 a RF-65, **importación CSV de datos LoRaWAN por número de serie (RF-66)** | Registro y baja OK contra ChirpStack de prueba en Docker; contra TTN con mock en CI y con una aplicación de prueba real en el job manual; compensación probada simulando fallo en cada paso; importar un CSV de 100 series asocia los datos a los activos correctos y rechaza filas inválidas con su error |
+| F3.5 Consumibles | Consumibles por cantidad (RF-70 a RF-74): catálogo, ingreso a bodega, entrega a persona, stock por bodega y stock mínimo con aviso en Inicio | e2e del ciclo ingreso → entrega → stock mínimo en escritorio y 360 px; no se puede entregar más que el stock de la bodega; el libro de movimientos cuadra con el stock mostrado |
 | F4 Cierre | Endurecimiento (CSP, cabeceras, revisión de secretos en logs), `deploy/` de producción, respaldo y restauración probados, docs de instalación y operación, release-please, imágenes en GHCR | Despliegue en la VM de producción siguiendo solo `docs/install.md`; restauración desde dump verificada; `v1.0.0` publicado |
 
 ### Definición de terminado (cada PR)
@@ -634,23 +651,23 @@ Además, `.claude/settings.json` del repo restringe comandos: permite `pnpm`, `d
 
 | # | Decisión | Propuesta por defecto |
 | --- | --- | --- |
-| D1 | Node 26 LTS o 24 LTS | 26; si una dependencia no compila, 24 y se registra en ADR |
-| D2 | Cluster TTN, plan de frecuencias y versión LoRaWAN de los equipos reales (SDM530-LR, medidores de agua) | Tomar los valores que ya usa Zensi en TTN; quedan como defaults del perfil, no en código |
+| D1 | Node 26 LTS o 24 LTS | 24 LTS por la política de versiones de la organización (ADR 0006); el CI mantiene 26 como alerta temprana |
+| D2 | Cluster TTN, plan de frecuencias y versión LoRaWAN de los equipos reales (SDM530-LR, medidores de agua) | Tomar los valores que ya usa el cliente en TTN; quedan como defaults del perfil, no en código |
 | D3 | ¿Hay un ChirpStack disponible para pruebas reales o solo el de Docker en la VM? | Docker en la VM para el MVP |
 | D4 | Cloudflare Access delante de la app durante el MVP | Sí |
 | D5 | 2FA TOTP dentro del MVP o justo después | Justo después (Should) |
 | D6 | Formato de etiqueta de activo | Prefijo configurable + correlativo (ej. `INV-000123`) |
-| D7 | IDs de Proxmox e IPs fijas de las dos VMs | Definir en la sesión de infraestructura y anotarlo en el documento del homelab |
+| D7 | Identificadores e IPs fijas de las dos VMs | Definir en la sesión de infraestructura y anotarlo en la documentación privada de infraestructura |
 | D8 | Nombre y visibilidad del repo | `cvrsed/inventarius`, privado |
 
 ### 15.2 Riesgos
 
 | Riesgo | Mitigación |
 | --- | --- |
-| Cargar AppKeys reales de dispositivos de clientes de Zensi en un servidor personal | Hasta acordarlo con Zensi, usar solo dispositivos y aplicaciones de prueba |
+| Cargar AppKeys reales de dispositivos de clientes del cliente en un servidor personal | Hasta acordarlo con el cliente, usar solo dispositivos y aplicaciones de prueba |
 | Diferencias de API entre versiones de ChirpStack (campos de claves en 1.0.x vs 1.1) | Prueba de integración contra la versión exacta que se use; versión del LNS anotada en el perfil |
 | Una actualización de Nuxt UI rompe personalizaciones del tema | Personalizar solo por design tokens, nunca copiando componentes; actualizaciones por Renovate con e2e y axe en CI |
 | La librería de UI cambia a una licencia con clave o de pago (ya ocurrió con PrimeVue 5) | Solo dependencias MIT/ISC/Apache en la UI; verificar la licencia al subir versiones mayores; la UI usa componentes `U*` en pocos lugares y la lógica no depende de ella (ADR 0004, reversibilidad) |
 | Claude Code se sale del alcance o acumula deuda | Fases cortas, PR por fase, DoD, revisión humana y snapshots de la VM |
-| Homelab sin redundancia (un solo host, corte de luz o falla de disco) | Aceptado en el MVP; respaldos diarios fuera de la VM y portabilidad probada |
+| Infraestructura propia sin redundancia (un solo host, corte de luz o falla de disco) | Aceptado en el MVP; respaldos diarios fuera de la VM y portabilidad probada |
 | Pérdida de `APP_ENCRYPTION_KEY` | Copia en gestor de contraseñas; procedimiento de rotación documentado |

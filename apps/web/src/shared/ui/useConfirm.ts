@@ -1,4 +1,4 @@
-import { reactive } from 'vue';
+import { reactive, watch } from 'vue';
 
 export interface ConfirmOptions {
   title: string;
@@ -30,6 +30,29 @@ export function useConfirm() {
     },
     close(): void {
       state.open = false;
+    },
+    /**
+     * Versión con promesa: `true` si la persona confirma, `false` si cancela o cierra el diálogo
+     * (sirve a los guardianes de navegación, que necesitan esperar la respuesta).
+     */
+    ask(options: Omit<ConfirmOptions, 'accept'>): Promise<boolean> {
+      return new Promise<boolean>((resolve) => {
+        let settled = false;
+        const settle = (value: boolean) => {
+          if (settled) return;
+          settled = true;
+          stop();
+          resolve(value);
+        };
+        const stop = watch(
+          () => state.open,
+          (open) => {
+            if (!open) settle(false);
+          },
+        );
+        state.options = { ...options, accept: () => settle(true) };
+        state.open = true;
+      });
     },
   };
 }

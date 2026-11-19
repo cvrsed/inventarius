@@ -3,9 +3,10 @@ import type { RoleDto } from '@inventarius/shared';
 import UAlert from '@nuxt/ui/components/Alert.vue';
 import UBadge from '@nuxt/ui/components/Badge.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
-import UTable from '@nuxt/ui/components/Table.vue';
 import { useToast } from '@nuxt/ui/composables/useToast';
 import { computed, ref } from 'vue';
+import ResponsiveTable from '@/shared/ui/ResponsiveTable.vue';
+import IconAction from '@/shared/ui/IconAction.vue';
 import { useI18n } from 'vue-i18n';
 import { errorMessage } from '@/features/auth/errors';
 import { useConfirm } from '@/shared/ui/useConfirm';
@@ -73,7 +74,7 @@ function askDelete(role: RoleDto): void {
       </template>
     </UAlert>
 
-    <UTable
+    <ResponsiveTable
       :data="data ?? []"
       :columns="columns"
       :loading="isPending"
@@ -95,24 +96,58 @@ function askDelete(role: RoleDto): void {
       <template #permissions-cell="{ row }">{{ row.original.permissions.length }}</template>
       <template #actions-cell="{ row }">
         <span class="flex gap-1">
-          <UButton
+          <IconAction
             icon="i-lucide-pencil"
-            :aria-label="`${t('common.edit')} ${row.original.name}`"
-            color="neutral"
-            variant="ghost"
+            :label="t('common.edit')"
+            :target="row.original.name"
             @click="open(row.original)"
           />
-          <UButton
+          <IconAction
             v-if="!row.original.isSystem"
             icon="i-lucide-trash-2"
-            :aria-label="`${t('common.delete')} ${row.original.name}`"
+            :label="t('common.delete')"
+            :target="row.original.name"
             color="error"
-            variant="ghost"
             @click="askDelete(row.original)"
           />
         </span>
       </template>
-    </UTable>
+      <template #card="{ item }">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="font-semibold text-highlighted">{{ item.name }}</span>
+          <UBadge
+            v-if="item.isSystem"
+            :label="t('roles.system')"
+            color="neutral"
+            variant="subtle"
+          />
+        </div>
+        <p class="m-0 text-sm text-muted">
+          {{ t('roles.permissions') }}: {{ item.permissions.length }}
+        </p>
+        <div class="flex flex-wrap gap-2">
+          <UButton
+            icon="i-lucide-pencil"
+            :label="t('common.edit')"
+            :aria-label="`${t('common.edit')} ${item.name}`"
+            color="neutral"
+            variant="outline"
+            size="sm"
+            @click="open(item)"
+          />
+          <UButton
+            v-if="!item.isSystem"
+            icon="i-lucide-trash-2"
+            :label="t('common.delete')"
+            :aria-label="`${t('common.delete')} ${item.name}`"
+            color="error"
+            variant="outline"
+            size="sm"
+            @click="askDelete(item)"
+          />
+        </div>
+      </template>
+    </ResponsiveTable>
 
     <RoleFormDialog v-model:visible="formVisible" :role="editing" />
   </div>

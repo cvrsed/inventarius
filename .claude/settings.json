@@ -42,10 +42,13 @@
       "Bash(curl * | bash*)",
       "Bash(wget * | sh*)",
       "Read(./.env)",
-      "Read(./.env.*)",
       "Read(./**/.env)",
       "Read(~/.ssh/**)",
-      "Read(~/.config/gh/**)"
+      "Read(~/.config/gh/**)",
+      "Read(./.env.local)",
+      "Read(./.env.production)",
+      "Read(./.env.development)",
+      "Read(./.env.test)"
     ]
   }
 }

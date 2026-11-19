@@ -3,6 +3,7 @@ import UButton from '@nuxt/ui/components/Button.vue';
 import UInput from '@nuxt/ui/components/Input.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';
 import { ref } from 'vue';
+import IconAction from '@/shared/ui/IconAction.vue';
 import { useI18n } from 'vue-i18n';
 
 defineProps<{ password: string }>();
@@ -32,10 +33,9 @@ async function copy(value: string): Promise<void> {
           class="w-full"
           :ui="{ base: 'font-mono' }"
         />
-        <UButton
+        <IconAction
           icon="i-lucide-copy"
-          :aria-label="t('users.copy')"
-          color="neutral"
+          :label="t('users.copy')"
           variant="subtle"
           @click="copy(password)"
         />

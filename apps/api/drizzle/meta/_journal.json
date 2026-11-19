@@ -36,6 +36,55 @@
       "when": 1794844872392,
       "tag": "0004_audit_actor_label",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794859886509,
+      "tag": "0005_inventory",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794859892849,
+      "tag": "0006_seed_inventory",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794883119279,
+      "tag": "0007_model_lorawan_region",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794883786090,
+      "tag": "0008_asset_purchase_currency",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794884116493,
+      "tag": "0009_location_types_and_base_location",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794888954722,
+      "tag": "0010_seed_pending_setup_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794965305394,
+      "tag": "0011_audit_entity_label",
+      "breakpoints": true
     }
   ]
 }

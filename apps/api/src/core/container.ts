@@ -1,13 +1,20 @@
 import type { Clock } from './clock.js';
-import { systemClock } from './clock.js';
+import { DashboardRepository } from '../modules/dashboard/repository.js';
+import { DashboardService } from '../modules/dashboard/service.js';
+import { localDate, systemClock } from './clock.js';
 import type { AppConfig } from './config.js';
 import type { Executor } from './db/executor.js';
+import { AssetsRepository } from '../modules/assets/repository.js';
+import { AssetsService } from '../modules/assets/service.js';
 import { AuditRepository } from '../modules/audit/repository.js';
+import { RecordDirectory } from './db/records.js';
 import { AuditService } from '../modules/audit/service.js';
 import { Argon2Hasher, type PasswordHasher } from '../modules/auth/password.js';
 import { AuthRepository } from '../modules/auth/repository.js';
 import { AuthService } from '../modules/auth/service.js';
 import { LoginThrottle } from '../modules/auth/throttle.js';
+import { CatalogRepository } from '../modules/catalog/repository.js';
+import { CatalogService } from '../modules/catalog/service.js';
 import { RbacRepository } from '../modules/rbac/repository.js';
 import { RbacService } from '../modules/rbac/service.js';
 import { UsersRepository } from '../modules/users/repository.js';
@@ -18,6 +25,9 @@ export interface Services {
   rbac: RbacService;
   users: UsersService;
   auth: AuthService;
+  catalog: CatalogService;
+  assets: AssetsService;
+  dashboard: DashboardService;
 }
 
 export interface ContainerDeps {
@@ -47,12 +57,17 @@ export function buildServices(deps: ContainerDeps): Services {
   };
 
   // Auditoría resuelve nombres de actor a través de users; se enlaza con un directorio diferido.
-  const audit = new AuditService(new AuditRepository(), db, {
-    namesByIds: (ids) => {
-      if (!late.users) throw new Error('UsersService no inicializado');
-      return late.users.namesByIds(ids);
+  const audit = new AuditService(
+    new AuditRepository(),
+    db,
+    {
+      namesByIds: (ids) => {
+        if (!late.users) throw new Error('UsersService no inicializado');
+        return late.users.namesByIds(ids);
+      },
     },
-  });
+    new RecordDirectory(db),
+  );
   const rbac = new RbacService(new RbacRepository(), db, audit);
   const users = (late.users = new UsersService(usersRepo, db, rbac, audit, hasher, revoker));
   const authRepo = new AuthRepository();
@@ -68,5 +83,25 @@ export function buildServices(deps: ContainerDeps): Services {
     config.session,
     clock,
   ));
-  return { audit, rbac, users, auth };
+  const catalog = new CatalogService(new CatalogRepository(), db, audit);
+  const assets = new AssetsService(
+    new AssetsRepository(),
+    db,
+    audit,
+    catalog,
+    {
+      find: (exec, id) => users.findById(id, exec),
+      search: (q, limit) => users.searchAssignable(q, limit),
+    },
+    config.assetTagPrefix,
+    config.defaultCurrency,
+    () => localDate(clock.now(), config.timezone),
+  );
+  const dashboard = new DashboardService(
+    new DashboardRepository(),
+    db,
+    { namesByIds: (ids) => users.namesByIds(ids) },
+    () => localDate(clock.now(), config.timezone),
+  );
+  return { audit, rbac, users, auth, catalog, assets, dashboard };
 }

@@ -1,6 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { jsonResponse, mockApi, pagePlugins } from '@/test-utils';
+import { jsonResponse, mockApi, pagePlugins, useMobileViewport } from '@/test-utils';
 import RolesPage from './RolesPage.vue';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -34,6 +34,20 @@ describe('RolesPage', () => {
     expect(w.find('button[aria-label="Eliminar Operador"]').exists()).toBe(false);
     expect(w.find('button[aria-label="Eliminar Auditor"]').exists()).toBe(true);
     expect(w.find('button[aria-label="Editar Operador"]').exists()).toBe(true);
+  });
+
+  it('en móvil cada rol es una tarjeta con sus acciones visibles', async () => {
+    useMobileViewport();
+    mockApi({
+      'GET /api/v1/roles': () => [role({ isSystem: false })],
+      'GET /api/v1/permissions': () => catalog,
+    });
+    const w = mount(RolesPage, { global: pagePlugins() });
+    await flushPromises();
+    const card = w.get('ul > li');
+    expect(card.text()).toContain('Operador');
+    const labels = card.findAll('button').map((b) => b.text());
+    expect(labels).toEqual(['Editar', 'Eliminar']);
   });
 
   it('muestra error con reintento si falla la carga', async () => {

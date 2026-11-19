@@ -5,6 +5,7 @@ import UButton from '@nuxt/ui/components/Button.vue';
 import UCheckboxGroup from '@nuxt/ui/components/CheckboxGroup.vue';
 import UFormField from '@nuxt/ui/components/FormField.vue';
 import UInput from '@nuxt/ui/components/Input.vue';
+import { useUnsavedChanges } from '@/shared/ui/useUnsavedChanges';
 import UModal from '@nuxt/ui/components/Modal.vue';
 import UTextarea from '@nuxt/ui/components/Textarea.vue';
 import { useToast } from '@nuxt/ui/composables/useToast';
@@ -76,13 +77,21 @@ async function submit(): Promise<void> {
     if (e instanceof ApiError && e.status === 412) visible.value = false;
   }
 }
+
+const { requestClose } = useUnsavedChanges(() => form.value, visible);
+/** Cerrar con Escape, clic fuera o la X también pide confirmar si hay cambios sin guardar. */
+const onOpenChange = (open: boolean) => {
+  if (open) visible.value = true;
+  else void requestClose(() => (visible.value = false));
+};
 </script>
 
 <template>
   <UModal
-    v-model:open="visible"
+    :open="visible"
     :title="creating ? t('roles.new') : t('roles.edit')"
     :description="t('roles.formDescription')"
+    @update:open="onOpenChange"
   >
     <template #body>
       <form id="role-form" class="flex flex-col gap-4" novalidate @submit.prevent="submit">
@@ -111,7 +120,7 @@ async function submit(): Promise<void> {
           :label="t('common.cancel')"
           color="neutral"
           variant="ghost"
-          @click="visible = false"
+          @click="requestClose(() => (visible = false))"
         />
         <UButton type="submit" form="role-form" :label="t('common.save')" :loading="submitting" />
       </div>

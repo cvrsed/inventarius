@@ -7,7 +7,7 @@
 - `docs/progress.md`: estado de avance. Se actualiza al cerrar cada tarea relevante y cada fase.
 
 ## Alcance
-- Trabajar solo las fases que indique el prompt de arranque (`KICKOFF.md`) o Rodrigo.
+- Trabajar solo las fases que indique el prompt de arranque (`KICKOFF.md`) o el responsable del proyecto.
 - Una fase = una rama `phase/fN-nombre` = un PR hacia `main`.
 - Detenerse al completar el MVP (v1.0.0). Nada de items Should/Could sin instrucción explícita.
 
@@ -20,6 +20,11 @@
   Versiones exactas siempre (`save-exact`), lockfile commiteado.
 - Secretos: nunca reales en código, tests, fixtures, logs ni commits. Solo `.env.example`.
   No leer ni imprimir `.env`.
+- Información sensible: prohibidas en código, comentarios, tests, fixtures, docs y mensajes de commit las IPs internas, hostnames,
+  nombres de VMs/CTs, dominios reales, correos reales, nombres de clientes y DevEUI/JoinEUI/AppKey reales. En ejemplos usar
+  dominios `example.com`/`.test`, IPs de documentación (`192.0.2.0/24`, `2001:db8::/32`) y datos inventados.
+  gitleaks (pre-commit y CI, reglas en `.gitleaks.toml`) lo vigila.
+- Toda variable de entorno nueva (en `core/config` o en Caddy/compose) se agrega a `.env.example` en el mismo commit, con un comentario corto.
 - Sin `sudo`. Lo que necesite paquetes del sistema corre en contenedores
   (ej. e2e con la imagen oficial de Playwright, versión fijada igual a la del paquete).
 - Sin acceso a otras máquinas: nada de `ssh`, `scp`, ni conexiones a IPs de la red local.

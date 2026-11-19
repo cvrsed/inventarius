@@ -57,6 +57,22 @@ Ejemplo de salida:
 Correo actualizado: vieja@empresa.cl → nueva@empresa.cl. Se cerraron las sesiones de esa persona.
 ```
 
+## IP del cliente detrás de Caddy y cloudflared
+
+La auditoría registra la IP real del cliente solo si la petición llega por un proxy de confianza. Dos variables:
+
+| Variable               | Dónde         | Qué hace                                                                                                                                              | Por defecto            |
+| ---------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| `TRUSTED_PROXIES`      | API (`api`)   | Proxies de los que se acepta `X-Forwarded-For`: IP, CIDR o `loopback`, `linklocal`, `uniquelocal`, separados por coma. Vacío = no confiar en ninguno. | `loopback,uniquelocal` |
+| `TRUSTED_PROXY_RANGES` | Caddy (`web`) | Quién puede informar la IP del cliente a Caddy (p. ej. el contenedor de cloudflared), separados por espacio.                                          | `private_ranges`       |
+
+- **Producción con Caddy:** deja `TRUSTED_PROXIES` con la IP o subred de la red interna donde está Caddy (p. ej. `172.20.0.0/16`).
+- **Con cloudflared** delante de Caddy: pon en `TRUSTED_PROXY_RANGES` la IP de cloudflared; Caddy tomará `CF-Connecting-IP`
+  y la reenviará a la API como `X-Forwarded-For`. Si cloudflared no está en esa lista, Caddy usará su IP (la del túnel).
+- **Desarrollo:** el proxy de Vite informa la IP del cliente; los valores por defecto sirven.
+- **Verificar:** inicia sesión y revisa en Auditoría que la IP sea la de tu equipo y no `172.x`/`10.x` de Docker. Si aparece
+  la del proxy, la lista de confianza no incluye a quien conecta a la API.
+
 ## Mantenimiento automático
 
 El **worker** (`node dist/worker.js`, servicio `worker` de Compose) ejecuta con pg-boss, cada hora en punto

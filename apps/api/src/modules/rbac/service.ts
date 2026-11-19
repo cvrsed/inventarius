@@ -76,6 +76,7 @@ export class RbacService {
         action: 'role.create',
         entity: 'role',
         entityId: role.id,
+        entityLabel: input.name,
         diff: { after: { name: input.name, permissions: [...new Set(input.permissions)].sort() } },
       });
       return (await this.toDto(tx, [role]))[0]!;
@@ -130,6 +131,7 @@ export class RbacService {
         action: 'role.update',
         entity: 'role',
         entityId: id,
+        entityLabel: after.name,
         diff: {
           before: {
             name: before.name,
@@ -161,6 +163,7 @@ export class RbacService {
         action: 'role.delete',
         entity: 'role',
         entityId: id,
+        entityLabel: role.name,
         diff: { before: { name: role.name } },
       });
     });

@@ -45,7 +45,7 @@ async function withServices(
   onConflict?: () => number,
 ): Promise<number> {
   const config = loadConfig();
-  const handle = createDb(config.databaseUrl);
+  const handle = createDb(config.databaseUrl, config.db);
   try {
     return await run(buildServices({ db: handle.db, config }));
   } catch (e) {

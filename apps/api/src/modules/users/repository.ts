@@ -116,6 +116,23 @@ export class UsersRepository {
     return rows[0]?.n ?? 0;
   }
 
+  /** Usuarios activos por nombre, para elegir a quién asignar un activo. Solo id y nombre. */
+  async searchActive(
+    exec: Executor,
+    q: string | undefined,
+    limit: number,
+  ): Promise<{ id: string; name: string }[]> {
+    const term = q?.trim();
+    return exec
+      .select({ id: users.id, name: users.name })
+      .from(users)
+      .where(
+        and(eq(users.active, true), term ? ilike(users.name, `%${escapeLike(term)}%`) : undefined),
+      )
+      .orderBy(users.name, users.id)
+      .limit(limit);
+  }
+
   async namesByIds(exec: Executor, ids: string[]): Promise<Map<string, string>> {
     if (!ids.length) return new Map();
     const rows = await exec

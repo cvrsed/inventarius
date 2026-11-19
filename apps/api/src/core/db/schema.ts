@@ -1,15 +1,20 @@
 import { sql } from 'drizzle-orm';
 import {
+  type AnyPgColumn,
   bigint,
   boolean,
+  check,
   customType,
+  date,
   index,
   integer,
   jsonb,
+  numeric,
   pgTable,
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
 
@@ -128,6 +133,8 @@ export const auditLog = pgTable(
     action: text('action').notNull(),
     entity: text('entity').notNull(),
     entityId: uuid('entity_id'),
+    /** Rótulo legible del registro afectado, congelado al momento del evento (sobrevive a renombres y borrados). */
+    entityLabel: text('entity_label'),
     diff: jsonb('diff').$type<Record<string, unknown>>(),
     ip: inet('ip'),
     at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
@@ -136,5 +143,175 @@ export const auditLog = pgTable(
     index('audit_log_at_idx').on(t.at),
     index('audit_log_actor_idx').on(t.actorId),
     index('audit_log_entity_idx').on(t.entity, t.entityId),
+  ],
+);
+
+// --- Catálogo (RF-10 a RF-14) ---
+
+export const categories = pgTable('categories', {
+  id: pk(),
+  name: citext('name').notNull().unique(),
+  /** `none` | `lorawan`: con `lorawan` la ficha del activo suma la sección LoRaWAN (F3). */
+  extension: text('extension').notNull().default('none'),
+  active: boolean('active').notNull().default(true),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+export const manufacturers = pgTable('manufacturers', {
+  id: pk(),
+  name: citext('name').notNull().unique(),
+  active: boolean('active').notNull().default(true),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+export const models = pgTable(
+  'models',
+  {
+    id: pk(),
+    name: text('name').notNull(),
+    modelNumber: text('model_number'),
+    manufacturerId: uuid('manufacturer_id')
+      .notNull()
+      .references(() => manufacturers.id, { onDelete: 'restrict' }),
+    categoryId: uuid('category_id')
+      .notNull()
+      .references(() => categories.id, { onDelete: 'restrict' }),
+    active: boolean('active').notNull().default(true),
+    lorawanClass: text('lorawan_class'),
+    lorawanRegion: text('lorawan_region'),
+    lorawanVersion: text('lorawan_version'),
+    lorawanRegionalParameters: text('lorawan_regional_parameters'),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index('models_manufacturer_idx').on(t.manufacturerId),
+    index('models_category_idx').on(t.categoryId),
+    uniqueIndex('models_manufacturer_name_uq').on(t.manufacturerId, t.name),
+  ],
+);
+
+export const locations = pgTable(
+  'locations',
+  {
+    id: pk(),
+    name: text('name').notNull(),
+    parentId: uuid('parent_id').references((): AnyPgColumn => locations.id, {
+      onDelete: 'restrict',
+    }),
+    /** `warehouse` | `customer_site` | `office` | `other` (RF-12). */
+    type: text('type').notNull().default('other'),
+    address: text('address'),
+    active: boolean('active').notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index('locations_parent_idx').on(t.parentId),
+    check(
+      'locations_type_chk',
+      sql`${t.type} IN ('warehouse', 'customer_site', 'office', 'other')`,
+    ),
+  ],
+);
+
+export const statusLabels = pgTable('status_labels', {
+  id: pk(),
+  name: citext('name').notNull().unique(),
+  /** `deployable` | `pending` | `undeployable` | `archived` (RF-13). */
+  kind: text('kind').notNull(),
+  active: boolean('active').notNull().default(true),
+  /** Estado que el sistema usa por nombre lógico (`assigned`); no se renombra ni se borra. */
+  systemKey: text('system_key').unique(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+// --- Activos (RF-20 a RF-26) ---
+
+export const assets = pgTable(
+  'assets',
+  {
+    id: pk(),
+    assetTag: citext('asset_tag').notNull().unique(),
+    name: text('name').notNull(),
+    serial: text('serial'),
+    modelId: uuid('model_id')
+      .notNull()
+      .references(() => models.id, { onDelete: 'restrict' }),
+    statusId: uuid('status_id')
+      .notNull()
+      .references(() => statusLabels.id, { onDelete: 'restrict' }),
+    /** Ubicación actual: nula mientras lo tiene una persona (RF-23). */
+    locationId: uuid('location_id').references(() => locations.id, { onDelete: 'restrict' }),
+    /** Bodega donde vive el activo; a ella vuelve al devolverse (RF-20). */
+    baseLocationId: uuid('base_location_id').references(() => locations.id, {
+      onDelete: 'restrict',
+    }),
+    assignedUserId: uuid('assigned_user_id').references(() => users.id, { onDelete: 'restrict' }),
+    assignedLocationId: uuid('assigned_location_id').references(() => locations.id, {
+      onDelete: 'restrict',
+    }),
+    purchaseDate: date('purchase_date', { mode: 'string' }),
+    purchaseCost: numeric('purchase_cost', { precision: 12, scale: 2 }),
+    purchaseCurrency: text('purchase_currency').notNull().default('CLP'),
+    supplier: text('supplier'),
+    warrantyMonths: integer('warranty_months'),
+    notes: text('notes'),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    deleteReason: text('delete_reason'),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index('assets_model_idx').on(t.modelId),
+    index('assets_status_idx').on(t.statusId),
+    index('assets_location_idx').on(t.locationId),
+    index('assets_base_location_idx').on(t.baseLocationId),
+    index('assets_assigned_user_idx').on(t.assignedUserId),
+    index('assets_assigned_location_idx').on(t.assignedLocationId),
+    index('assets_created_idx').on(t.createdAt, t.id),
+    // Búsqueda de texto (RF-22): `%término%` sobre etiqueta, nombre y serie usa estos índices trigram.
+    index('assets_tag_trgm_idx').using('gin', sql`(${t.assetTag}::text) gin_trgm_ops`),
+    index('assets_name_trgm_idx').using('gin', sql`${t.name} gin_trgm_ops`),
+    index('assets_serial_trgm_idx').using('gin', sql`${t.serial} gin_trgm_ops`),
+    check(
+      'assets_one_assignee_chk',
+      sql`${t.assignedUserId} IS NULL OR ${t.assignedLocationId} IS NULL`,
+    ),
+  ],
+);
+
+/** Historial de asignaciones (RF-23): una fila abierta (`checked_in_at` nulo) por activo asignado. */
+export const assetAssignments = pgTable(
+  'asset_assignments',
+  {
+    id: pk(),
+    assetId: uuid('asset_id')
+      .notNull()
+      .references(() => assets.id, { onDelete: 'restrict' }),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'restrict' }),
+    locationId: uuid('location_id').references(() => locations.id, { onDelete: 'restrict' }),
+    checkedOutAt: timestamp('checked_out_at', { withTimezone: true }).notNull().defaultNow(),
+    checkedOutBy: uuid('checked_out_by').references(() => users.id, { onDelete: 'restrict' }),
+    expectedReturnOn: date('expected_return_on', { mode: 'string' }),
+    checkoutNote: text('checkout_note'),
+    checkedInAt: timestamp('checked_in_at', { withTimezone: true }),
+    checkedInBy: uuid('checked_in_by').references(() => users.id, { onDelete: 'restrict' }),
+    checkinNote: text('checkin_note'),
+  },
+  (t) => [
+    index('asset_assignments_user_idx').on(t.userId),
+    index('asset_assignments_location_idx').on(t.locationId),
+    index('asset_assignments_asset_idx').on(t.assetId),
+    uniqueIndex('asset_assignments_open_uq')
+      .on(t.assetId)
+      .where(sql`${t.checkedInAt} IS NULL`),
+    check(
+      'asset_assignments_one_target_chk',
+      sql`(${t.userId} IS NULL) <> (${t.locationId} IS NULL)`,
+    ),
   ],
 );

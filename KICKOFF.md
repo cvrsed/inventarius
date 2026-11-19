@@ -29,4 +29,4 @@ Reglas de ejecución:
 - Al terminar cada fase: `docs/progress.md` actualizado con lo hecho, lo pendiente y cómo probarlo.
 
 Al final, deja en `docs/progress.md` un resumen de la sesión: PRs abiertos, estado de CI,
-decisiones provisionales que requieren revisión de Rodrigo y siguiente paso sugerido.
+decisiones provisionales que requieren revisión del responsable del proyecto y siguiente paso sugerido.

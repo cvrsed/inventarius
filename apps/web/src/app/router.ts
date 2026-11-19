@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { SECTIONS as CATALOG_SECTIONS } from '@/features/catalog/entities';
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -15,6 +16,47 @@ export const router = createRouter({
       name: 'change-password',
       component: () => import('@/features/auth/ChangePasswordPage.vue'),
       meta: { allowPendingPassword: true },
+    },
+    {
+      path: '/activos',
+      name: 'assets',
+      component: () => import('@/features/assets/AssetsPage.vue'),
+      meta: { permissions: ['asset:read'] },
+    },
+    {
+      path: '/activos/lote',
+      name: 'asset-batch',
+      component: () => import('@/features/assets/AssetBatchPage.vue'),
+      meta: { permissions: ['asset:write'] },
+    },
+    {
+      path: '/activos/nuevo',
+      name: 'asset-new',
+      component: () => import('@/features/assets/AssetFormPage.vue'),
+      meta: { permissions: ['asset:write'] },
+    },
+    {
+      path: '/activos/:id',
+      name: 'asset',
+      component: () => import('@/features/assets/AssetDetailPage.vue'),
+      meta: { permissions: ['asset:read'] },
+    },
+    {
+      path: '/activos/:id/editar',
+      name: 'asset-edit',
+      component: () => import('@/features/assets/AssetFormPage.vue'),
+      meta: { permissions: ['asset:write'] },
+    },
+    // La URL siempre lleva la sección visible: `/catalogo` o una sección desconocida van a la primera.
+    {
+      path: '/catalogo/:rest(.*)?',
+      redirect: (to) => ({ path: `/catalogo/${CATALOG_SECTIONS[0]}`, query: to.query }),
+    },
+    {
+      path: `/catalogo/:section(${CATALOG_SECTIONS.join('|')})`,
+      name: 'catalog',
+      component: () => import('@/features/catalog/CatalogPage.vue'),
+      meta: { permissions: ['asset:read'] },
     },
     {
       path: '/usuarios',

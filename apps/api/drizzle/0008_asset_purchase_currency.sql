@@ -1,0 +1,1 @@
+ALTER TABLE "assets" ADD COLUMN "purchase_currency" text DEFAULT 'CLP' NOT NULL;
