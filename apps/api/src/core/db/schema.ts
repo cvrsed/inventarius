@@ -277,6 +277,10 @@ export const assets = pgTable(
     index('assets_tag_trgm_idx').using('gin', sql`(${t.assetTag}::text) gin_trgm_ops`),
     index('assets_name_trgm_idx').using('gin', sql`${t.name} gin_trgm_ops`),
     index('assets_serial_trgm_idx').using('gin', sql`${t.serial} gin_trgm_ops`),
+    // La serie es única sin distinguir mayúsculas (la importación CSV la empareja así); activos de baja incluidos.
+    uniqueIndex('assets_serial_lower_uq')
+      .on(sql`lower(${t.serial})`)
+      .where(sql`${t.serial} IS NOT NULL`),
     check(
       'assets_one_assignee_chk',
       sql`${t.assignedUserId} IS NULL OR ${t.assignedLocationId} IS NULL`,

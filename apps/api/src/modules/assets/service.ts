@@ -31,7 +31,7 @@ import {
   ValidationError,
 } from '../../core/errors.js';
 import type { Actor, AuditService } from '../audit/service.js';
-import { compact, isViolation } from '../catalog/entity.js';
+import { compact, isViolation, violatedConstraint } from '../catalog/entity.js';
 import type { CatalogService } from '../catalog/service.js';
 import {
   assertCanCheckin,
@@ -206,6 +206,7 @@ export class AssetsService {
         return await this.db.transaction((tx) => this.insertAsset(tx, actor, input));
       } catch (e) {
         if (!isViolation(e, '23505')) throw e;
+        if (violatedConstraint(e) === SERIAL_CONSTRAINT) throw serialTaken();
         if (input.assetTag) throw new ConflictError('Ya existe un activo con esa etiqueta');
         // Un correlativo autogenerado chocó con una etiqueta escrita a mano: se pide el siguiente.
         if (attempt >= MAX_TAG_ATTEMPTS) throw e;
@@ -275,7 +276,10 @@ export class AssetsService {
         return toDto(row);
       });
     } catch (e) {
-      if (isViolation(e, '23505')) throw new ConflictError('Ya existe un activo con esa etiqueta');
+      if (isViolation(e, '23505')) {
+        if (violatedConstraint(e) === SERIAL_CONSTRAINT) throw serialTaken();
+        throw new ConflictError('Ya existe un activo con esa etiqueta');
+      }
       throw e;
     }
   }
@@ -642,6 +646,15 @@ function parseSort(sort: string | undefined) {
     throw new ValidationError('Orden no válido', { sort: ['Columna de orden desconocida'] });
   }
   return parsed.data;
+}
+
+/** Índice único sobre `lower(serial)` (migración 0014). */
+const SERIAL_CONSTRAINT = 'assets_serial_lower_uq';
+
+function serialTaken(): ValidationError {
+  return new ValidationError('Ya existe un activo con ese número de serie', {
+    serial: ['Ya existe un activo con ese número de serie (se compara sin distinguir mayúsculas)'],
+  });
 }
 
 function serialsError(message: string, serials: string[]): ValidationError {

@@ -466,7 +466,7 @@ Revisión manual del PR #6 contra ChirpStack 4.20.0 (2026-11-19). Cada punto va 
 - [ ] P15 El actor del worker se muestra como «Sistema» en todas las vistas
 - [x] P16 Pluralización «Importar 1 dispositivo»
 - [x] P17 Botones desactivados se ven desactivados y con tooltip del motivo
-- [ ] P18 Número de serie único sin distinguir mayúsculas
+- [x] P18 Número de serie único sin distinguir mayúsculas
 - [ ] P19 Los eventos de auditoría por activo de una importación CSV referencian el id del lote
 - [ ] P20 La importación aplica los defaults del modelo (clase, versión, región)
 - [ ] P21 Auditoría sin scroll horizontal en escritorio; tarjetas en 360 px

@@ -478,6 +478,37 @@ describe('alta en lote (RF-27)', () => {
     expect(dup.json().errors.serials[0]).toContain('D1');
   });
 
+  it('la serie es única sin distinguir mayúsculas, al crear y al editar (también contra los dados de baja)', async () => {
+    const first = await newAsset({ serial: 'Uniq-Serie-1' });
+    const dup = await operator.post(`${base}/assets`, {
+      name: 'Repetido',
+      modelId: ids.model,
+      statusId: ids.available,
+      serial: 'UNIQ-SERIE-1',
+    });
+    expect(dup.statusCode, dup.body).toBe(422);
+    expect(dup.json().errors.serial[0]).toContain('número de serie');
+
+    const other = await newAsset({ serial: 'Uniq-Serie-2' });
+    const clash = await operator.patch(
+      `${base}/assets/${other.id}`,
+      { serial: 'uniq-serie-1' },
+      hdr(other.updatedAt),
+    );
+    expect(clash.statusCode, clash.body).toBe(422);
+    expect(clash.json().errors.serial[0]).toContain('número de serie');
+    // El propio activo puede cambiar solo las mayúsculas de su serie.
+    const same = await operator.patch(
+      `${base}/assets/${first.id}`,
+      { serial: 'UNIQ-SERIE-1' },
+      hdr(first.updatedAt),
+    );
+    expect(same.statusCode, same.body).toBe(200);
+    // Sin serie no hay restricción.
+    await newAsset();
+    await newAsset();
+  });
+
   it('rechaza series que ya existen en la base y no crea nada (una transacción)', async () => {
     await newAsset({ serial: 'EXISTE-1' });
     const before = (await reader.get(`${base}/assets?pageSize=1`)).json().meta.total;

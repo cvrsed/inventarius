@@ -20,6 +20,12 @@ export function isViolation(e: unknown, code: string): boolean {
   return err?.code === code || err?.cause?.code === code;
 }
 
+/** Nombre de la restricción que violó el error de Postgres (`constraint_name`), si lo trae. */
+export function violatedConstraint(e: unknown): string | undefined {
+  const err = e as { constraint?: string; cause?: { constraint?: string } } | null;
+  return err?.constraint ?? err?.cause?.constraint;
+}
+
 /** Cómo se comporta una entidad del catálogo: persistencia, reglas propias y mensajes. */
 export interface EntityDef<Row extends Versioned, Dto, Create, Patch, Query> {
   /** Nombre de la entidad en auditoría (`category`, `status_label`...). */

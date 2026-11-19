@@ -99,6 +99,13 @@
       "when": 1795055828189,
       "tag": "0013_lns_registration_operation",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1795118759983,
+      "tag": "0014_asset_serial_unique",
+      "breakpoints": true
     }
   ]
 }
