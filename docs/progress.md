@@ -479,7 +479,7 @@ Revisión manual del PR #6 contra ChirpStack 4.20.0 (2026-11-19). Cada punto va 
   commit: tocan los mismos archivos) y P2/P6, que llevan un commit de API y otro de la interfaz.
 - **Verificado contra ChirpStack 4.20.0 real** (`chirpstack.real.int.test.ts`, 7 pruebas): el JoinEUI llega al LNS y se lee de
   vuelta campo por campo, el device profile del bootstrap lleva ADR algorithm, `readDevice` y `describeDeviceProfile`.
-- **e2e** (Playwright, escritorio y 360 px): suite completa en verde salvo lo corregido durante la revisión; nuevos: Auditoría sin
+- **e2e** (Playwright, escritorio y 360 px, sobre un stack limpio): 127 pasaron y 3 se omiten (los mismos de antes); nuevos: Auditoría sin
   desborde a 1280, 1024, 800, 768 y 360 px, y el flujo de vincular contra un dispositivo ajeno real de ChirpStack
   (`chirpstack-bootstrap` crea dos, uno por proyecto) con lectura, diferencias, adopción, ficha y «Desvincular».
 - Migraciones nuevas: 0014 (serie única sin distinguir mayúsculas; se detiene y lista los duplicados si los hay) y 0015
