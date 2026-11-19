@@ -1,4 +1,5 @@
 import type { ConnectionCheckDto } from '@inventarius/shared';
+import type { DeviceProfileInfo } from '../src/modules/lns/device-profile.js';
 import {
   externalIdFor,
   LnsOperationError,
@@ -7,6 +8,17 @@ import {
   type LorawanDeviceSecrets,
   type RemoteDevice,
 } from '../src/modules/lns/adapter.js';
+
+/** El device profile del «LNS» coincide con el activo de prueba (AU915, LoRaWAN 1.0.3, clase A). */
+export const DEFAULT_DEVICE_PROFILE: DeviceProfileInfo = {
+  id: 'dp-1',
+  name: 'Perfil AU915',
+  version: '1.0.3',
+  region: 'AU915',
+  classes: ['A'],
+  versionLabel: 'LoRaWAN 1.0.3',
+  regionLabel: 'AU915',
+};
 
 /** Adaptador de LNS programable para las pruebas de servicio: guarda lo «creado» y falla donde se le pide. */
 export class FakeLnsAdapter implements LnsAdapter {
@@ -23,6 +35,21 @@ export class FakeLnsAdapter implements LnsAdapter {
     latencyMs: 12,
     checks: [{ name: 'application', ok: true, detail: null }],
   };
+
+  /** Lo que el «LNS» dice de su device profile; por defecto coincide con el activo de prueba (AU915, 1.0.3, clase A). */
+  deviceProfile: DeviceProfileInfo = { ...DEFAULT_DEVICE_PROFILE };
+  /** Fallo programado de `describeDeviceProfile` (se consume en la próxima llamada). */
+  describeOutcome: LnsOperationError | null = null;
+
+  async describeDeviceProfile() {
+    this.calls.push('describe');
+    if (this.describeOutcome) {
+      const e = this.describeOutcome;
+      this.describeOutcome = null;
+      throw e;
+    }
+    return this.deviceProfile;
+  }
 
   async testConnection() {
     this.calls.push('test');

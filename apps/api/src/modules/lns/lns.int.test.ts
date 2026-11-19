@@ -1,6 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestEnv, type TestEnv } from '../../../test/app.js';
-import { FakeLnsAdapter, partial, permanent, transient } from '../../../test/fake-lns.js';
+import {
+  DEFAULT_DEVICE_PROFILE,
+  FakeLnsAdapter,
+  partial,
+  permanent,
+  transient,
+} from '../../../test/fake-lns.js';
 import {
   APP_KEY,
   devEui,
@@ -77,6 +83,8 @@ const reset = () => {
     f.calls = [];
     f.registerOutcomes = [];
     f.deregisterOutcomes = [];
+    f.deviceProfile = { ...DEFAULT_DEVICE_PROFILE };
+    f.describeOutcome = null;
   }
 };
 
@@ -279,6 +287,67 @@ describe('registro en el LNS (RF-60 a RF-65)', () => {
     expect(again.statusCode).toBe(409);
     await drain();
     expect((await register(a.id, p.id)).statusCode).toBe(409); // ya registrado
+  });
+
+  describe('versión, clase y región contra el device profile del LNS (RF-60)', () => {
+    it('si no calzan, no registra, no encola y explica qué difiere', async () => {
+      reset();
+      const p = await newProfile();
+      const a = await readyAsset();
+      chirp.deviceProfile = {
+        ...DEFAULT_DEVICE_PROFILE,
+        name: 'Perfil EU868',
+        version: '1.1',
+        region: 'EU868',
+        classes: ['A', 'B'],
+        regionLabel: 'EU868',
+      };
+      // El activo es AU915, 1.0.3 y clase A (los del modelo): región y versión difieren; la clase A siempre calza.
+      const res = await register(a.id, p.id);
+      expect(res.statusCode, res.body).toBe(422);
+      const errors = res.json().errors as Record<string, string[]>;
+      expect(Object.keys(errors).sort()).toEqual(['lorawanVersion', 'region']);
+      expect(errors['region']![0]).toContain('AU915');
+      expect(errors['region']![0]).toContain('EU868');
+      expect(errors['region']![0]).toContain('Perfil EU868');
+      expect(errors['lorawanVersion']![0]).toContain('1.0.3');
+      expect(errors['lorawanVersion']![0]).toContain('1.1');
+      expect(env.queue.jobs).toHaveLength(0);
+      expect((await lorawan(a.id)).registration).toBeNull();
+      // La vista previa lo muestra en vez de fallar, para que la pantalla lo explique.
+      const preview = await fx.tech.post(`${base}/assets/${a.id}/lns-registration/preview`, {
+        profileId: p.id,
+      });
+      expect(preview.statusCode, preview.body).toBe(200);
+      expect(preview.json().mismatches.map((m: { field: string }) => m.field)).toEqual([
+        'lorawanVersion',
+        'region',
+      ]);
+    });
+
+    it('una clase que el device profile no admite también se rechaza', async () => {
+      reset();
+      const p = await newProfile();
+      const a = await readyAsset();
+      await fx.operator.patch(`${base}/assets/${a.id}/lorawan`, { deviceClass: 'C' });
+      const res = await register(a.id, p.id);
+      expect(res.statusCode, res.body).toBe(422);
+      expect(res.json().errors.deviceClass[0]).toContain('C');
+      chirp.deviceProfile = { ...DEFAULT_DEVICE_PROFILE, classes: ['A', 'C'] };
+      expect((await register(a.id, p.id)).statusCode).toBe(202);
+      await drain();
+    });
+
+    it('si el LNS no responde no se puede validar: no registra y lo dice', async () => {
+      reset();
+      const p = await newProfile();
+      const a = await readyAsset();
+      chirp.describeOutcome = transient('No se pudo conectar con ChirpStack');
+      const res = await register(a.id, p.id);
+      expect(res.statusCode, res.body).toBe(409);
+      expect(res.json().detail).toContain('No se pudo conectar con ChirpStack');
+      expect(env.queue.jobs).toHaveLength(0);
+    });
   });
 
   it('un job repetido no registra dos veces (idempotencia)', async () => {

@@ -253,4 +253,25 @@ describe('TTN: consulta, baja y conexión', () => {
     const err = await rejection(adapter.findDevice(down, DEV_EUI));
     expect(err.transient).toBe(true);
   });
+
+  it('describeDeviceProfile: la región sale del plan de frecuencias; versión y clase las pone el activo', async () => {
+    const info = await adapter.describeDeviceProfile(profile);
+    expect(info).toMatchObject({ region: 'AU915', version: null, classes: null });
+    expect(
+      (
+        await adapter.describeDeviceProfile({
+          ...profile,
+          deviceDefaults: { ...profile.deviceDefaults, frequencyPlanId: 'EU_863_870_TTN' },
+        })
+      ).region,
+    ).toBe('EU868');
+    expect(
+      (
+        await adapter.describeDeviceProfile({
+          ...profile,
+          deviceDefaults: { ...profile.deviceDefaults, frequencyPlanId: 'PLAN_DESCONOCIDO' },
+        })
+      ).region,
+    ).toBeNull();
+  });
 });

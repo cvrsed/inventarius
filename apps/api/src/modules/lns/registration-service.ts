@@ -15,6 +15,7 @@ import {
   type AdapterRegistry,
   type LorawanDeviceSecrets,
 } from './adapter.js';
+import { compareWithDeviceProfile, type ProfileMismatch } from './device-profile.js';
 import type { LnsProfilesService } from './profiles-service.js';
 import type { RegistrationRow, RegistrationsRepository } from './registrations-repository.js';
 
@@ -115,6 +116,7 @@ export class RegistrationService implements RegistrationReader {
     const profile = await this.requireProfile(this.db, profileId);
     const data = await this.lorawan.secretsFor(this.db, assetId);
     const full = await this.profiles.get(profileId);
+    const { info, mismatches } = await this.checkAgainstDeviceProfile(profileId, data);
     const fields = [
       { label: 'devEui', value: data.devEui },
       { label: 'joinEui', value: data.joinEui },
@@ -128,11 +130,40 @@ export class RegistrationService implements RegistrationReader {
       deviceName: deviceName(asset),
       externalId: externalIdFor(profile.kind, data.devEui),
       fields,
+      deviceProfile: {
+        name: info.name,
+        version: info.versionLabel,
+        region: info.regionLabel,
+      },
+      mismatches,
     };
+  }
+
+  /**
+   * Compara versión, clase y región del activo con las del device profile del perfil LNS (en ChirpStack viven en el
+   * device profile, no en el dispositivo). Si el LNS no responde no se puede validar y se dice, en vez de registrar a ciegas.
+   */
+  private async checkAgainstDeviceProfile(profileId: string, data: LorawanSecrets) {
+    const profile = await this.profiles.resolve(this.db, profileId);
+    let info;
+    try {
+      info = await this.adapters[profile.kind].describeDeviceProfile(profile);
+    } catch (e) {
+      if (!(e instanceof LnsOperationError)) throw e;
+      this.log.error({ err: e, profileId }, 'no se pudo leer el device profile del LNS');
+      throw new ConflictError(
+        `No se pudo validar el activo contra el device profile del LNS: ${e.message}`,
+      );
+    }
+    return { info, mismatches: compareWithDeviceProfile(data, info) };
   }
 
   /** RF-60/61: deja el activo en `registrando` y encola el job. Un activo solo puede estar en un perfil (RF-65). */
   async request(actor: Actor, assetId: string, profileId: string): Promise<LnsRegistrationDto> {
+    await this.requireProfile(this.db, profileId);
+    const data = await this.lorawan.secretsFor(this.db, assetId); // valida los datos exigidos (RF-60)
+    const { info, mismatches } = await this.checkAgainstDeviceProfile(profileId, data);
+    if (mismatches.length) throw mismatchError(mismatches, info);
     const { registrationId, dto } = await this.db.transaction(async (tx) => {
       const asset = await this.requireAsset(tx, assetId);
       if (asset.deleted) throw new ConflictError('El activo está dado de baja');
@@ -523,6 +554,32 @@ export class RegistrationService implements RegistrationReader {
       diff,
     });
   }
+}
+
+const MISMATCH_LABELS = {
+  lorawanVersion: 'La versión de LoRaWAN',
+  region: 'La región',
+  deviceClass: 'La clase',
+} as const;
+
+/** 422 con una explicación por campo: qué tiene el activo, qué tiene el device profile y cuál es. */
+function mismatchError(
+  mismatches: ProfileMismatch[],
+  info: { name: string | null },
+): ValidationError {
+  const profile = info.name ? `«${info.name}»` : 'del LNS';
+  const errors: Record<string, string[]> = {};
+  for (const m of mismatches) {
+    errors[m.field] = [
+      m.field === 'deviceClass'
+        ? `La clase del activo (${m.asset}) no la admite el device profile ${profile} (admite: ${m.lns})`
+        : `${MISMATCH_LABELS[m.field]} del activo (${m.asset}) no coincide con la del device profile ${profile} (${m.lns})`,
+    ];
+  }
+  return new ValidationError(
+    'El activo no coincide con el device profile del LNS: corrige el activo o elige otro perfil',
+    errors,
+  );
 }
 
 function deviceName(asset: { assetTag: string; name: string }): string {

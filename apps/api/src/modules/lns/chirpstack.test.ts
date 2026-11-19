@@ -5,6 +5,7 @@ import devicePb from '@chirpstack/chirpstack-api/api/device_pb.js';
 import profileGrpc from '@chirpstack/chirpstack-api/api/device_profile_grpc_pb.js';
 import profilePb from '@chirpstack/chirpstack-api/api/device_profile_pb.js';
 import tenantGrpc from '@chirpstack/chirpstack-api/api/tenant_grpc_pb.js';
+import commonPb from '@chirpstack/chirpstack-api/common/common_pb.js';
 import tenantPb from '@chirpstack/chirpstack-api/api/tenant_pb.js';
 import {
   Server,
@@ -46,6 +47,14 @@ class FakeChirpstack {
   failures = new Map<string, number>();
   failureDetails = new Map<string, string>();
   authSeen: string[] = [];
+  /** Device profile que devuelve `deviceProfile.get`. */
+  dp: { name: string; region: number; macVersion: number; classB: boolean; classC: boolean } = {
+    name: 'Perfil AU915',
+    region: commonPb.Region.AU915,
+    macVersion: commonPb.MacVersion.LORAWAN_1_0_3,
+    classB: false,
+    classC: false,
+  };
   server = new Server();
   port = 0;
 
@@ -111,11 +120,19 @@ class FakeChirpstack {
       ),
     } as never);
     this.server.addService(profileGrpc.DeviceProfileServiceService, {
-      get: this.wrap<IdReq>('deviceProfile.get', (call, cb) =>
-        call.request.getId() === DP
-          ? cb(null, new profilePb.GetDeviceProfileResponse())
-          : cb({ code: status.NOT_FOUND, details: 'dp' }),
-      ),
+      get: this.wrap<IdReq>('deviceProfile.get', (call, cb) => {
+        if (call.request.getId() !== DP) return cb({ code: status.NOT_FOUND, details: 'dp' });
+        const dp = new profilePb.DeviceProfile();
+        dp.setId(DP);
+        dp.setName(this.dp.name);
+        dp.setRegion(this.dp.region as never);
+        dp.setMacVersion(this.dp.macVersion as never);
+        dp.setSupportsClassB(this.dp.classB);
+        dp.setSupportsClassC(this.dp.classC);
+        const res = new profilePb.GetDeviceProfileResponse();
+        res.setDeviceProfile(dp);
+        cb(null, res);
+      }),
     } as never);
   }
 
@@ -173,6 +190,48 @@ const failure = async () => {
   expect(e).toBeInstanceOf(LnsOperationError);
   return e as LnsOperationError;
 };
+
+describe('ChirpStack: device profile', () => {
+  it('lee versión, región y clases del device profile y los traduce a los de Inventarius', async () => {
+    expect(await adapter.describeDeviceProfile(profile)).toEqual({
+      id: DP,
+      name: 'Perfil AU915',
+      version: '1.0.3',
+      region: 'AU915',
+      classes: ['A'],
+      versionLabel: 'LoRaWAN 1.0.3',
+      regionLabel: 'AU915',
+    });
+    fake.dp = {
+      name: 'Perfil 1.1',
+      region: commonPb.Region.AS923_2,
+      macVersion: commonPb.MacVersion.LORAWAN_1_1_0,
+      classB: true,
+      classC: true,
+    };
+    expect(await adapter.describeDeviceProfile(profile)).toMatchObject({
+      version: '1.1',
+      region: 'AS923-2',
+      classes: ['A', 'B', 'C'],
+    });
+  });
+
+  it('una región que Inventarius no conoce queda sin traducir pero se muestra como la tiene el LNS', async () => {
+    fake.dp.region = commonPb.Region.ISM2400;
+    expect(await adapter.describeDeviceProfile(profile)).toMatchObject({
+      region: null,
+      regionLabel: 'ISM2400',
+    });
+  });
+
+  it('un device profile que no existe es un error legible', async () => {
+    const e = await adapter
+      .describeDeviceProfile({ ...profile, deviceDefaults: { deviceProfileId: 'otro' } })
+      .catch((x: unknown) => x);
+    expect(e).toBeInstanceOf(LnsOperationError);
+    expect((e as LnsOperationError).message).toMatch(/no encontró/);
+  });
+});
 
 describe('ChirpStack: registro', () => {
   it('crea el dispositivo con su etiqueta y luego las claves, con la API key', async () => {

@@ -1,4 +1,5 @@
-import type { ConnectionCheckDto, LorawanVersion } from '@inventarius/shared';
+import type { ConnectionCheckDto, LorawanRegion, LorawanVersion } from '@inventarius/shared';
+import type { DeviceProfileInfo } from './device-profile.js';
 import {
   externalIdFor,
   LnsOperationError,
@@ -15,6 +16,31 @@ import {
 /** Componentes de The Things Stack en el orden en que se crean (se borran en el inverso). */
 export const TTN_STEPS = ['is', 'js', 'ns', 'as'] as const;
 export type TtnStep = (typeof TTN_STEPS)[number];
+
+/**
+ * Plan de frecuencias de TTN -> región de Inventarius, por el prefijo del id (`AU_915_928_FSB_2` -> AU915). Un plan
+ * que no se reconoce queda sin región: no se valida, no se rechaza.
+ */
+const FREQUENCY_PLAN_REGIONS: [RegExp, LorawanRegion][] = [
+  [/^EU_863_870/, 'EU868'],
+  [/^US_902_928/, 'US915'],
+  [/^AU_915_928/, 'AU915'],
+  [/^AS_920_923/, 'AS923-1'],
+  [/^AS_923_925/, 'AS923-1'],
+  [/^AS_923_2/, 'AS923-2'],
+  [/^AS_923_3/, 'AS923-3'],
+  [/^AS_923_4/, 'AS923-4'],
+  [/^KR_920_923/, 'KR920'],
+  [/^IN_865_867/, 'IN865'],
+  [/^RU_864_870/, 'RU864'],
+  [/^CN_470_510/, 'CN470'],
+  [/^CN_779_787/, 'CN779'],
+  [/^EU_433/, 'EU433'],
+];
+
+function regionOfFrequencyPlan(plan: string): LorawanRegion | null {
+  return FREQUENCY_PLAN_REGIONS.find(([re]) => re.test(plan))?.[1] ?? null;
+}
 
 const MAC_VERSIONS: Record<LorawanVersion, string> = {
   '1.0': 'MAC_V1_0',
@@ -130,6 +156,23 @@ export class TtnAdapter implements LnsAdapter {
       });
     }
     return { ok: checks.every((c) => c.ok), latencyMs: Date.now() - started, checks };
+  }
+
+  /**
+   * En TTN la versión de MAC y la clase se envían desde el activo (no hay un perfil que las fije): solo el plan de
+   * frecuencias del perfil LNS fija la región.
+   */
+  async describeDeviceProfile(profile: LnsProfile): Promise<DeviceProfileInfo> {
+    const plan = profile.deviceDefaults.frequencyPlanId ?? '';
+    return {
+      id: null,
+      name: plan || null,
+      version: null,
+      region: regionOfFrequencyPlan(plan),
+      classes: null,
+      versionLabel: null,
+      regionLabel: plan || null,
+    };
   }
 
   async findDevice(profile: LnsProfile, devEui: string): Promise<RemoteDevice | null> {

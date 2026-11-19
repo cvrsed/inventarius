@@ -4,10 +4,17 @@ import applicationGrpc from '@chirpstack/chirpstack-api/api/application_grpc_pb.
 import applicationPb from '@chirpstack/chirpstack-api/api/application_pb.js';
 import profileGrpc from '@chirpstack/chirpstack-api/api/device_profile_grpc_pb.js';
 import profilePb from '@chirpstack/chirpstack-api/api/device_profile_pb.js';
+import commonPb from '@chirpstack/chirpstack-api/common/common_pb.js';
 import tenantGrpc from '@chirpstack/chirpstack-api/api/tenant_grpc_pb.js';
 import tenantPb from '@chirpstack/chirpstack-api/api/tenant_pb.js';
 import { credentials, Metadata, status, type Client, type ServiceError } from '@grpc/grpc-js';
-import type { ConnectionCheckDto } from '@inventarius/shared';
+import type {
+  ConnectionCheckDto,
+  LorawanClass,
+  LorawanRegion,
+  LorawanVersion,
+} from '@inventarius/shared';
+import type { DeviceProfileInfo } from './device-profile.js';
 import {
   ASSET_TAG_KEY,
   externalIdFor,
@@ -67,6 +74,41 @@ function describe(e: ServiceError): string {
 const isDuplicate = (e: ServiceError): boolean =>
   e.code === status.ALREADY_EXISTS ||
   (e.code === status.INTERNAL && /duplicate key|already exists/i.test(e.details));
+
+/** Versión de MAC de ChirpStack -> versión de Inventarius (`1.0` es la 1.0.0). */
+const MAC_VERSIONS: Record<number, LorawanVersion> = {
+  [commonPb.MacVersion.LORAWAN_1_0_0]: '1.0',
+  [commonPb.MacVersion.LORAWAN_1_0_1]: '1.0.1',
+  [commonPb.MacVersion.LORAWAN_1_0_2]: '1.0.2',
+  [commonPb.MacVersion.LORAWAN_1_0_3]: '1.0.3',
+  [commonPb.MacVersion.LORAWAN_1_0_4]: '1.0.4',
+  [commonPb.MacVersion.LORAWAN_1_1_0]: '1.1',
+};
+
+/** Región de ChirpStack -> región de Inventarius; `null` si no existe en Inventarius (p. ej. ISM2400). */
+const REGIONS: Record<number, LorawanRegion> = {
+  [commonPb.Region.EU868]: 'EU868',
+  [commonPb.Region.US915]: 'US915',
+  [commonPb.Region.AU915]: 'AU915',
+  [commonPb.Region.AS923]: 'AS923-1',
+  [commonPb.Region.AS923_2]: 'AS923-2',
+  [commonPb.Region.AS923_3]: 'AS923-3',
+  [commonPb.Region.AS923_4]: 'AS923-4',
+  [commonPb.Region.KR920]: 'KR920',
+  [commonPb.Region.IN865]: 'IN865',
+  [commonPb.Region.RU864]: 'RU864',
+  [commonPb.Region.CN470]: 'CN470',
+  [commonPb.Region.CN779]: 'CN779',
+  [commonPb.Region.EU433]: 'EU433',
+};
+
+const regionName = (n: number): string =>
+  Object.entries(commonPb.Region).find(([, v]) => v === n)?.[0] ?? String(n);
+const macName = (n: number): string =>
+  `LoRaWAN ${Object.entries(commonPb.MacVersion)
+    .find(([, v]) => v === n)?.[0]
+    .replace('LORAWAN_', '')
+    .replace(/_/g, '.')}`;
 
 const isServiceError = (e: unknown): e is ServiceError =>
   typeof e === 'object' &&
@@ -171,6 +213,42 @@ export class ChirpstackAdapter implements LnsAdapter {
       'get',
       req,
     );
+  }
+
+  async describeDeviceProfile(profile: LnsProfile): Promise<DeviceProfileInfo> {
+    const id = profile.deviceDefaults.deviceProfileId ?? '';
+    const req = new profilePb.GetDeviceProfileRequest();
+    req.setId(id);
+    try {
+      const res = await this.call<unknown, InstanceType<typeof profilePb.GetDeviceProfileResponse>>(
+        profile,
+        (a, c) => new profileGrpc.DeviceProfileServiceClient(a, c),
+        'get',
+        req,
+      );
+      const dp = res.getDeviceProfile();
+      if (!dp)
+        throw new LnsOperationError('ChirpStack no devolvió el device profile', {
+          transient: false,
+        });
+      const classes: LorawanClass[] = ['A'];
+      if (dp.getSupportsClassB()) classes.push('B');
+      if (dp.getSupportsClassC()) classes.push('C');
+      return {
+        id,
+        name: dp.getName(),
+        version: MAC_VERSIONS[dp.getMacVersion()] ?? null,
+        region: REGIONS[dp.getRegion()] ?? null,
+        classes,
+        versionLabel: macName(dp.getMacVersion()),
+        regionLabel: regionName(dp.getRegion()),
+      };
+    } catch (e) {
+      if (isServiceError(e)) {
+        throw new LnsOperationError(describe(e), { transient: TRANSIENT.has(e.code), cause: e });
+      }
+      throw e;
+    }
   }
 
   async findDevice(profile: LnsProfile, devEui: string): Promise<RemoteDevice | null> {

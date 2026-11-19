@@ -1,3 +1,4 @@
+import type { DeviceProfileInfo } from './device-profile.js';
 import type {
   ConnectionCheckDto,
   LnsKind,
@@ -91,6 +92,11 @@ export interface LnsAdapter {
   readonly kind: LnsKind;
   /** Verifica credencial y que el destino configurado exista. */
   testConnection(profile: LnsProfile): Promise<ConnectionCheck>;
+  /**
+   * Lee la configuración del device profile al que irá el dispositivo (versión de MAC, región, clases), para validar
+   * el activo antes de registrarlo (RF-60).
+   */
+  describeDeviceProfile(profile: LnsProfile): Promise<DeviceProfileInfo>;
   /** Devuelve el dispositivo si existe en el destino, o `null`. */
   findDevice(profile: LnsProfile, devEui: string): Promise<RemoteDevice | null>;
   /** Crea el dispositivo completo; compensa internamente si falla a mitad. */

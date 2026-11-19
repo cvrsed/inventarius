@@ -98,11 +98,29 @@ export const connectionCheckSchema = z.object({
 });
 export type ConnectionCheckDto = z.infer<typeof connectionCheckSchema>;
 
+/** Una diferencia entre el activo y el device profile del LNS (RF-60). */
+export const profileMismatchSchema = z.object({
+  field: z.enum(['lorawanVersion', 'deviceClass', 'region']),
+  /** Lo que tiene el activo. */
+  asset: z.string(),
+  /** Lo que tiene el LNS. */
+  lns: z.string(),
+});
+export type ProfileMismatchDto = z.infer<typeof profileMismatchSchema>;
+
 /** Vista previa de lo que se enviará al LNS, sin claves (RF-60). */
 export const registrationPreviewSchema = z.object({
   profile: z.object({ id: z.uuid(), name: z.string(), kind: lnsKindSchema }),
   deviceName: z.string(),
   externalId: z.string(),
   fields: z.array(z.object({ label: z.string(), value: z.string() })),
+  /** Device profile del LNS al que irá el dispositivo, tal como lo tiene el LNS. */
+  deviceProfile: z.object({
+    name: z.string().nullable(),
+    version: z.string().nullable(),
+    region: z.string().nullable(),
+  }),
+  /** Si no está vacío, el registro se rechaza hasta que activo y device profile coincidan. */
+  mismatches: z.array(profileMismatchSchema),
 });
 export type RegistrationPreviewDto = z.infer<typeof registrationPreviewSchema>;
