@@ -101,4 +101,17 @@ describe('AssetHistory (RF-24)', () => {
     await flushPromises();
     expect(w.findAll('button').length).toBeGreaterThan(0);
   });
+
+  it('un evento del worker del LNS se muestra como «Sistema», no como «worker»', async () => {
+    const w = mountHistory([
+      {
+        ...entry(5, 'lns.registered', { after: { profile: 'ChirpStack de prueba' } }),
+        actorName: null,
+        actorLabel: 'worker',
+      },
+    ]);
+    await flushPromises();
+    expect(w.text()).toContain('Sistema');
+    expect(w.text()).not.toContain('worker');
+  });
 });

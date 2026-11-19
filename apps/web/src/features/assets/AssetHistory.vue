@@ -4,6 +4,7 @@ import UIcon from '@nuxt/ui/components/Icon.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
 import { computed, toRef } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { actorDisplay } from '@/features/audit/actor';
 import { formatDateTime } from '@/shared/format/format';
 import { useAssetHistory } from './api';
 import { auditActionLabel, auditValueLabel } from '@/app/i18n/audit';
@@ -62,7 +63,7 @@ const show = (field: string, v: unknown) =>
           </p>
           <p class="m-0 text-sm text-muted">
             {{ formatDateTime(entry.at) }} ·
-            {{ t('assets.history.by', { name: entry.actorName ?? entry.actorLabel ?? '—' }) }}
+            {{ t('assets.history.by', { name: actorDisplay(entry, t) }) }}
           </p>
           <ul v-if="view.changes.length" class="m-0 mt-1 flex list-none flex-col gap-1 p-0 text-sm">
             <li v-for="c in view.changes" :key="c.field" class="break-words">

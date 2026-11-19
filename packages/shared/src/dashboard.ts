@@ -43,6 +43,8 @@ export const dashboardSummarySchema = z.object({
       at: z.iso.datetime(),
       action: z.string(),
       actorName: z.string().nullable(),
+      /** Quién actuó cuando no hay usuario (`cli`, `worker`). */
+      actorLabel: z.string().nullable(),
       assetId: z.uuid().nullable(),
       assetTag: z.string().nullable(),
       assetName: z.string().nullable(),

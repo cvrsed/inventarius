@@ -463,7 +463,7 @@ Revisión manual del PR #6 contra ChirpStack 4.20.0 (2026-11-19). Cada punto va 
 - [ ] P7 «Desvincular» sin estilo destructivo
 - [ ] P8 Una tabla de traducciones para historial y Auditoría, sin claves internas ni valores crudos
 - [ ] P9 Confirmación con lo que se va a enviar antes de encolar el registro
-- [ ] P15 El actor del worker se muestra como «Sistema» en todas las vistas
+- [x] P15 El actor del worker se muestra como «Sistema» en todas las vistas
 - [x] P16 Pluralización «Importar 1 dispositivo»
 - [x] P17 Botones desactivados se ven desactivados y con tooltip del motivo
 - [x] P18 Número de serie único sin distinguir mayúsculas

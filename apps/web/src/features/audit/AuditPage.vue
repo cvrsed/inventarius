@@ -3,6 +3,7 @@ import type { AuditEntryDto } from '@inventarius/shared';
 import UAlert from '@nuxt/ui/components/Alert.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
 import { computed, ref } from 'vue';
+import { actorDisplay } from './actor';
 import ResponsiveTable from '@/shared/ui/ResponsiveTable.vue';
 import IconAction from '@/shared/ui/IconAction.vue';
 import { useI18n } from 'vue-i18n';
@@ -43,9 +44,7 @@ const columns = computed(() => [
 const actionLabel = auditActionLabel;
 const entityLabel = auditEntityLabel;
 
-/** Usuario; si no hubo (`cli`) la operación por línea de comandos; si no, el sistema. */
-const who = (e: AuditEntryDto): string =>
-  e.actorName ?? (e.actorLabel === 'cli' ? t('audit.cli') : t('audit.system'));
+const who = (e: AuditEntryDto): string => actorDisplay(e, t);
 
 /** Detalle abierto en el modo tarjeta (en la tabla lo maneja `expanded`). */
 const openCards = ref(new Set<string>());

@@ -5,6 +5,7 @@ import UIcon from '@nuxt/ui/components/Icon.vue';
 import USkeleton from '@nuxt/ui/components/Skeleton.vue';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { actorDisplay } from '@/features/audit/actor';
 import { auditActionLabel } from '@/app/i18n/audit';
 import { useAuthStore } from '@/features/auth/useAuthStore';
 import StatusCard from '@/features/system/StatusCard.vue';
@@ -218,7 +219,7 @@ const warehouseBars = computed<BarItem[]>(() =>
                   </span>
                   <span class="text-xs text-muted">
                     {{ formatDateTime(r.at) }} ·
-                    {{ t('assets.history.by', { name: r.actorName ?? '—' }) }}
+                    {{ t('assets.history.by', { name: actorDisplay(r, t) }) }}
                   </span>
                 </component>
               </li>

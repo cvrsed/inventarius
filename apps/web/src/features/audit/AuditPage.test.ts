@@ -33,6 +33,12 @@ describe('AuditPage', () => {
           entry(1),
           entry(2, { actorId: null, actorName: null, action: 'auth.login_failed', diff: null }),
           entry(3, { actorId: null, actorName: null, actorLabel: 'cli', action: 'user.update' }),
+          entry(4, {
+            actorId: null,
+            actorName: null,
+            actorLabel: 'worker',
+            action: 'lns.registered',
+          }),
         ],
         meta: { page: 1, pageSize: 25, total: 3 },
       }),
@@ -44,6 +50,7 @@ describe('AuditPage', () => {
     expect(w.text()).toContain('Sistema');
     expect(w.text()).toContain('CLI (operación)');
     expect(w.text()).toContain('Ana');
+    expect(w.text()).not.toContain('worker');
   });
 
   it('en móvil cada registro es una tarjeta cuyo detalle se abre sin scroll horizontal', async () => {

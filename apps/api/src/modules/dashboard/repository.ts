@@ -121,6 +121,7 @@ export class DashboardRepository {
         at: auditLog.at,
         action: auditLog.action,
         actorId: auditLog.actorId,
+        actorLabel: auditLog.actorLabel,
         entityId: auditLog.entityId,
         assetId: assets.id,
         assetTag: sql<string | null>`${assets.assetTag}::text`,
