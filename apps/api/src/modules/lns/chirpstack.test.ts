@@ -217,6 +217,15 @@ describe('ChirpStack: registro', () => {
     expect((await failure()).transient).toBe(true); // otro INTERNAL sí es transitorio
   });
 
+  it('INTERNAL que no es duplicado: el mensaje visible es genérico y e.details queda solo en la causa', async () => {
+    fake.failures.set('create', status.INTERNAL);
+    fake.failureDetails.set('create', 'violates foreign key constraint "device_dp_fkey"');
+    const err = await failure();
+    expect(err.message).not.toContain('device_dp_fkey');
+    expect(err.message).toMatch(/error interno/);
+    expect((err.cause as { details: string }).details).toContain('device_dp_fkey');
+  });
+
   it('UNAVAILABLE y DEADLINE_EXCEEDED son transitorios; INVALID_ARGUMENT y UNAUTHENTICATED no', async () => {
     for (const [code, transient] of [
       [status.UNAVAILABLE, true],

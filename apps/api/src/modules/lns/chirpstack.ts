@@ -30,7 +30,11 @@ const TRANSIENT = new Set<number>([
   status.UNKNOWN,
 ]);
 
-/** Lee un error gRPC y lo vuelve un texto en español sin exponer la credencial. */
+/**
+ * Lee un error gRPC y lo vuelve un texto en español sin exponer la credencial. En `INTERNAL` no se incluye `details`:
+ * puede traer texto crudo de Postgres (nombres de constraints). El error original viaja como `cause` y el servicio lo
+ * registra en el log.
+ */
 function describe(e: ServiceError): string {
   switch (e.code) {
     case status.UNAUTHENTICATED:
@@ -44,7 +48,7 @@ function describe(e: ServiceError): string {
     case status.INTERNAL:
       return isDuplicate(e)
         ? 'El dispositivo ya existe en ChirpStack'
-        : `ChirpStack respondió con un error interno: ${e.details}`;
+        : 'ChirpStack respondió con un error interno (el detalle queda en el log del servidor)';
     case status.INVALID_ARGUMENT:
       return `ChirpStack rechazó los datos: ${e.details}`;
     case status.UNAVAILABLE:
