@@ -17,6 +17,7 @@ import tenantPb from '@chirpstack/chirpstack-api/api/tenant_pb.js';
 import commonPb from '@chirpstack/chirpstack-api/common/common_pb.js';
 import { credentials, Metadata, type Client, type ServiceError } from '@grpc/grpc-js';
 import { writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 
 type Make = (address: string, creds: ReturnType<typeof credentials.createInsecure>) => Client;
 
@@ -147,18 +148,52 @@ const foundProfiles = await call<InstanceType<typeof profilePb.ListDeviceProfile
   listProfiles,
   jwt,
 );
-let deviceProfileId =
-  foundProfiles
-    .getResultList()
-    .find((p) => p.getName() === NAME)
-    ?.getId() ?? '';
-if (!deviceProfileId) {
+
+// Un device profile sin ADR algorithm es inválido para ChirpStack: se elige uno de los que ofrece el servidor
+// (`default` si está) en vez de suponer un id.
+const Empty = createRequire(import.meta.url)('google-protobuf/google/protobuf/empty_pb.js')
+  .Empty as new () => object;
+const adrAlgorithms = (
+  await call<InstanceType<typeof profilePb.ListDeviceProfileAdrAlgorithmsResponse>>(
+    profiles,
+    'listAdrAlgorithms',
+    new Empty(),
+    jwt,
+  )
+)
+  .getResultList()
+  .map((a) => a.getId());
+const adrAlgorithmId = adrAlgorithms.includes('default') ? 'default' : adrAlgorithms[0];
+if (!adrAlgorithmId) throw new Error('ChirpStack no ofrece ningún ADR algorithm');
+
+const existingProfile = foundProfiles.getResultList().find((p) => p.getName() === NAME);
+let deviceProfileId = existingProfile?.getId() ?? '';
+if (existingProfile) {
+  // Un perfil creado por una versión anterior de este script quedó sin ADR algorithm: se completa.
+  const getReq = new profilePb.GetDeviceProfileRequest();
+  getReq.setId(deviceProfileId);
+  const dp = (
+    await call<InstanceType<typeof profilePb.GetDeviceProfileResponse>>(
+      profiles,
+      'get',
+      getReq,
+      jwt,
+    )
+  ).getDeviceProfile()!;
+  if (!dp.getAdrAlgorithmId()) {
+    dp.setAdrAlgorithmId(adrAlgorithmId);
+    const updateReq = new profilePb.UpdateDeviceProfileRequest();
+    updateReq.setDeviceProfile(dp);
+    await call(profiles, 'update', updateReq, jwt);
+  }
+} else {
   const dp = new profilePb.DeviceProfile();
   dp.setName(NAME);
   dp.setTenantId(tenantId);
   dp.setRegion(commonPb.Region.AU915);
   dp.setMacVersion(commonPb.MacVersion.LORAWAN_1_0_3);
   dp.setRegParamsRevision(commonPb.RegParamsRevision.A);
+  dp.setAdrAlgorithmId(adrAlgorithmId);
   dp.setSupportsOtaa(true);
   dp.setUplinkInterval(3600);
   const req = new profilePb.CreateDeviceProfileRequest();
