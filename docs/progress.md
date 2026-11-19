@@ -263,6 +263,20 @@ Marcas `[P15]` a `[P19]` al final del asunto de cada commit.
 - **Decisiones provisionales nuevas**: Q41 a Q46 en `docs/open-questions.md`.
 - **Cómo probar**: `pnpm lint && pnpm typecheck && pnpm test`, integración de la API y el e2e de `docs/development.md` (escritorio y 360 px).
 
+## Sexta tanda de revisión de F2 (2026-11-18, mismo PR #5)
+
+Marcas `[P42]` a `[P44]` al final del asunto de cada commit.
+
+- **P42** Menús de filtro: el panel mide entre 280 y 400 px (no hereda el ancho del botón), se alinea al botón sin salirse de la pantalla y los
+  textos largos pasan a 2 líneas (nunca «…»). Las ubicaciones se muestran en dos líneas (nombre arriba, ruta de padres abajo con «›»), también en los
+  selects de formularios; la búsqueda encuentra por nombre y por ruta (la API ya buscaba en la ruta). El buscador interno dice qué busca
+  («Buscar ubicación…», «Buscar categoría…», «Buscar estado…»). El chip muestra solo el nombre. e2e con nombres largos en escritorio y 360 px, con axe.
+- **P43** «Antes → después» solo para campos que cambiaron de valor; los datos propios del evento (motivo, nota, a quién se asignó, devolución) y el
+  contexto se ven como valor simple, en el detalle de auditoría y en el historial del activo.
+- **P44** La búsqueda de usuarios vive en la URL (texto, página y tamaño), como los demás listados.
+- **Decisión a revisar:** la lista de «datos del evento» es explícita (`EVENT_FIELDS` en `features/audit/detail.ts`); un campo nuevo que sea dato del
+  evento debe agregarse ahí.
+
 ## Quinta tanda de revisión de F2 (2026-11-17, mismo PR #5)
 
 Marcas `[P40]` y `[P41]` al final del asunto de cada commit.

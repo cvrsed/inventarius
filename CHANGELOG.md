@@ -7,6 +7,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). D
 
 ### F2 — Inventario
 
+#### Sexta tanda de revisión (PR #5)
+
+- Menús de filtro de 280 a 400 px, textos en 2 líneas y ubicaciones con su ruta debajo; buscador interno con su nombre [P42].
+- Detalle de auditoría: «antes → después» solo si el valor cambió; motivo y nota como valor simple [P43].
+- La búsqueda de usuarios se refleja en la URL [P44].
+
 #### Quinta tanda de revisión (PR #5)
 
 - Auditoría: columna «Registro» con el rótulo guardado en el evento, enlazado solo si el registro sigue vigente; baja con situación
