@@ -5,6 +5,7 @@ import {
 } from '@inventarius/shared';
 import type { Executor } from '../../core/db/executor.js';
 import { ConflictError, NotFoundError, ValidationError } from '../../core/errors.js';
+import { LNS_DEREGISTER_QUEUE, LNS_REGISTER_QUEUE } from '../../core/queues.js';
 import type { JobQueue } from '../../core/queue.js';
 import type { Actor, AuditService } from '../audit/service.js';
 import type { LorawanSecrets, LorawanService, RegistrationReader } from '../lorawan/service.js';
@@ -16,11 +17,6 @@ import {
 } from './adapter.js';
 import type { LnsProfilesService } from './profiles-service.js';
 import type { RegistrationRow, RegistrationsRepository } from './registrations-repository.js';
-
-export const LNS_REGISTER_QUEUE = 'lns-register';
-export const LNS_DEREGISTER_QUEUE = 'lns-deregister';
-/** Colas del LNS; el migrador las crea (DDL) para que la API y el worker solo necesiten DML. */
-export const LNS_QUEUES = [LNS_REGISTER_QUEUE, LNS_DEREGISTER_QUEUE] as const;
 
 /** Marca el último paso de un registro completo (permite distinguir uno entero de uno a medias, RF-64). */
 const COMPLETE = 'complete';

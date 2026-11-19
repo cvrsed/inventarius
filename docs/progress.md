@@ -437,3 +437,15 @@ docker compose -f compose.e2e.yml down --volumes
 ```
 
 Desarrollo manual con ChirpStack: ver `docs/development.md` (perfil `chirpstack` de `compose.yml`).
+
+**Corrección del CI del PR #6 (2026-11-19)**
+
+- **Causa:** el job «Integración» fallaba con `ERR_RESOLVE_PACKAGE_ENTRY_FAIL` para `@inventarius/shared`. El `globalSetup` del
+  proyecto `int` importa `migrator.ts` y, con él, `@inventarius/shared`; Vitest no le aplica la condición `inventarius-source`
+  declarada dentro de cada proyecto, así que resolvía el export `default` (`./dist/index.js`), que en CI no existe. En local
+  funcionaba por un `packages/shared/dist` viejo.
+- **Arreglo:** la condición se declara también a nivel raíz de `apps/api/vitest.config.ts` (con el porqué en un comentario), y
+  `migrator.ts` ya no importa módulos de negocio: los nombres de colas viven en `core/queues.ts`. Sin paso de build de `shared` en CI.
+- **Verificado** con `packages/shared/dist` borrado: `test:coverage` de la API verde (388 pruebas, umbrales cumplidos). El workflow
+  `ttn-real.yml` ejecuta la misma configuración de Vitest, así que queda cubierto.
+- Regla nueva en `CLAUDE.md`: no se cierra un PR con checks en rojo.

@@ -8,7 +8,7 @@ import {
   setupLorawan,
   type LorawanFixture,
 } from '../../../test/lorawan.js';
-import { LNS_DEREGISTER_QUEUE, LNS_REGISTER_QUEUE } from './registration-service.js';
+import { LNS_DEREGISTER_QUEUE, LNS_REGISTER_QUEUE } from '../../core/queues.js';
 
 let env: TestEnv;
 let fx: LorawanFixture;

@@ -1,9 +1,6 @@
 import type { PgBoss } from 'pg-boss';
-import {
-  LNS_DEREGISTER_QUEUE,
-  LNS_REGISTER_QUEUE,
-  type RegistrationService,
-} from '../modules/lns/registration-service.js';
+import { LNS_DEREGISTER_QUEUE, LNS_REGISTER_QUEUE } from '../core/queues.js';
+import type { RegistrationService } from '../modules/lns/registration-service.js';
 
 interface RegistrationJob {
   registrationId?: string;

@@ -1,7 +1,8 @@
 import { PgBoss } from 'pg-boss';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestEnv, type TestEnv } from '../../test/app.js';
-import { PURGE_SESSIONS_CRON, PURGE_SESSIONS_QUEUE, startMaintenanceJobs } from './maintenance.js';
+import { PURGE_SESSIONS_QUEUE } from '../core/queues.js';
+import { PURGE_SESSIONS_CRON, startMaintenanceJobs } from './maintenance.js';
 
 let env: TestEnv;
 let userId: string;

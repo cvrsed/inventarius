@@ -31,6 +31,8 @@
 - Si algo bloquea de verdad (credencial que falta, decisión de producto), se documenta en
   `docs/open-questions.md`, se deja la tarea marcada en `docs/progress.md` y se sigue con otra.
 
+- Un PR no se da por terminado con checks en rojo: tras el push se revisa `gh pr checks` hasta que todos estén en verde (o `skipped` con motivo explícito). Un fallo que solo ocurre en CI se reproduce en local sin artefactos de build (p. ej. sin `packages/shared/dist`) y se arregla de raíz.
+
 ## Código
 - Estructura de módulos: `routes -> service -> repository`. Sin lógica de negocio en rutas ni en componentes Vue.
 - TypeScript estricto; sin `any`; errores tipados del dominio mapeados a HTTP en un solo lugar.
