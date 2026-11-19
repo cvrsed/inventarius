@@ -449,3 +449,44 @@ Desarrollo manual con ChirpStack: ver `docs/development.md` (perfil `chirpstack`
 - **Verificado** con `packages/shared/dist` borrado: `test:coverage` de la API verde (388 pruebas, umbrales cumplidos). El workflow
   `ttn-real.yml` ejecuta la misma configuración de Vitest, así que queda cubierto.
 - Regla nueva en `CLAUDE.md`: no se cierra un PR con checks en rojo.
+
+## F3 revisión
+
+Revisión manual del PR #6 contra ChirpStack 4.20.0 (2026-11-19). Cada punto va en su propio commit.
+
+- [ ] P1 «Probar conexión»: un solo mensaje cuando todas las verificaciones fallan por la misma causa
+- [ ] P2 Registro valida versión, clase y región contra el device profile; identidad bloqueada si registrado o vinculado; aviso al editar
+- [ ] P3 El adaptador de ChirpStack envía el JoinEUI; test que compara campo por campo contra el LNS
+- [ ] P4 `chirpstack-bootstrap` crea el device profile con un ADR algorithm válido
+- [ ] P5 Conflicto: el mensaje sale una sola vez
+- [ ] P6 Vincular: lee el remoto, muestra diferencias, adoptar o cancelar; la ficha muestra lo que tiene el LNS
+- [ ] P7 «Desvincular» sin estilo destructivo
+- [ ] P8 Una tabla de traducciones para historial y Auditoría, sin claves internas ni valores crudos
+- [ ] P9 Confirmación con lo que se va a enviar antes de encolar el registro
+- [ ] P15 El actor del worker se muestra como «Sistema» en todas las vistas
+- [ ] P16 Pluralización «Importar 1 dispositivo»
+- [ ] P17 Botones desactivados se ven desactivados y con tooltip del motivo
+- [ ] P18 Número de serie único sin distinguir mayúsculas
+- [ ] P19 Los eventos de auditoría por activo de una importación CSV referencian el id del lote
+- [ ] P20 La importación aplica los defaults del modelo (clase, versión, región)
+- [ ] P21 Auditoría sin scroll horizontal en escritorio; tarjetas en 360 px
+- [ ] P22 En producción la app no arranca sin `APP_ENCRYPTION_KEY` o con el valor por defecto de `compose.yml`
+- [ ] P23 Informe: TLS con CA propia en el adaptador de ChirpStack (`docs/open-questions.md`)
+
+### Backlog post-F3
+
+Para una fase de endurecimiento; **no se implementa en F3**.
+
+- **Bajas con aprobación (decidido).** Solicitar una baja deja el activo en «baja solicitada» y el dispositivo sigue en el
+  LNS. La ejecuta otra persona con el rol aprobador: mínimo dos personas con ese rol y sin autoaprobación. Se puede rechazar
+  con motivo o cancelar; hay bandeja de pendientes con antigüedad y aviso; una baja masiva es una sola solicitud; los
+  permisos `lorawan:deregister:request` y `lorawan:deregister:approve` van separados. Lo vinculado nunca se borra del LNS.
+- Solo borrar en el LNS dispositivos que Inventarius registró (validado contra `lns_registrations` y el tag
+  `inventarius_asset_id`).
+- Progreso por paso del registro (`stepsDone`) visible en la ficha cuando queda parcial o falla.
+- Última actividad del LNS (`last_seen`) en la ficha y filtro «registrado sin actividad».
+- Plantilla de nombre y descripción por perfil LNS, con el límite de largo de cada LNS y bloqueo si la descripción contiene
+  una clave.
+- Registro por lote desde el listado, por la cola y con progreso.
+- Defaults de modelo con plan de frecuencia y sub-banda (por ejemplo AU915 FSB2). En ChirpStack corresponde a la
+  «region configuration» del device profile.
