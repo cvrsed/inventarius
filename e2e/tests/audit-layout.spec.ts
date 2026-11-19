@@ -33,9 +33,16 @@ test('auditoría (P21): sin scroll horizontal en escritorio; la IP va al detalle
     await expect(
       mobile ? page.locator('ul[aria-busy] > li').first() : page.locator('tbody tr').first(),
     ).toBeVisible();
-    expect((await overflow(page)).page, `la página desborda a ${width}px`).toBe(false);
+    // Se reintenta: con otras pruebas corriendo en paralelo la tabla puede tardar en asentarse; un desborde real persiste.
+    await expect
+      .poll(async () => (await overflow(page)).page, { message: `la página desborda a ${width}px` })
+      .toBe(false);
     if (!mobile) {
-      expect((await overflow(page)).table, `la tabla desborda a ${width}px`).toBe(false);
+      await expect
+        .poll(async () => (await overflow(page)).table, {
+          message: `la tabla desborda a ${width}px`,
+        })
+        .toBe(false);
       await expect(page.getByRole('columnheader', { name: 'IP' })).toHaveCount(0);
     }
   }
