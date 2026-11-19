@@ -1,9 +1,12 @@
 import type { AuditEntryDto } from '@inventarius/shared';
+import { EVENT_FIELDS } from '@/features/audit/detail';
 
 export interface HistoryChange {
   field: string;
   before: unknown;
   after: unknown;
+  /** Dato propio del evento (motivo, nota…): se muestra como valor simple, sin «antes → después». */
+  single?: boolean;
 }
 
 export interface HistoryItem {
@@ -52,6 +55,7 @@ export function describeEntry(entry: AuditEntryDto): HistoryItem {
     field,
     before: before[field] ?? null,
     after: after[field] ?? null,
+    ...(EVENT_FIELDS.has(field) ? { single: true } : {}),
   }));
   return { key, action: entry.action, params, changes };
 }

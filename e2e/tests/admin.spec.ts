@@ -196,6 +196,16 @@ test.describe('auditoría (RF-31)', () => {
     await expect(detail).toContainText('Vigente');
     await expect(detail).toContainText('Dado de baja');
     await expect(detail).toContainText('Motivo');
+    // [P43] «Antes → Después» solo para lo que cambió de valor; el motivo es un dato del evento: valor simple.
+    await expect(detail.locator('dt', { hasText: 'Situación' }).locator('+ dd')).toContainText(
+      'Antes',
+    );
+    await expect(detail.locator('dt', { hasText: 'Motivo' }).locator('+ dd')).not.toContainText(
+      'Antes',
+    );
+    await expect(detail.locator('dt', { hasText: 'Motivo' }).locator('+ dd')).toHaveText(
+      'Equipo robado',
+    );
     await expect(detail).toContainText('Equipo robado');
     expect(await horizontalOverflow(page)).toBe(false);
     await eachTheme(page, () => expectNoA11yViolations(page));

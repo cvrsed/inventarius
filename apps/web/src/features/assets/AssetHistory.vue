@@ -67,9 +67,14 @@ const show = (field: string, v: unknown) =>
           <ul v-if="view.changes.length" class="m-0 mt-1 flex list-none flex-col gap-1 p-0 text-sm">
             <li v-for="c in view.changes" :key="c.field" class="break-words">
               <UBadge :label="fieldLabel(c.field)" color="neutral" variant="subtle" class="mr-1" />
-              <span class="text-muted">{{ show(c.field, c.before) }}</span>
-              <span aria-hidden="true"> → </span><span class="sr-only">a</span>
-              <span class="text-default">{{ show(c.field, c.after) }}</span>
+              <template v-if="c.single">
+                <span class="text-default">{{ show(c.field, c.after ?? c.before) }}</span>
+              </template>
+              <template v-else>
+                <span class="text-muted">{{ show(c.field, c.before) }}</span>
+                <span aria-hidden="true"> → </span><span class="sr-only">a</span>
+                <span class="text-default">{{ show(c.field, c.after) }}</span>
+              </template>
             </li>
           </ul>
         </div>

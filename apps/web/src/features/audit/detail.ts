@@ -18,6 +18,19 @@ export interface DetailText {
 
 const EMPTY = '—';
 
+/**
+ * Datos propios del evento, no un campo que cambió de valor: el motivo de una baja, la nota de una asignación, a quién
+ * se asignó o a dónde volvió. Se muestran como valor simple, sin «antes → después» (que queda para lo que cambió).
+ */
+export const EVENT_FIELDS: ReadonlySet<string> = new Set([
+  'reason',
+  'note',
+  'expectedReturnOn',
+  'returnedTo',
+  'assignedTo',
+  'assignedToType',
+]);
+
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   v !== null && typeof v === 'object' && !Array.isArray(v);
 
@@ -52,7 +65,7 @@ export function formatDetailValue(field: string, value: unknown, text: DetailTex
 
 /**
  * Convierte el `diff` de una auditoría en una lista campo → valor. Con `before` y `after` muestra solo lo que
- * cambió, como antes/después; con uno solo (alta o baja) o con un objeto plano, el valor.
+ * cambió de valor, como antes/después (los datos del evento y el contexto, como valor simple); con uno solo (alta o baja) o con un objeto plano, el valor.
  */
 export function describeAuditDetail(
   diff: Record<string, unknown> | null,
@@ -72,13 +85,22 @@ export function describeAuditDetail(
 
   if (before && after) {
     const fields = [...new Set([...Object.keys(before), ...Object.keys(after)])];
-    const changes = fields
-      .filter((f) => JSON.stringify(before[f] ?? null) !== JSON.stringify(after[f] ?? null))
-      .map((f) => ({
-        ...row(f),
-        before: formatDetailValue(f, before[f], text),
-        after: formatDetailValue(f, after[f], text),
-      }));
+    const changes: DetailRow[] = [];
+    for (const f of fields) {
+      if (EVENT_FIELDS.has(f)) {
+        // Dato del evento: valor simple (el de después; en una restauración, el que traía la baja).
+        const v = after[f] ?? before[f];
+        if (v !== null && v !== undefined && v !== '') {
+          changes.push({ ...row(f), value: formatDetailValue(f, v, text) });
+        }
+      } else if (JSON.stringify(before[f] ?? null) !== JSON.stringify(after[f] ?? null)) {
+        changes.push({
+          ...row(f),
+          before: formatDetailValue(f, before[f], text),
+          after: formatDetailValue(f, after[f], text),
+        });
+      }
+    }
     return [...changes, ...context];
   }
   const single = after ?? before ?? diff;

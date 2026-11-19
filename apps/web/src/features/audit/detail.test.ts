@@ -98,7 +98,50 @@ describe('describeAuditDetail (RF-31)', () => {
     );
     expect(rows).toEqual([
       { field: 'situation', label: 'Situación', before: 'Vigente', after: 'Dado de baja' },
-      { field: 'reason', label: 'Motivo', before: '—', after: 'Equipo robado' },
+      { field: 'reason', label: 'Motivo', value: 'Equipo robado' },
+      { field: 'status', label: 'Estado', value: 'Disponible' },
+    ]);
+  });
+
+  it('los datos del evento y el contexto son valor simple; antes → después solo si el valor cambió [P43]', () => {
+    const rows = describeAuditDetail(
+      {
+        before: { status: 'Disponible', assignedTo: null, name: 'Igual' },
+        after: {
+          status: 'Asignado',
+          assignedTo: 'Ana',
+          assignedToType: 'user',
+          note: 'sale a terreno',
+          expectedReturnOn: null,
+          name: 'Igual',
+        },
+        context: { location: 'Bodega Norte' },
+      },
+      text,
+    );
+    expect(rows).toEqual([
+      { field: 'status', label: 'Estado', before: 'Disponible', after: 'Asignado' },
+      { field: 'assignedTo', label: 'Asignado a', value: 'Ana' },
+      { field: 'assignedToType', label: 'Tipo de destino', value: 'Usuario' },
+      { field: 'note', label: 'Nota', value: 'sale a terreno' },
+      { field: 'location', label: 'Ubicación', value: 'Bodega Norte' },
+    ]);
+    // Nada con «Antes»/«Después» salvo lo que cambió de valor.
+    expect(rows.filter((r) => r.before !== undefined).map((r) => r.field)).toEqual(['status']);
+  });
+
+  it('una restauración muestra el motivo de la baja como valor simple', () => {
+    const rows = describeAuditDetail(
+      {
+        before: { situation: 'baja', reason: 'Equipo robado' },
+        after: { situation: 'vigente' },
+        context: { status: 'Disponible' },
+      },
+      text,
+    );
+    expect(rows).toEqual([
+      { field: 'situation', label: 'Situación', before: 'Dado de baja', after: 'Vigente' },
+      { field: 'reason', label: 'Motivo', value: 'Equipo robado' },
       { field: 'status', label: 'Estado', value: 'Disponible' },
     ]);
   });

@@ -47,7 +47,20 @@ describe('describeEntry', () => {
   it('la creación no lista cambios; el motivo de baja sí', () => {
     expect(describeEntry(entry('asset.create', { after: { name: 'X' } })).changes).toEqual([]);
     const del = describeEntry(entry('asset.delete', { after: { reason: 'Robo' } }));
-    expect(del.changes).toEqual([{ field: 'reason', before: null, after: 'Robo' }]);
+    expect(del.changes).toEqual([{ field: 'reason', before: null, after: 'Robo', single: true }]);
+  });
+
+  it('los datos del evento (motivo, nota) son valor simple; lo que cambió de valor, antes → después [P43]', () => {
+    const d = describeEntry(
+      entry('asset.delete', {
+        before: { situation: 'vigente' },
+        after: { situation: 'baja', reason: 'Robo' },
+      }),
+    );
+    expect(d.changes).toEqual([
+      { field: 'situation', before: 'vigente', after: 'baja' },
+      { field: 'reason', before: null, after: 'Robo', single: true },
+    ]);
   });
 
   it('una acción desconocida cae en una clave genérica y tolera diff nulo', () => {
