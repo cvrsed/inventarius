@@ -358,7 +358,7 @@ Marcas `[P20]` a `[P26]` al final del asunto de cada commit.
 - [x] Dependencias del cliente gRPC de ChirpStack (`@chirpstack/chirpstack-api`, `@grpc/grpc-js`), versiones exactas
 - [x] Dominio compartido: formatos EUI/clave, esquemas Zod, estados de registro, acciones de auditoría (RF-21, 5.2)
 - [x] Cifrado AES-256-GCM con `APP_ENCRYPTION_KEY` + `key_id` y rotación (RNF, 10.1)
-- [ ] Migración: `asset_lorawan`, `lns_profiles`, `lns_registrations`
+- [x] Migración: `asset_lorawan`, `lns_profiles`, `lns_registrations`
 - [ ] Extensión LoRaWAN del activo: alta/edición, validación y unicidad de DevEUI, defaults desde el modelo (RF-21)
 - [ ] Reveal de claves con `lorawan:keys:reveal`, auditado (RF-30)
 - [ ] Perfiles LNS: CRUD, credencial enmascarada, «Probar conexión» (RF-50 a RF-52)

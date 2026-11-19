@@ -85,6 +85,13 @@
       "when": 1794965305394,
       "tag": "0011_audit_entity_label",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795055311355,
+      "tag": "0012_lorawan",
+      "breakpoints": true
     }
   ]
 }
