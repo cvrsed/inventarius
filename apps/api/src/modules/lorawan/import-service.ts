@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { LorawanImportPreview } from '@inventarius/shared';
 import type { Executor } from '../../core/db/executor.js';
 import { ValidationError } from '../../core/errors.js';
@@ -52,13 +53,18 @@ export class LorawanImportService {
           csv: [...fileErrors, ...(invalid.length ? [`${invalid.length} filas con errores`] : [])],
         });
       }
+      const batchId = randomUUID();
       for (const row of rows) {
-        await this.lorawan.apply(tx, actor, row.assetId!, row.data, { fillEmptyFromModel: true });
+        await this.lorawan.apply(tx, actor, row.assetId!, row.data, {
+          fillEmptyFromModel: true,
+          batchId,
+        });
       }
       await this.audit.record(tx, {
         ...actor,
         action: 'lorawan.import',
         entity: 'lorawan_import',
+        entityId: batchId,
         entityLabel: `Importación de ${rows.length} dispositivos LoRaWAN`,
         // Solo cantidades y series: nunca claves.
         diff: { after: { count: rows.length, serials: rows.map((r) => r.serial) } },

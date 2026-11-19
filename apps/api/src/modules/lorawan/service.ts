@@ -116,14 +116,15 @@ export class LorawanService {
   /**
    * Aplica el cambio dentro de la transacción del llamador (también se usa al crear el activo con datos
    * LoRaWAN, RF-21). Con una fila nueva, clase/versión/región vacías se completan con las del modelo; con
-   * `fillEmptyFromModel` (importación CSV, RF-66) también las vacías de una fila que ya existía.
+   * `fillEmptyFromModel` (importación CSV, RF-66) también las vacías de una fila que ya existía. `batchId` es el lote
+   * de la importación: queda en el evento de auditoría de cada activo.
    */
   async apply(
     tx: Executor,
     actor: Actor,
     assetId: string,
     input: UpdateLorawanInput,
-    options: { fillEmptyFromModel?: boolean } = {},
+    options: { fillEmptyFromModel?: boolean; batchId?: string } = {},
   ): Promise<LorawanDto> {
     const asset = await this.requireAsset(tx, assetId, true);
     const current = await this.repo.get(tx, assetId);
@@ -183,6 +184,7 @@ export class LorawanService {
             ...(diff?.after ?? {}),
             ...(keyChanges.includes('appKey') ? { appKeyChanged: true } : {}),
             ...(keyChanges.includes('nwkKey') ? { nwkKeyChanged: true } : {}),
+            ...(options.batchId ? { batchId: options.batchId } : {}),
           },
         },
       });

@@ -74,6 +74,18 @@ describe('importación CSV de datos LoRaWAN (RF-66)', () => {
     );
     expect(rows).toHaveLength(1);
     expect(rows[0].diff.after.count).toBe(100);
+    // Cada evento por activo referencia el id del lote (el de la entidad del registro del lote).
+    const batchId = (
+      await env.db.migratorPool.query(
+        "SELECT entity_id FROM audit_log WHERE action = 'lorawan.import'",
+      )
+    ).rows[0].entity_id;
+    expect(batchId).toMatch(/^[0-9a-f-]{36}$/);
+    const perAsset = await env.db.migratorPool.query(
+      "SELECT diff->'after'->>'batchId' AS batch_id FROM audit_log WHERE action = 'lorawan.update' AND diff->'after'->>'batchId' IS NOT NULL",
+    );
+    expect(perAsset.rows).toHaveLength(100);
+    expect(new Set(perAsset.rows.map((r) => r.batch_id))).toEqual(new Set([batchId]));
     expect(JSON.stringify(rows[0])).not.toContain(key(7));
     const all = await env.db.migratorPool.query('SELECT diff::text AS d FROM audit_log');
     expect(all.rows.map((r) => r.d).join()).not.toContain(key(7));
