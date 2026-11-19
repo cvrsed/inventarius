@@ -108,12 +108,28 @@ export const profileMismatchSchema = z.object({
 });
 export type ProfileMismatchDto = z.infer<typeof profileMismatchSchema>;
 
-/** Vista previa de lo que se enviará al LNS, sin claves (RF-60). */
+/**
+ * Confirmación previa al registro: exactamente lo que se enviará al LNS (RF-60). Las claves van solo enmascaradas.
+ * Lo arma la misma función que arma lo que recibe el adaptador, así que no puede diverger de lo enviado.
+ */
 export const registrationPreviewSchema = z.object({
   profile: z.object({ id: z.uuid(), name: z.string(), kind: lnsKindSchema }),
   deviceName: z.string(),
+  description: z.string(),
   externalId: z.string(),
-  fields: z.array(z.object({ label: z.string(), value: z.string() })),
+  devEui: z.string(),
+  joinEui: z.string(),
+  /** `••••`: la clave nunca sale; solo se confirma que se enviará. */
+  appKey: z.string(),
+  /** Solo en LoRaWAN 1.1. */
+  nwkKey: z.string().nullable(),
+  deviceClass: z.string().nullable(),
+  lorawanVersion: z.string().nullable(),
+  region: z.string().nullable(),
+  /** Etiquetas (ChirpStack) o atributos (TTN) con que se marca el dispositivo. */
+  tags: z.array(z.object({ key: z.string(), value: z.string() })),
+  /** Destino en el LNS (tenant y aplicación, o aplicación). */
+  target: z.record(z.string(), z.string()),
   /** Device profile del LNS al que irá el dispositivo, tal como lo tiene el LNS. */
   deviceProfile: z.object({
     name: z.string().nullable(),

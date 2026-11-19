@@ -17,6 +17,7 @@ import type {
 import type { DeviceProfileInfo } from './device-profile.js';
 import {
   ASSET_TAG_KEY,
+  assetMarkers,
   externalIdFor,
   LnsOperationError,
   type ConnectionCheck,
@@ -294,7 +295,8 @@ export class ChirpstackAdapter implements LnsAdapter {
       device.setDescription(d.description);
       device.setApplicationId(profile.target.applicationId ?? '');
       device.setDeviceProfileId(profile.deviceDefaults.deviceProfileId ?? '');
-      device.getTagsMap().set(ASSET_TAG_KEY, d.assetId);
+      for (const m of assetMarkers('chirpstack', d.assetId))
+        device.getTagsMap().set(m.key, m.value);
       const create = new devicePb.CreateDeviceRequest();
       create.setDevice(device);
       await this.device(profile, 'create', create);

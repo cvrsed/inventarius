@@ -11,12 +11,13 @@ import { errorMessage } from '@/features/auth/errors';
 import { ApiError } from '@/shared/api/http';
 import AppSelect from '@/shared/ui/AppSelect.vue';
 import { useLnsProfileOptions, useLorawanMutations } from './api';
+import { previewRows } from './preview';
 
 /** RF-60: elegir perfil, ver la vista previa de lo que se enviará (sin claves) y confirmar. */
 const props = defineProps<{ assetId: string }>();
 const visible = defineModel<boolean>('visible', { required: true });
 
-const { t, te } = useI18n();
+const { t } = useI18n();
 const toast = useToast();
 const { preview, register } = useLorawanMutations(computed(() => props.assetId));
 const profiles = useLnsProfileOptions(visible);
@@ -50,10 +51,7 @@ watch(profileId, async (id) => {
   }
 });
 
-const fieldLabel = (key: string) =>
-  te(`lorawan.registerDialog.previewFields.${key}`)
-    ? t(`lorawan.registerDialog.previewFields.${key}`)
-    : key;
+const rows = computed(() => (preview.data.value ? previewRows(preview.data.value, t) : []));
 
 const mismatches = computed(() => preview.data.value?.mismatches ?? []);
 const mismatchText = (m: { field: string; asset: string; lns: string }) =>
@@ -135,13 +133,11 @@ function failureText(e: unknown): string {
             {{ t('lorawan.registerDialog.previewTitle') }}
           </h3>
           <dl class="m-0 grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-[auto_1fr]">
-            <dt class="text-muted">{{ t('lorawan.registerDialog.deviceName') }}</dt>
-            <dd class="m-0 break-words">{{ preview.data.value.deviceName }}</dd>
-            <dt class="text-muted">{{ t('lorawan.registerDialog.externalId') }}</dt>
-            <dd class="m-0 font-mono break-all">{{ preview.data.value.externalId }}</dd>
-            <template v-for="f in preview.data.value.fields" :key="f.label">
-              <dt class="text-muted">{{ fieldLabel(f.label) }}</dt>
-              <dd class="m-0 font-mono break-all">{{ f.value }}</dd>
+            <template v-for="r in rows" :key="r.key">
+              <dt class="text-muted">{{ r.label }}</dt>
+              <dd class="m-0 break-all" :class="r.mono ? 'font-mono' : 'break-words'">
+                {{ r.value }}
+              </dd>
             </template>
           </dl>
           <p class="mt-3 mb-0 text-sm text-muted">{{ t('lorawan.registerDialog.keysHidden') }}</p>

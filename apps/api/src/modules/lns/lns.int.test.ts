@@ -289,6 +289,69 @@ describe('registro en el LNS (RF-60 a RF-65)', () => {
     expect((await register(a.id, p.id)).statusCode).toBe(409); // ya registrado
   });
 
+  it('la confirmación muestra exactamente lo que recibe el LNS: nombre, EUIs, clave enmascarada, perfil, clase y tags (P9)', async () => {
+    reset();
+    const p = await newProfile();
+    const a = await readyAsset();
+    const res = await fx.tech.post(`${base}/assets/${a.id}/lns-registration/preview`, {
+      profileId: p.id,
+    });
+    expect(res.statusCode, res.body).toBe(200);
+    const preview = res.json();
+    // Sin claves en claro: solo una máscara, de cualquier forma.
+    expect(res.body).not.toContain(APP_KEY);
+    expect(preview.appKey).toMatch(/^•+$/);
+    expect(preview.nwkKey).toBeNull();
+
+    await register(a.id, p.id);
+    await drain();
+    const sent = chirp.lastDevice!;
+    expect({
+      profile: preview.profile.name,
+      deviceName: preview.deviceName,
+      description: preview.description,
+      devEui: preview.devEui,
+      joinEui: preview.joinEui,
+      deviceClass: preview.deviceClass,
+      lorawanVersion: preview.lorawanVersion,
+      region: preview.region,
+      externalId: preview.externalId,
+    }).toEqual({
+      profile: p.name,
+      deviceName: sent.name,
+      description: sent.description,
+      devEui: sent.devEui,
+      joinEui: sent.joinEui,
+      deviceClass: sent.deviceClass,
+      lorawanVersion: sent.lorawanVersion,
+      region: sent.region,
+      externalId: a.devEui.toLowerCase(),
+    });
+    expect(preview.tags).toEqual([{ key: 'inventarius_asset_id', value: sent.assetId }]);
+    expect(preview.deviceProfile).toEqual({
+      name: 'Perfil AU915',
+      version: 'LoRaWAN 1.0.3',
+      region: 'AU915',
+    });
+    expect(preview.target).toEqual(CS);
+  });
+
+  it('en LoRaWAN 1.1 la confirmación también muestra la NwkKey, enmascarada', async () => {
+    reset();
+    const p = await newProfile();
+    const a = await readyAsset();
+    await fx.operator.patch(`${base}/assets/${a.id}/lorawan`, {
+      lorawanVersion: '1.1',
+      nwkKey: '0F1E2D3C4B5A69788796A5B4C3D2E1F0',
+    });
+    chirp.deviceProfile = { ...DEFAULT_DEVICE_PROFILE, version: '1.1' };
+    const res = await fx.tech.post(`${base}/assets/${a.id}/lns-registration/preview`, {
+      profileId: p.id,
+    });
+    expect(res.json().nwkKey).toMatch(/^•+$/);
+    expect(res.body).not.toContain('0F1E2D3C4B5A');
+  });
+
   describe('versión, clase y región contra el device profile del LNS (RF-60)', () => {
     it('si no calzan, no registra, no encola y explica qué difiere', async () => {
       reset();

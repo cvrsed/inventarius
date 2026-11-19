@@ -17,8 +17,20 @@ const PROFILE = '018f0000-0000-7000-8000-0000000000aa';
 const preview = (over: Record<string, unknown> = {}) => ({
   profile: { id: PROFILE, name: 'ChirpStack de prueba', kind: 'chirpstack' },
   deviceName: 'INV-000001 Sensor',
+  description: 'Sensor',
   externalId: '70b3d57ed0000001',
-  fields: [{ label: 'devEui', value: '70B3D57ED0000001' }],
+  devEui: '70B3D57ED0000001',
+  joinEui: '8877665544332211',
+  appKey: '•'.repeat(32),
+  nwkKey: null,
+  deviceClass: 'A',
+  lorawanVersion: '1.0.3',
+  region: 'AU915',
+  tags: [{ key: 'inventarius_asset_id', value: ASSET }],
+  target: {
+    tenantId: '0190a1b2-0000-7000-8000-000000000001',
+    applicationId: '0190a1b2-0000-7000-8000-000000000002',
+  },
   deviceProfile: { name: 'Perfil AU915', version: 'LoRaWAN 1.0.3', region: 'AU915' },
   mismatches: [],
   ...over,
@@ -48,6 +60,39 @@ const confirmButton = () =>
   [...document.body.querySelectorAll('button')].find((b) =>
     b.textContent?.includes('Confirmar y registrar'),
   )!;
+
+describe('RegisterLnsDialog: confirmación exacta (P9)', () => {
+  it('muestra perfil, nombre, EUIs, AppKey enmascarada, device profile, clase y tags, y no la clave', async () => {
+    await openWith(preview());
+    const text = document.body.textContent ?? '';
+    for (const expected of [
+      'Perfil LNS',
+      'ChirpStack de prueba',
+      'INV-000001 Sensor',
+      '70B3D57ED0000001',
+      '8877665544332211',
+      'AppKey',
+      '•'.repeat(32),
+      'Perfil AU915 · LoRaWAN 1.0.3 · AU915',
+      'inventarius_asset_id = 018f0000-0000-7000-8000-000000000001',
+      'Tenant',
+    ]) {
+      expect(text, expected).toContain(expected);
+    }
+    expect(text).not.toContain('NwkKey'); // solo en LoRaWAN 1.1
+    expect(text).not.toContain('A1B2C3D4E5F6');
+  });
+
+  it('el botón de confirmar es el único que encola: sin confirmar no se llama al registro', async () => {
+    const w = await openWith(preview());
+    const posts = () =>
+      w.fetchMock.mock.calls.filter(
+        ([u, i]) => String(u).endsWith('/lns-registration') && i?.method === 'POST',
+      );
+    expect(posts()).toHaveLength(0);
+    expect(confirmButton().textContent).toContain('Confirmar y registrar');
+  });
+});
 
 describe('RegisterLnsDialog: coherencia con el device profile (P2)', () => {
   it('con datos que calzan se puede confirmar', async () => {

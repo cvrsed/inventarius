@@ -10,7 +10,9 @@ import type { JobQueue } from '../../core/queue.js';
 import type { Actor, AuditService } from '../audit/service.js';
 import type { LorawanSecrets, LorawanService, RegistrationReader } from '../lorawan/service.js';
 import {
+  assetMarkers,
   externalIdFor,
+  LNS_NAME_MAX,
   LnsOperationError,
   type AdapterRegistry,
   type LorawanDeviceSecrets,
@@ -110,31 +112,32 @@ export class RegistrationService implements RegistrationReader {
     return profile;
   }
 
-  /** RF-60: lo que se enviará al LNS, sin claves. Valida de paso que los datos estén completos. */
+  /**
+   * RF-60: confirmación previa con exactamente lo que se enviará al LNS, con las claves enmascaradas. El dispositivo
+   * lo arma `outgoingDevice`, la misma función que usa el worker, para que lo mostrado y lo enviado no diverjan.
+   */
   async preview(assetId: string, profileId: string): Promise<RegistrationPreviewDto> {
     const asset = await this.requireAsset(this.db, assetId);
     const profile = await this.requireProfile(this.db, profileId);
     const data = await this.lorawan.secretsFor(this.db, assetId);
     const full = await this.profiles.get(profileId);
     const { info, mismatches } = await this.checkAgainstDeviceProfile(profileId, data);
-    const fields = [
-      { label: 'devEui', value: data.devEui },
-      { label: 'joinEui', value: data.joinEui },
-      { label: 'deviceClass', value: data.deviceClass ?? '—' },
-      { label: 'lorawanVersion', value: data.lorawanVersion ?? '—' },
-      { label: 'region', value: data.region ?? '—' },
-      ...Object.entries(full.target).map(([k, v]) => ({ label: `target.${k}`, value: v })),
-    ];
+    const device = outgoingDevice(assetId, asset, data);
     return {
       profile: { id: profileId, name: profile.name, kind: profile.kind },
-      deviceName: deviceName(asset),
-      externalId: externalIdFor(profile.kind, data.devEui),
-      fields,
-      deviceProfile: {
-        name: info.name,
-        version: info.versionLabel,
-        region: info.regionLabel,
-      },
+      deviceName: device.name,
+      description: device.description,
+      externalId: externalIdFor(profile.kind, device.devEui),
+      devEui: device.devEui,
+      joinEui: device.joinEui,
+      appKey: MASK,
+      nwkKey: device.lorawanVersion === '1.1' && device.nwkKey ? MASK : null,
+      deviceClass: device.deviceClass,
+      lorawanVersion: device.lorawanVersion,
+      region: device.region,
+      tags: assetMarkers(profile.kind, assetId),
+      target: full.target,
+      deviceProfile: { name: info.name, version: info.versionLabel, region: info.regionLabel },
       mismatches,
     };
   }
@@ -385,12 +388,7 @@ export class RegistrationService implements RegistrationReader {
     const adapter = this.adapters[profile.kind];
     try {
       const asset = await this.assets.get(this.db, reg.assetId);
-      const device: LorawanDeviceSecrets = {
-        ...data,
-        assetId: reg.assetId,
-        name: asset ? deviceName(asset) : data.devEui,
-        description: asset?.name ?? '',
-      };
+      const device = outgoingDevice(reg.assetId, asset, data);
       const remote = await adapter.findDevice(profile, data.devEui);
       if (remote) {
         if (remote.inventariusAssetId !== reg.assetId) {
@@ -582,6 +580,23 @@ function mismatchError(
   );
 }
 
+/** Máscara de una clave en la confirmación: no revela nada de ella. */
+const MASK = '•'.repeat(32);
+
 function deviceName(asset: { assetTag: string; name: string }): string {
   return `${asset.assetTag} ${asset.name}`;
+}
+
+/** Lo que recibe el adaptador: es la única fuente tanto de la confirmación previa como del registro real. */
+function outgoingDevice(
+  assetId: string,
+  asset: { assetTag: string; name: string } | undefined,
+  data: LorawanSecrets,
+): LorawanDeviceSecrets {
+  return {
+    ...data,
+    assetId,
+    name: (asset ? deviceName(asset) : data.devEui).slice(0, LNS_NAME_MAX),
+    description: asset?.name ?? '',
+  };
 }

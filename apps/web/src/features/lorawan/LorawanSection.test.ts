@@ -16,6 +16,23 @@ const ID = '018f0000-0000-7000-8000-000000000001';
 const asset = { id: ID, deleted: false } as unknown as AssetDto;
 const PROFILE = '018f0000-0000-7000-8000-0000000000aa';
 
+const PREVIEW = {
+  deviceName: 'INV-000001 Sensor',
+  description: 'Sensor',
+  externalId: '70b3d57ed0000001',
+  devEui: '70B3D57ED0000001',
+  joinEui: '8877665544332211',
+  appKey: '•'.repeat(32),
+  nwkKey: null,
+  deviceClass: 'A',
+  lorawanVersion: '1.0.3',
+  region: 'AU915',
+  tags: [{ key: 'inventarius_asset_id', value: ID }],
+  target: {},
+  deviceProfile: { name: 'Perfil AU915', version: 'LoRaWAN 1.0.3', region: 'AU915' },
+  mismatches: [],
+};
+
 const data = (over: Partial<LorawanDto> = {}): LorawanDto => ({
   devEui: '70B3D57ED0000001',
   joinEui: '8877665544332211',
@@ -52,9 +69,7 @@ async function mountSection(permissions: Permission[], lorawan: LorawanDto) {
     ],
     [`POST /api/v1/assets/${ID}/lns-registration/preview`]: () => ({
       profile: { id: PROFILE, name: 'ChirpStack de prueba', kind: 'chirpstack' },
-      deviceName: 'INV-000001 Sensor',
-      externalId: '70b3d57ed0000001',
-      fields: [{ label: 'devEui', value: '70B3D57ED0000001' }],
+      ...PREVIEW,
     }),
     [`POST /api/v1/assets/${ID}/lorawan/reveal`]: () => ({
       appKey: 'A1B2C3D4E5F60718293A4B5C6D7E8F90',

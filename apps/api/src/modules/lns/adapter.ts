@@ -105,6 +105,14 @@ export interface LnsAdapter {
   deregisterDevice(profile: LnsProfile, ref: RemoteDeviceRef): Promise<void>;
 }
 
+/** Largo máximo del nombre del dispositivo en ChirpStack y TTN. */
+export const LNS_NAME_MAX = 100;
+
+/** Etiquetas (ChirpStack) o atributos (TTN) con que Inventarius marca lo que crea, tal como se envían. */
+export function assetMarkers(kind: LnsKind, assetId: string): { key: string; value: string }[] {
+  return [{ key: kind === 'ttn' ? TTN_ASSET_ATTRIBUTE : ASSET_TAG_KEY, value: assetId }];
+}
+
 /** Id del dispositivo en el LNS, derivado y estable a partir del DevEUI (sección 5.4). */
 export function externalIdFor(kind: LnsKind, devEui: string): string {
   return kind === 'ttn' ? `inv-${devEui.toLowerCase()}` : devEui.toLowerCase();

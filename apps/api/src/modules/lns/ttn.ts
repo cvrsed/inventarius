@@ -1,6 +1,7 @@
 import type { ConnectionCheckDto, LorawanRegion, LorawanVersion } from '@inventarius/shared';
 import type { DeviceProfileInfo } from './device-profile.js';
 import {
+  assetMarkers,
   externalIdFor,
   LnsOperationError,
   TTN_ASSET_ATTRIBUTE,
@@ -211,7 +212,9 @@ export class TtnAdapter implements LnsAdapter {
             ids,
             name: d.name.slice(0, 100),
             description: d.description,
-            attributes: { [TTN_ASSET_ATTRIBUTE]: d.assetId },
+            attributes: Object.fromEntries(
+              assetMarkers('ttn', d.assetId).map((m) => [m.key, m.value]),
+            ),
             join_server_address: defaults.joinServerAddress,
             network_server_address: defaults.networkServerAddress,
             application_server_address: defaults.applicationServerAddress,
