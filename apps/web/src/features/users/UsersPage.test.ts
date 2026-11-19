@@ -1,9 +1,13 @@
 import { flushPromises, mount } from '@vue/test-utils';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { router } from '@/app/router';
 import { pagePlugins, useMobileViewport } from '@/test-utils';
 import UsersPage from './UsersPage.vue';
 
 afterEach(() => vi.unstubAllGlobals());
+beforeEach(async () => {
+  await router.push('/usuarios');
+});
 
 const user = (n: number) => ({
   id: `018f0000-0000-7000-8000-00000000000${n}`,
@@ -85,5 +89,38 @@ describe('UsersPage', () => {
     const wrapper = mountPage();
     await flushPromises();
     expect(wrapper.get('[role="alert"]').text()).toContain('Reintentar');
+  });
+
+  it('la búsqueda se refleja en la URL: un enlace con q filtra y escribir actualiza la URL [P44]', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({ data: [user(1)], meta: { page: 1, pageSize: 10, total: 1 } }),
+          { status: 200 },
+        ),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+    const lastUsersCall = () =>
+      fetchMock.mock.calls
+        .map((c) => String(c[0]))
+        .filter((u) => u.startsWith('/api/v1/users?'))
+        .at(-1)!;
+    await router.push('/usuarios?q=ana');
+    vi.useFakeTimers();
+    try {
+      const wrapper = mountPage();
+      await flushPromises();
+      expect((wrapper.get('input[type="search"]').element as HTMLInputElement).value).toBe('ana');
+      expect(lastUsersCall()).toContain('q=ana');
+
+      await wrapper.get('input[type="search"]').setValue('olga');
+      await vi.advanceTimersByTimeAsync(400);
+      await flushPromises();
+      expect(router.currentRoute.value.query).toEqual({ q: 'olga' });
+      expect(lastUsersCall()).toContain('q=olga');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

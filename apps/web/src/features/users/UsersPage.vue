@@ -5,12 +5,13 @@ import UBadge from '@nuxt/ui/components/Badge.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
 import FilterToolbar from '@/shared/filters/FilterToolbar.vue';
 import { useToast } from '@nuxt/ui/composables/useToast';
-import { computed, ref, watchEffect } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import IconAction from '@/shared/ui/IconAction.vue';
 import { useI18n } from 'vue-i18n';
 import { errorMessage } from '@/features/auth/errors';
 import ResponsiveTable from '@/shared/ui/ResponsiveTable.vue';
 import PagedFooter from '@/shared/ui/PagedFooter.vue';
+import { useListQuery } from '@/shared/list/useListQuery';
 import { useConfirm } from '@/shared/ui/useConfirm';
 import { useUserMutations, useUsersList, type UsersQuery } from './api';
 import TempPasswordDialog from './TempPasswordDialog.vue';
@@ -20,19 +21,31 @@ const { t } = useI18n();
 const confirm = useConfirm();
 const toast = useToast();
 
-const search = ref('');
-const query = ref<UsersQuery>({ page: 1, pageSize: 10, q: '' });
+// Búsqueda, página y tamaño viven en la URL, como en los demás listados (RF-22).
+const { query, update, setPage, reset } = useListQuery({
+  page: 1,
+  pageSize: 10,
+  q: '',
+} satisfies UsersQuery);
 const { data, isPending, isError, isFetching, refetch } = useUsersList(query);
 const { resetPassword } = useUserMutations();
 
-const page = computed({
-  get: () => query.value.page,
-  set: (v: number) => (query.value = { ...query.value, page: v }),
+const search = ref(query.value.q);
+let timer: ReturnType<typeof setTimeout> | undefined;
+onBeforeUnmount(() => clearTimeout(timer));
+watch(search, (value) => {
+  clearTimeout(timer);
+  // Sin cambio real no se toca la URL: así un «atrás» del navegador no se convierte en una búsqueda nueva.
+  timer = setTimeout(() => {
+    if (value.trim() !== query.value.q) void update({ q: value.trim() });
+  }, 300);
 });
-const pageSize = computed({
-  get: () => query.value.pageSize,
-  set: (v: number) => (query.value = { ...query.value, pageSize: v, page: 1 }),
-});
+watch(
+  () => query.value.q,
+  (q) => {
+    if (q !== search.value.trim()) search.value = q;
+  },
+);
 
 const columns = computed(() => [
   { accessorKey: 'name', header: t('users.name') },
@@ -41,13 +54,6 @@ const columns = computed(() => [
   { id: 'status', header: t('users.status') },
   { id: 'actions', header: t('common.actions') },
 ]);
-
-let timer: ReturnType<typeof setTimeout> | undefined;
-watchEffect(() => {
-  const q = search.value.trim();
-  clearTimeout(timer);
-  timer = setTimeout(() => (query.value = { ...query.value, q, page: 1 }), 300);
-});
 
 const formVisible = ref(false);
 const editing = ref<UserDto | null>(null);
@@ -95,6 +101,7 @@ function askReset(user: UserDto): void {
       :defs="[]"
       :values="{}"
       :total="data?.meta.total"
+      @clear="reset"
     />
 
     <UAlert v-if="isError" color="error" variant="subtle" role="alert">
@@ -195,10 +202,12 @@ function askReset(user: UserDto): void {
     </ResponsiveTable>
 
     <PagedFooter
-      v-model:page="page"
-      v-model:page-size="pageSize"
+      :page="query.page"
+      :page-size="query.pageSize"
       :total="data?.meta.total ?? 0"
       :page-sizes="[10, 25, 50]"
+      @update:page="setPage"
+      @update:page-size="(n: number) => update({ pageSize: n })"
     />
 
     <UserFormDialog v-model:visible="formVisible" :user="editing" :creating="editing === null" />
