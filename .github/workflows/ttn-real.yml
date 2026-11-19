@@ -1,0 +1,46 @@
+name: TTN real (manual)
+
+# Prueba el adaptador de TTN contra una aplicación REAL de The Things Stack (sección 13). Es manual: no corre en cada PR
+# y necesita los secretos `TTN_TEST_*` del repositorio (aún no configurados; los agrega el responsable del proyecto).
+# Usar una aplicación de pruebas dedicada: la prueba crea y borra solo dispositivos con DevEUI aleatorio.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PNPM_VERSION: '12.21.0'
+
+jobs:
+  ttn-real:
+    name: Adaptador TTN contra una aplicación real
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+      - run: npm install --global pnpm@${{ env.PNPM_VERSION }}
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Falla con un mensaje claro si faltan los secretos
+        env:
+          TTN_TEST_ENDPOINT: ${{ secrets.TTN_TEST_ENDPOINT }}
+        run: |
+          if [ -z "$TTN_TEST_ENDPOINT" ]; then
+            echo "Faltan los secretos TTN_TEST_* (ver docs/development.md, «Prueba manual contra TTN real»)." >&2
+            exit 1
+          fi
+      - name: Prueba del adaptador
+        working-directory: apps/api
+        env:
+          TTN_TEST_ENDPOINT: ${{ secrets.TTN_TEST_ENDPOINT }}
+          TTN_TEST_API_KEY: ${{ secrets.TTN_TEST_API_KEY }}
+          TTN_TEST_APPLICATION_ID: ${{ secrets.TTN_TEST_APPLICATION_ID }}
+          TTN_TEST_FREQUENCY_PLAN_ID: ${{ secrets.TTN_TEST_FREQUENCY_PLAN_ID }}
+          TTN_TEST_JOIN_SERVER: ${{ secrets.TTN_TEST_JOIN_SERVER }}
+          TTN_TEST_NETWORK_SERVER: ${{ secrets.TTN_TEST_NETWORK_SERVER }}
+          TTN_TEST_APPLICATION_SERVER: ${{ secrets.TTN_TEST_APPLICATION_SERVER }}
+          TTN_TEST_MAC_VERSION: ${{ secrets.TTN_TEST_MAC_VERSION }}
+          TTN_TEST_PHY_VERSION: ${{ secrets.TTN_TEST_PHY_VERSION }}
+        run: pnpm exec vitest run --project int src/modules/lns/ttn.real.int.test.ts

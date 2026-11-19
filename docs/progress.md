@@ -370,5 +370,5 @@ Marcas `[P20]` a `[P26]` al final del asunto de cada commit.
 - [x] Filtros «estado LNS» y búsqueda por DevEUI en el listado (RF-22)
 - [x] UI: sección LoRaWAN de la ficha, registrar/baja/reintentar/vincular, perfiles LNS, importación CSV (360 px, i18n)
 - [x] ChirpStack de prueba en `compose.yml` y `compose.e2e.yml` + e2e
-- [ ] Job manual contra TTN real (sin credenciales)
+- [x] Job manual contra TTN real (sin credenciales)
 - [ ] `.env.example`, docs, ADR, CHANGELOG, resumen y PR
