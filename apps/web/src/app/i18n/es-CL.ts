@@ -29,6 +29,13 @@ export const messages = {
     clearOne: 'Quitar',
     remove: 'Quitar filtro {name}',
     all: 'Todos',
+    search: {
+      statuses: 'Buscar estado…',
+      categories: 'Buscar categoría…',
+      locations: 'Buscar ubicación…',
+      models: 'Buscar modelo…',
+      people: 'Buscar persona…',
+    },
     showResults: 'Ver {n} resultado | Ver {n} resultados',
   },
   common: {

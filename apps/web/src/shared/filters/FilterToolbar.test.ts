@@ -19,6 +19,7 @@ const defs: FilterDef[] = [
     label: 'Estado',
     placement: 'bar',
     source: 'statuses',
+    searchPlaceholder: 'Buscar estado…',
     fetcher: async () => [{ id: STATUS, name: 'Disponible' }],
     resolve: async (id) => (id === STATUS ? { id, name: 'Disponible' } : null),
   },
@@ -131,5 +132,17 @@ describe('FilterToolbar [P41]', () => {
     show.click();
     await flushPromises();
     expect(document.body.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  it('el buscador del menú dice qué busca y el panel no hereda el ancho del botón [P42]', async () => {
+    const w = mountBar();
+    await w.get('#filter-statusId').trigger('click');
+    await flushPromises();
+    const search = document.body.querySelector('input[placeholder="Buscar estado…"]');
+    expect(search).toBeTruthy();
+    const content = document.body.querySelector('[data-slot="content"]')!;
+    expect(content.className).toContain('min-w-[280px]');
+    expect(content.className).toContain('max-w-[400px]');
+    expect(content.className).not.toContain('--reka-combobox-trigger-width');
   });
 });

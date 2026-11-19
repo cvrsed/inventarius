@@ -16,6 +16,8 @@ interface FilterBase {
   placement: 'bar' | 'more';
   /** Valor que equivale a «sin filtro» (por defecto `''`). Un filtro con otro valor está activo. */
   defaultValue?: string;
+  /** Placeholder del buscador del menú (p. ej. «Buscar ubicación…»). */
+  searchPlaceholder?: string;
 }
 
 /** Opciones fijas. Con muchas (más de 8) el menú ofrece búsqueda. */

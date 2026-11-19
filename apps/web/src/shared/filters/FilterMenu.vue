@@ -6,6 +6,7 @@ import USelectMenu from '@nuxt/ui/components/SelectMenu.vue';
 import { computed, toRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import RemoteSelect, { type RemoteOption } from '@/shared/ui/RemoteSelect.vue';
+import { COMPACT_MENU_UI, MENU_CONTENT } from '@/shared/ui/menuUi';
 import { useInertWhileOpen } from '@/shared/ui/useInertWhileOpen';
 import type { FilterDef } from './types';
 import { useFilterValueLabel } from './useFilters';
@@ -45,6 +46,7 @@ const triggerColor = computed(() => (props.active ? 'primary' : 'neutral'));
     :fetcher="def.fetcher"
     :placeholder="text"
     :trigger-label="text"
+    :search-placeholder="def.searchPlaceholder"
     :color="triggerColor"
     @update:model-value="(v: RemoteOption | null) => emit('change', v?.id ?? '')"
   />
@@ -58,9 +60,15 @@ const triggerColor = computed(() => (props.active ? 'primary' : 'neutral'));
     label-key="label"
     :search-input="
       searchable
-        ? { placeholder: t('common.searchPlaceholder'), id: `${id}-search`, name: `${id}-search` }
+        ? {
+            placeholder: def.searchPlaceholder ?? t('common.searchPlaceholder'),
+            id: `${id}-search`,
+            name: `${id}-search`,
+          }
         : false
     "
+    :ui="COMPACT_MENU_UI"
+    :content="MENU_CONTENT"
     :color="triggerColor"
     variant="outline"
     class="w-auto"

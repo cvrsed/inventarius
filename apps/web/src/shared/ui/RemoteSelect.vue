@@ -3,6 +3,7 @@ import { keepPreviousData, useQuery } from '@tanstack/vue-query';
 import USelectMenu from '@nuxt/ui/components/SelectMenu.vue';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { COMPACT_MENU_UI, MENU_CONTENT, WRAPPED_MENU_UI } from './menuUi';
 import { useInertWhileOpen } from './useInertWhileOpen';
 
 /** Opción mínima: todo registro referenciable llega con `id` y `name`. */
@@ -27,6 +28,8 @@ const props = defineProps<{
   disabled?: boolean;
   /** Botón compacto de barra de filtros: muestra este texto en lugar de lo elegido. */
   triggerLabel?: string;
+  /** Placeholder del buscador del menú (p. ej. «Buscar ubicación…»); por defecto, el del campo + «Buscar…». */
+  searchPlaceholder?: string;
   /** Color del botón (en barras de filtros, `primary` marca el filtro activo). */
   color?: 'primary' | 'neutral';
 }>();
@@ -82,12 +85,14 @@ function onUpdateOpen(value: boolean): void {
     :color="color ?? 'primary'"
     :clear="clearable"
     :search-input="{
-      placeholder: `${placeholder} — ${t('common.searchPlaceholder')}`,
+      placeholder: searchPlaceholder ?? `${placeholder} — ${t('common.searchPlaceholder')}`,
       id: `${id ?? source}-search`,
       name: `${id ?? source}-search`,
     }"
     ignore-filter
     :class="triggerLabel ? 'w-auto' : 'w-full'"
+    :ui="triggerLabel ? COMPACT_MENU_UI : WRAPPED_MENU_UI"
+    :content="MENU_CONTENT"
     @update:open="onUpdateOpen"
   >
     <template v-if="triggerLabel" #default>{{ triggerLabel }}</template>

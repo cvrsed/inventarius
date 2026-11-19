@@ -53,6 +53,7 @@ const selected = (def: FilterDef): RemoteOption | null => resolved.data.value?.[
         :source="def.source"
         :fetcher="def.fetcher"
         :placeholder="t('filters.all')"
+        :search-placeholder="def.searchPlaceholder"
         clearable
         @update:model-value="(v: RemoteOption | null) => emit('change', { [def.key]: v?.id ?? '' })"
       />

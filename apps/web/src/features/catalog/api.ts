@@ -72,11 +72,15 @@ export function useCatalogList(section: Ref<Section>, query: Ref<CatalogQuery>) 
   });
 }
 
-/** Etiqueta con la que una opción se muestra en un selector (las ubicaciones, con su ruta completa). */
+/** Opción de un selector. Las ubicaciones llevan `description` con la ruta de sus padres (segunda línea). */
 function optionOf(section: Section, item: CatalogItem): RemoteOption {
   switch (section) {
-    case 'locations':
-      return { id: item.id, name: (item as LocationDto).path };
+    case 'locations': {
+      // Dos líneas: el lugar arriba y la ruta de sus padres abajo («Zensi › Chile › Santiago»).
+      const loc = item as LocationDto;
+      const parents = loc.path.split(' > ').slice(0, -1).join(' › ');
+      return { id: item.id, name: loc.name, ...(parents ? { description: parents } : {}) };
+    }
     case 'models': {
       const m = item as AssetModelDto;
       return {
