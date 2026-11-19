@@ -1,0 +1,194 @@
+/**
+ * Prepara un ChirpStack v4 de PRUEBA (compose de desarrollo y e2e): crea tenant, aplicación, device profile y una
+ * API key de tenant, y escribe los ids en un JSON. No se usa en producción. Es idempotente salvo por la API key, que
+ * se crea nueva en cada corrida.
+ *
+ * Uso: node dist/dev/chirpstack-bootstrap.js <host:puerto> <salida.json>
+ * El usuario inicial `admin` de ChirpStack solo existe en una instalación de pruebas recién creada.
+ */
+import applicationGrpc from '@chirpstack/chirpstack-api/api/application_grpc_pb.js';
+import applicationPb from '@chirpstack/chirpstack-api/api/application_pb.js';
+import profileGrpc from '@chirpstack/chirpstack-api/api/device_profile_grpc_pb.js';
+import profilePb from '@chirpstack/chirpstack-api/api/device_profile_pb.js';
+import internalGrpc from '@chirpstack/chirpstack-api/api/internal_grpc_pb.js';
+import internalPb from '@chirpstack/chirpstack-api/api/internal_pb.js';
+import tenantGrpc from '@chirpstack/chirpstack-api/api/tenant_grpc_pb.js';
+import tenantPb from '@chirpstack/chirpstack-api/api/tenant_pb.js';
+import commonPb from '@chirpstack/chirpstack-api/common/common_pb.js';
+import { credentials, Metadata, type Client, type ServiceError } from '@grpc/grpc-js';
+import { writeFileSync } from 'node:fs';
+
+type Make = (address: string, creds: ReturnType<typeof credentials.createInsecure>) => Client;
+
+const [endpoint, outFile] = process.argv.slice(2);
+if (!endpoint || !outFile) {
+  process.stderr.write('Uso: chirpstack-bootstrap <host:puerto> <salida.json>\n');
+  process.exit(2);
+}
+const TEST_ADMIN = { email: 'admin', password: 'admin' };
+
+async function call<Res>(make: Make, method: string, request: unknown, jwt?: string): Promise<Res> {
+  const client = make(endpoint!, credentials.createInsecure()) as unknown as Record<
+    string,
+    unknown
+  > &
+    Client;
+  const meta = new Metadata();
+  if (jwt) meta.set('authorization', `Bearer ${jwt}`);
+  try {
+    return await new Promise<Res>((resolve, reject) => {
+      const fn = client[method] as (
+        r: unknown,
+        m: Metadata,
+        cb: (e: ServiceError | null, res: Res) => void,
+      ) => void;
+      fn.call(client, request, meta, (err, res) => (err ? reject(err) : resolve(res)));
+    });
+  } finally {
+    client.close();
+  }
+}
+
+/** ChirpStack tarda unos segundos en aceptar conexiones: se reintenta hasta que responde. */
+async function waitForLogin(): Promise<string> {
+  const deadline = Date.now() + 120_000;
+  for (;;) {
+    try {
+      const req = new internalPb.LoginRequest();
+      req.setEmail(TEST_ADMIN.email);
+      req.setPassword(TEST_ADMIN.password);
+      const res = await call<InstanceType<typeof internalPb.LoginResponse>>(
+        (a, c) => new internalGrpc.InternalServiceClient(a, c),
+        'login',
+        req,
+      );
+      return res.getJwt();
+    } catch (e) {
+      if (Date.now() > deadline) throw e;
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+  }
+}
+
+const jwt = await waitForLogin();
+const tenants = (a: string, c: ReturnType<typeof credentials.createInsecure>) =>
+  new tenantGrpc.TenantServiceClient(a, c);
+
+const NAME = 'Inventarius pruebas';
+
+// Tenant
+const listTenants = new tenantPb.ListTenantsRequest();
+listTenants.setLimit(100);
+listTenants.setSearch(NAME);
+const found = await call<InstanceType<typeof tenantPb.ListTenantsResponse>>(
+  tenants,
+  'list',
+  listTenants,
+  jwt,
+);
+let tenantId =
+  found
+    .getResultList()
+    .find((t) => t.getName() === NAME)
+    ?.getId() ?? '';
+if (!tenantId) {
+  const tenant = new tenantPb.Tenant();
+  tenant.setName(NAME);
+  tenant.setCanHaveGateways(true);
+  const req = new tenantPb.CreateTenantRequest();
+  req.setTenant(tenant);
+  tenantId = (
+    await call<InstanceType<typeof tenantPb.CreateTenantResponse>>(tenants, 'create', req, jwt)
+  ).getId();
+}
+
+// Aplicación
+const apps = (a: string, c: ReturnType<typeof credentials.createInsecure>) =>
+  new applicationGrpc.ApplicationServiceClient(a, c);
+const listApps = new applicationPb.ListApplicationsRequest();
+listApps.setLimit(100);
+listApps.setTenantId(tenantId);
+const foundApps = await call<InstanceType<typeof applicationPb.ListApplicationsResponse>>(
+  apps,
+  'list',
+  listApps,
+  jwt,
+);
+let applicationId =
+  foundApps
+    .getResultList()
+    .find((a) => a.getName() === NAME)
+    ?.getId() ?? '';
+if (!applicationId) {
+  const app = new applicationPb.Application();
+  app.setName(NAME);
+  app.setTenantId(tenantId);
+  const req = new applicationPb.CreateApplicationRequest();
+  req.setApplication(app);
+  applicationId = (
+    await call<InstanceType<typeof applicationPb.CreateApplicationResponse>>(
+      apps,
+      'create',
+      req,
+      jwt,
+    )
+  ).getId();
+}
+
+// Device profile OTAA, AU915 y LoRaWAN 1.0.3
+const profiles = (a: string, c: ReturnType<typeof credentials.createInsecure>) =>
+  new profileGrpc.DeviceProfileServiceClient(a, c);
+const listProfiles = new profilePb.ListDeviceProfilesRequest();
+listProfiles.setLimit(100);
+listProfiles.setTenantId(tenantId);
+const foundProfiles = await call<InstanceType<typeof profilePb.ListDeviceProfilesResponse>>(
+  profiles,
+  'list',
+  listProfiles,
+  jwt,
+);
+let deviceProfileId =
+  foundProfiles
+    .getResultList()
+    .find((p) => p.getName() === NAME)
+    ?.getId() ?? '';
+if (!deviceProfileId) {
+  const dp = new profilePb.DeviceProfile();
+  dp.setName(NAME);
+  dp.setTenantId(tenantId);
+  dp.setRegion(commonPb.Region.AU915);
+  dp.setMacVersion(commonPb.MacVersion.LORAWAN_1_0_3);
+  dp.setRegParamsRevision(commonPb.RegParamsRevision.A);
+  dp.setSupportsOtaa(true);
+  dp.setUplinkInterval(3600);
+  const req = new profilePb.CreateDeviceProfileRequest();
+  req.setDeviceProfile(dp);
+  deviceProfileId = (
+    await call<InstanceType<typeof profilePb.CreateDeviceProfileResponse>>(
+      profiles,
+      'create',
+      req,
+      jwt,
+    )
+  ).getId();
+}
+
+// API key del tenant (con los derechos mínimos que usa Inventarius)
+const key = new internalPb.ApiKey();
+key.setName(`inventarius-${Date.now()}`);
+key.setIsAdmin(false);
+key.setTenantId(tenantId);
+const keyReq = new internalPb.CreateApiKeyRequest();
+keyReq.setApiKey(key);
+const created = await call<InstanceType<typeof internalPb.CreateApiKeyResponse>>(
+  (a, c) => new internalGrpc.InternalServiceClient(a, c),
+  'createApiKey',
+  keyReq,
+  jwt,
+);
+
+writeFileSync(
+  outFile,
+  `${JSON.stringify({ endpoint, tenantId, applicationId, deviceProfileId, apiKey: created.getToken() }, null, 2)}\n`,
+);
+process.stdout.write(`ChirpStack de prueba listo: tenant ${tenantId}\n`);

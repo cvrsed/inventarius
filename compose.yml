@@ -96,5 +96,63 @@ services:
     depends_on:
       api: { condition: service_healthy }
 
+  # ChirpStack v4 de PRUEBA para registrar dispositivos en desarrollo (RF-60). No arranca por defecto:
+  #   docker compose --profile chirpstack up -d chirpstack-bootstrap
+  #   docker compose --profile chirpstack run --rm --entrypoint cat chirpstack-bootstrap /out/chirpstack.json
+  # La interfaz queda en http://localhost:8081 (usuario inicial `admin` / `admin`, solo de pruebas).
+  chirpstack-postgres:
+    profiles: [chirpstack]
+    image: postgres:18-trixie@sha256:2ea8630df176ad090ec92136dee850397c5af8781e4bcf2e4162593691c61bbc
+    environment:
+      POSTGRES_USER: chirpstack
+      POSTGRES_PASSWORD: chirpstack-prueba
+      POSTGRES_DB: chirpstack
+    volumes:
+      - ./deploy/chirpstack/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - chirpstack-pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U chirpstack -d chirpstack']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  chirpstack-redis:
+    profiles: [chirpstack]
+    image: redis:7-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe
+
+  chirpstack-mqtt:
+    profiles: [chirpstack]
+    image: eclipse-mosquitto:2@sha256:fa12172a051310efe5bcb7a6a11b77bd5faacb82cbacd7742aa758bf024fd8e4
+    volumes:
+      - ./deploy/chirpstack/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+
+  chirpstack:
+    profiles: [chirpstack]
+    image: chirpstack/chirpstack:4@sha256:6ef779ce1dfbef273a1c99649672170c791441b42832c8245b01110eab3a369a
+    command: ['-c', '/etc/chirpstack']
+    volumes:
+      - ./deploy/chirpstack/chirpstack.toml:/etc/chirpstack/chirpstack.toml:ro
+    ports:
+      - '127.0.0.1:8081:8080'
+    depends_on:
+      chirpstack-postgres: { condition: service_healthy }
+      chirpstack-redis: { condition: service_started }
+      chirpstack-mqtt: { condition: service_started }
+
+  # Crea tenant, aplicación, device profile y API key en el ChirpStack de prueba y los escribe en /out/chirpstack.json.
+  chirpstack-bootstrap:
+    <<: *dev-service
+    profiles: [chirpstack]
+    command: pnpm --filter @inventarius/api exec tsx src/dev/chirpstack-bootstrap.ts chirpstack:8080 /out/chirpstack.json
+    restart: 'no'
+    user: root
+    volumes:
+      - ./apps/api/src:/repo/apps/api/src
+      - chirpstack-out:/out
+    depends_on:
+      chirpstack: { condition: service_started }
+
 volumes:
   pgdata:
+  chirpstack-pgdata:
+  chirpstack-out:
