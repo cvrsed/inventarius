@@ -26,6 +26,7 @@ import {
   type LorawanDeviceSecrets,
   type RegistrationResult,
   type RemoteDevice,
+  type RemoteDeviceDetails,
   type RemoteDeviceRef,
 } from './adapter.js';
 
@@ -110,6 +111,10 @@ const macName = (n: number): string =>
     .find(([, v]) => v === n)?.[0]
     .replace('LORAWAN_', '')
     .replace(/_/g, '.')}`;
+
+/** Una clave en ceros es la que ChirpStack deja cuando no hay una real. */
+const realKey = (hex: string | undefined): string | null =>
+  hex && !/^0+$/.test(hex) ? hex.toUpperCase() : null;
 
 const isServiceError = (e: unknown): e is ServiceError =>
   typeof e === 'object' &&
@@ -276,6 +281,68 @@ export class ChirpstackAdapter implements LnsAdapter {
         }
         throw e;
       }
+    } catch (e) {
+      if (isServiceError(e)) {
+        throw new LnsOperationError(describe(e), { transient: TRANSIENT.has(e.code), cause: e });
+      }
+      throw e;
+    }
+  }
+
+  async readDevice(
+    profile: LnsProfile,
+    devEui: string,
+    lorawanVersion: LorawanVersion | null,
+  ): Promise<RemoteDeviceDetails | null> {
+    const id = devEui.toLowerCase();
+    const getReq = new devicePb.GetDeviceRequest();
+    getReq.setDevEui(id);
+    try {
+      let device;
+      try {
+        device = (
+          await this.device<InstanceType<typeof devicePb.GetDeviceResponse>>(profile, 'get', getReq)
+        ).getDevice();
+      } catch (e) {
+        if (!isServiceError(e)) throw e;
+        if (e.code === status.NOT_FOUND) return null;
+        if (e.code === status.UNAUTHENTICATED) {
+          await this.confirmAbsent(profile);
+          return null;
+        }
+        throw e;
+      }
+      if (!device) return null;
+      // Las claves son de solo lectura aquí: se comparan o se adoptan, no se registran.
+      const keysReq = new devicePb.GetDeviceKeysRequest();
+      keysReq.setDevEui(id);
+      let nwk: string | null = null;
+      let app: string | null = null;
+      try {
+        const keys = (
+          await this.device<InstanceType<typeof devicePb.GetDeviceKeysResponse>>(
+            profile,
+            'getKeys',
+            keysReq,
+          )
+        ).getDeviceKeys();
+        nwk = realKey(keys?.getNwkKey());
+        app = realKey(keys?.getAppKey());
+      } catch (e) {
+        // Un dispositivo sin claves responde NOT_FOUND: «no están», no un error.
+        if (!isServiceError(e) || e.code !== status.NOT_FOUND) throw e;
+      }
+      const v11 = lorawanVersion === '1.1';
+      return {
+        externalId: externalIdFor('chirpstack', devEui),
+        name: device.getName(),
+        joinEui: device.getJoinEui() ? device.getJoinEui().toUpperCase() : null,
+        deviceProfileId: device.getDeviceProfileId() || null,
+        inventariusAssetId: device.getTagsMap().get(ASSET_TAG_KEY) ?? null,
+        // En 1.0.x la AppKey vive en `nwk_key`; en 1.1 van `app_key` y `nwk_key`.
+        appKey: v11 ? app : nwk,
+        nwkKey: v11 ? nwk : null,
+      };
     } catch (e) {
       if (isServiceError(e)) {
         throw new LnsOperationError(describe(e), { transient: TRANSIENT.has(e.code), cause: e });

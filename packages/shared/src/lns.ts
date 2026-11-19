@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { remoteDeviceSchema } from './lorawan.js';
 
 /** Proveedores de LNS soportados (sección 5.1). */
 export const LNS_KINDS = ['chirpstack', 'ttn'] as const;
@@ -140,3 +141,24 @@ export const registrationPreviewSchema = z.object({
   mismatches: z.array(profileMismatchSchema),
 });
 export type RegistrationPreviewDto = z.infer<typeof registrationPreviewSchema>;
+
+/** Una diferencia entre el activo y el dispositivo que ya existe en el LNS (vincular, RF-64). */
+export const linkDifferenceSchema = z.object({
+  field: z.enum(['joinEui', 'deviceProfile', 'name', 'appKey', 'nwkKey']),
+  /** Valor local; en las claves, `present` o `absent` (nunca el valor). */
+  local: z.string().nullable(),
+  /** Valor remoto; en las claves, `present`, `absent` o `differs` (están las dos pero no coinciden). */
+  remote: z.string().nullable(),
+});
+export type LinkDifferenceDto = z.infer<typeof linkDifferenceSchema>;
+
+/** Lectura previa a vincular: qué hay en el LNS y en qué difiere del activo. Vincular no modifica el remoto. */
+export const linkPreviewSchema = z.object({
+  profile: z.object({ id: z.uuid(), name: z.string(), kind: lnsKindSchema }),
+  externalId: z.string(),
+  remote: remoteDeviceSchema,
+  differences: z.array(linkDifferenceSchema),
+  /** Datos del activo que se reemplazan al adoptar los del LNS (`joinEui`, `appKey`, `nwkKey`). */
+  adopts: z.array(z.enum(['joinEui', 'appKey', 'nwkKey'])),
+});
+export type LinkPreviewDto = z.infer<typeof linkPreviewSchema>;

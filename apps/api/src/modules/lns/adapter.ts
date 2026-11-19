@@ -41,6 +41,23 @@ export interface RemoteDevice {
   inventariusAssetId: string | null;
 }
 
+/**
+ * Lo que el LNS tiene hoy de un dispositivo, leído sin modificarlo (RF-64, vincular). Las claves se leen solo para
+ * compararlas o adoptarlas: viven en memoria, nunca se registran en logs ni en la auditoría.
+ */
+export interface RemoteDeviceDetails {
+  externalId: string;
+  name: string;
+  /** Hexadecimal en mayúsculas, como lo guarda Inventarius; `null` si el LNS no lo tiene. */
+  joinEui: string | null;
+  /** Id del device profile (solo ChirpStack). */
+  deviceProfileId: string | null;
+  inventariusAssetId: string | null;
+  /** AppKey y NwkKey de Inventarius; `null` = no están en el LNS (o están en ceros). */
+  appKey: string | null;
+  nwkKey: string | null;
+}
+
 export interface RemoteDeviceRef {
   externalId: string;
   devEui: string;
@@ -99,6 +116,15 @@ export interface LnsAdapter {
   describeDeviceProfile(profile: LnsProfile): Promise<DeviceProfileInfo>;
   /** Devuelve el dispositivo si existe en el destino, o `null`. */
   findDevice(profile: LnsProfile, devEui: string): Promise<RemoteDevice | null>;
+  /**
+   * Lee el dispositivo remoto (datos y claves) sin modificarlo. `lorawanVersion` dice dónde mirar la AppKey: en
+   * ChirpStack 1.0.x vive en `nwk_key`. Devuelve `null` si no existe.
+   */
+  readDevice(
+    profile: LnsProfile,
+    devEui: string,
+    lorawanVersion: LorawanVersion | null,
+  ): Promise<RemoteDeviceDetails | null>;
   /** Crea el dispositivo completo; compensa internamente si falla a mitad. */
   registerDevice(profile: LnsProfile, device: LorawanDeviceSecrets): Promise<RegistrationResult>;
   /** Borra el dispositivo del destino en el orden que corresponda; borrar lo que no existe no es error. */

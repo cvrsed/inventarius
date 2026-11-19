@@ -7,6 +7,7 @@ import {
   pageOf,
   pageQuerySchema,
   registerInLnsSchema,
+  linkPreviewSchema,
   registrationPreviewSchema,
   resolveConflictSchema,
   updateLnsProfileSchema,
@@ -160,6 +161,12 @@ export const lnsRoutes: FastifyPluginAsyncZod<{
     { ...register, schema: { tags, params: idParams, response: { 202: lnsRegistrationSchema } } },
     async (req, reply) =>
       reply.code(202).send(await registrations.retry(actorOf(req), req.params.id)),
+  );
+
+  app.post(
+    `${base}/link-preview`,
+    { ...register, schema: { tags, params: idParams, response: { 200: linkPreviewSchema } } },
+    async (req) => registrations.linkPreview(req.params.id),
   );
 
   app.post(

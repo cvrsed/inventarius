@@ -90,8 +90,20 @@ class FakeChirpstack {
         if (!this.device) return cb({ code: status.NOT_FOUND, details: 'no existe' });
         const res = new devicePb.GetDeviceResponse();
         const d = new devicePb.Device();
+        d.setName(this.device.name);
+        d.setJoinEui(this.device.joinEui);
+        d.setDeviceProfileId(this.device.deviceProfileId);
         for (const [k, v] of Object.entries(this.device.tags)) d.getTagsMap().set(k, v);
         res.setDevice(d);
+        cb(null, res);
+      }),
+      getKeys: this.wrap('getKeys', (_c, cb) => {
+        if (!this.keys) return cb({ code: status.NOT_FOUND, details: 'sin claves' });
+        const res = new devicePb.GetDeviceKeysResponse();
+        const k = new devicePb.DeviceKeys();
+        k.setNwkKey(this.keys.nwk);
+        k.setAppKey(this.keys.app);
+        res.setDeviceKeys(k);
         cb(null, res);
       }),
       createKeys: this.wrap<KeysReq>('createKeys', (call, cb) => {
@@ -190,6 +202,67 @@ const failure = async () => {
   expect(e).toBeInstanceOf(LnsOperationError);
   return e as LnsOperationError;
 };
+
+describe('ChirpStack: leer un dispositivo existente (vincular)', () => {
+  const NWK = '0F1E2D3C4B5A69788796A5B4C3D2E1F0';
+  const seed = (keys: { nwk: string; app: string } | null) => {
+    fake.device = {
+      name: 'Medidor ajeno',
+      description: '',
+      joinEui: '8877665544332211',
+      applicationId: APP,
+      deviceProfileId: DP,
+      tags: {},
+    };
+    fake.keys = keys;
+  };
+
+  it('devuelve nombre, JoinEUI, device profile y claves, sin escribir nada', async () => {
+    expect(await adapter.readDevice(profile, DEV_EUI, '1.0.3')).toBeNull();
+    seed({ nwk: device.appKey.toLowerCase(), app: '0'.repeat(32) });
+    expect(await adapter.readDevice(profile, DEV_EUI, '1.0.3')).toEqual({
+      externalId: DEV_EUI.toLowerCase(),
+      name: 'Medidor ajeno',
+      joinEui: '8877665544332211',
+      deviceProfileId: DP,
+      inventariusAssetId: null,
+      // En 1.0.x la AppKey está en nwk_key; app_key en ceros no cuenta.
+      appKey: device.appKey,
+      nwkKey: null,
+    });
+    expect(
+      fake.calls.filter((c) => c !== 'get' && c !== 'getKeys' && c !== 'application.get'),
+    ).toEqual([]);
+  });
+
+  it('en 1.1 la AppKey es app_key y la NwkKey, nwk_key', async () => {
+    seed({ nwk: NWK, app: device.appKey });
+    expect(await adapter.readDevice(profile, DEV_EUI, '1.1')).toMatchObject({
+      appKey: device.appKey,
+      nwkKey: NWK,
+    });
+  });
+
+  it('sin claves en ChirpStack (NOT_FOUND) o en ceros: «no están», no un error', async () => {
+    seed(null);
+    expect(await adapter.readDevice(profile, DEV_EUI, '1.0.3')).toMatchObject({
+      appKey: null,
+      nwkKey: null,
+    });
+    seed({ nwk: '0'.repeat(32), app: '0'.repeat(32) });
+    expect(await adapter.readDevice(profile, DEV_EUI, '1.1')).toMatchObject({
+      appKey: null,
+      nwkKey: null,
+    });
+  });
+
+  it('si ChirpStack falla, lo informa legible', async () => {
+    seed(null);
+    fake.failures.set('get', status.UNAVAILABLE);
+    const e = await rejection(adapter.readDevice(profile, DEV_EUI, '1.0.3'));
+    expect(e.transient).toBe(true);
+  });
+});
 
 describe('ChirpStack: device profile', () => {
   it('lee versión, región y clases del device profile y los traduce a los de Inventarius', async () => {

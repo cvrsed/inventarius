@@ -11,6 +11,7 @@ import {
   type LorawanDeviceSecrets,
   type RegistrationResult,
   type RemoteDevice,
+  type RemoteDeviceDetails,
   type RemoteDeviceRef,
 } from './adapter.js';
 
@@ -187,6 +188,64 @@ export class TtnAdapter implements LnsAdapter {
       return {
         externalId: id,
         inventariusAssetId: json?.attributes?.[TTN_ASSET_ATTRIBUTE] ?? null,
+      };
+    } catch (e) {
+      if (e instanceof HttpFailure) {
+        if (e.httpStatus === 404) return null;
+        throw new LnsOperationError(e.message, { transient: e.transient, cause: e });
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Nombre y JoinEUI salen del Identity Server; las claves, del Join Server (`root_keys`). Sin permiso para leer claves
+   * (o sin claves) quedan como «no están». Campos y rutas según la documentación de The Things Stack, sin verificar
+   * contra una aplicación real (ver Q48).
+   */
+  async readDevice(
+    profile: LnsProfile,
+    devEui: string,
+    lorawanVersion: LorawanVersion | null,
+  ): Promise<RemoteDeviceDetails | null> {
+    const id = externalIdFor('ttn', devEui);
+    const app = this.app(profile);
+    try {
+      const is = (await this.request(
+        profile,
+        'GET',
+        `/api/v3/applications/${app}/devices/${id}?field_mask=name,attributes,ids.join_eui`,
+      )) as {
+        name?: string;
+        ids?: { join_eui?: string };
+        attributes?: Record<string, string>;
+      } | null;
+      let keys: { app_key?: { key?: string }; nwk_key?: { key?: string } } | undefined;
+      try {
+        keys = (
+          (await this.request(
+            profile,
+            'GET',
+            `/api/v3/js/applications/${app}/devices/${id}?field_mask=root_keys`,
+          )) as { root_keys?: typeof keys } | null
+        )?.root_keys;
+      } catch (e) {
+        if (
+          !(e instanceof HttpFailure) ||
+          e.httpStatus === null ||
+          ![403, 404].includes(e.httpStatus)
+        )
+          throw e;
+      }
+      return {
+        externalId: id,
+        name: is?.name ?? '',
+        joinEui: is?.ids?.join_eui ? is.ids.join_eui.toUpperCase() : null,
+        deviceProfileId: null,
+        inventariusAssetId: is?.attributes?.[TTN_ASSET_ATTRIBUTE] ?? null,
+        appKey: keys?.app_key?.key ? keys.app_key.key.toUpperCase() : null,
+        nwkKey:
+          lorawanVersion === '1.1' && keys?.nwk_key?.key ? keys.nwk_key.key.toUpperCase() : null,
       };
     } catch (e) {
       if (e instanceof HttpFailure) {

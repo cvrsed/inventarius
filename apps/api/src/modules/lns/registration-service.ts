@@ -1,7 +1,10 @@
 import {
+  type LinkPreviewDto,
+  type LnsKind,
   type LnsRegistrationDto,
   type LnsRegistrationStatus,
   type RegistrationPreviewDto,
+  type RemoteDeviceDto,
 } from '@inventarius/shared';
 import type { Executor } from '../../core/db/executor.js';
 import { ConflictError, NotFoundError, ValidationError } from '../../core/errors.js';
@@ -16,7 +19,9 @@ import {
   LnsOperationError,
   type AdapterRegistry,
   type LorawanDeviceSecrets,
+  type RemoteDeviceDetails,
 } from './adapter.js';
+import { adoptionFrom, compareRemoteDevice, type LocalDeviceView } from './link.js';
 import { compareWithDeviceProfile, type ProfileMismatch } from './device-profile.js';
 import type { LnsProfilesService } from './profiles-service.js';
 import type { RegistrationRow, RegistrationsRepository } from './registrations-repository.js';
@@ -41,6 +46,16 @@ export interface RegistrationSettings {
 
 const WORKER = { actorId: null, ip: null, actorLabel: 'worker' } as const;
 
+function toRemoteDto(r: RemoteDeviceDetails): RemoteDeviceDto {
+  return {
+    name: r.name,
+    joinEui: r.joinEui,
+    deviceProfileId: r.deviceProfileId,
+    hasAppKey: r.appKey !== null,
+    hasNwkKey: r.nwkKey !== null,
+  };
+}
+
 function toDto(r: RegistrationRow): LnsRegistrationDto {
   return {
     status: r.status as LnsRegistrationStatus,
@@ -51,6 +66,7 @@ function toDto(r: RegistrationRow): LnsRegistrationDto {
     orphans: r.orphans,
     attempts: r.attempts,
     registeredAt: r.registeredAt?.toISOString() ?? null,
+    remote: r.remoteSnapshot,
     updatedAt: r.updatedAt.toISOString(),
   };
 }
@@ -301,12 +317,72 @@ export class RegistrationService implements RegistrationReader {
     return dto;
   }
 
-  /** RF-64: ante un conflicto, **vincular** (tomarlo como registrado sin tocarlo) o **cancelar**. */
+  /**
+   * RF-64: lee el dispositivo remoto (Get y GetKeys) y lo compara con los datos del activo, antes de vincular. Solo
+   * lectura: no modifica el dispositivo remoto ni deja nada guardado.
+   */
+  async linkPreview(assetId: string): Promise<LinkPreviewDto> {
+    const view = await this.readForLink(assetId);
+    return {
+      profile: view.profile,
+      externalId: view.remote.externalId,
+      remote: toRemoteDto(view.remote),
+      differences: compareRemoteDevice(view.local, view.remote),
+      adopts: Object.keys(adoptionFrom(view.local, view.remote)) as LinkPreviewDto['adopts'],
+    };
+  }
+
+  /** Lectura común a la vista previa y al vínculo: exige conflicto, perfil y datos del activo. */
+  private async readForLink(assetId: string) {
+    const asset = await this.requireAsset(this.db, assetId);
+    const row = await this.repo.getByAsset(this.db, assetId);
+    if (!row || row.status !== 'conflict')
+      throw new ConflictError('No hay un conflicto por resolver');
+    const profile = await this.profiles.resolve(this.db, row.profileId);
+    const data = await this.lorawan.secretsFor(this.db, assetId);
+    let remote;
+    try {
+      remote = await this.adapters[profile.kind].readDevice(
+        profile,
+        data.devEui,
+        data.lorawanVersion,
+      );
+    } catch (e) {
+      if (!(e instanceof LnsOperationError)) throw e;
+      this.log.error({ err: e, assetId }, 'no se pudo leer el dispositivo del LNS para vincular');
+      throw new ConflictError(`No se pudo leer el dispositivo en el LNS: ${e.message}`);
+    }
+    if (!remote) {
+      throw new ConflictError(
+        'El dispositivo ya no existe en el LNS: cancela el conflicto y vuelve a registrar',
+      );
+    }
+    const local: LocalDeviceView = {
+      joinEui: data.joinEui,
+      name: deviceName(asset),
+      deviceProfileId: profile.deviceDefaults.deviceProfileId ?? null,
+      appKey: data.appKey,
+      nwkKey: data.nwkKey,
+      usesNwkKey: data.lorawanVersion === '1.1',
+    };
+    return {
+      profile: { id: row.profileId, name: row.profileName, kind: row.profileKind as LnsKind },
+      local,
+      remote,
+    };
+  }
+
+  /**
+   * RF-64: ante un conflicto, **vincular** (adoptar los datos del LNS y tomar el dispositivo como registrado) o
+   * **cancelar**. Vincular lee el remoto otra vez (no se fía de una lectura vieja) y nunca lo modifica: el JoinEUI y
+   * las claves que el LNS tiene pasan al activo, y la ficha guarda lo que el LNS realmente tiene.
+   */
   async resolveConflict(
     actor: Actor,
     assetId: string,
     action: 'link' | 'cancel',
   ): Promise<LnsRegistrationDto | null> {
+    const view = action === 'link' ? await this.readForLink(assetId) : null;
     return this.db.transaction(async (tx) => {
       const asset = await this.requireAsset(tx, assetId);
       await this.repo.lockByAsset(tx, assetId);
@@ -326,6 +402,10 @@ export class RegistrationService implements RegistrationReader {
         });
         return null;
       }
+      const { local, remote } = view!;
+      // El estado sigue siendo `conflict`: la identidad del activo todavía se puede editar para adoptar los datos.
+      const adopted = adoptionFrom(local, remote);
+      if (Object.keys(adopted).length) await this.lorawan.apply(tx, actor, assetId, adopted);
       await this.repo.update(tx, row.id, {
         status: 'registered',
         origin: 'linked',
@@ -334,6 +414,7 @@ export class RegistrationService implements RegistrationReader {
         stepsDone: [COMPLETE],
         registeredAt: new Date(),
         lastOperation: 'register',
+        remoteSnapshot: { ...toRemoteDto(remote), readAt: new Date().toISOString() },
       });
       await this.audit.record(tx, {
         ...actor,
@@ -341,7 +422,7 @@ export class RegistrationService implements RegistrationReader {
         entity: 'asset',
         entityId: assetId,
         entityLabel: label,
-        diff: { after: { profile: row.profileName, externalId: row.externalId } },
+        diff: { after: { profile: row.profileName, externalId: row.externalId, origin: 'linked' } },
       });
       return toDto((await this.repo.getById(tx, row.id))!);
     });

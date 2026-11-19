@@ -18,6 +18,7 @@ export interface RegistrationRow {
   attempts: number;
   requestedBy: string | null;
   registeredAt: Date | null;
+  remoteSnapshot: (typeof lnsRegistrations.$inferSelect)['remoteSnapshot'];
   updatedAt: Date;
 }
 
@@ -35,6 +36,7 @@ export type RegistrationChanges = Partial<
     | 'attempts'
     | 'requestedBy'
     | 'registeredAt'
+    | 'remoteSnapshot'
   >
 >;
 
@@ -58,6 +60,7 @@ export class RegistrationsRepository {
         attempts: lnsRegistrations.attempts,
         requestedBy: lnsRegistrations.requestedBy,
         registeredAt: lnsRegistrations.registeredAt,
+        remoteSnapshot: lnsRegistrations.remoteSnapshot,
         updatedAt: lnsRegistrations.updatedAt,
       })
       .from(lnsRegistrations)

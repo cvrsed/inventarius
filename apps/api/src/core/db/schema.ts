@@ -402,6 +402,15 @@ export const lnsRegistrations = pgTable(
     attempts: integer('attempts').notNull().default(0),
     requestedBy: uuid('requested_by').references(() => users.id, { onDelete: 'restrict' }),
     registeredAt: timestamp('registered_at', { withTimezone: true }),
+    /** Lo que el LNS tenía del dispositivo al vincularlo (sin claves, solo si están): se muestra en la ficha. */
+    remoteSnapshot: jsonb('remote_snapshot').$type<{
+      name: string;
+      joinEui: string | null;
+      deviceProfileId: string | null;
+      hasAppKey: boolean;
+      hasNwkKey: boolean;
+      readAt: string;
+    }>(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

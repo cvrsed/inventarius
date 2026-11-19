@@ -7,6 +7,7 @@ import {
   type LnsProfile,
   type LorawanDeviceSecrets,
   type RemoteDevice,
+  type RemoteDeviceDetails,
 } from '../src/modules/lns/adapter.js';
 
 /** El device profile del «LNS» coincide con el activo de prueba (AU915, LoRaWAN 1.0.3, clase A). */
@@ -49,6 +50,27 @@ export class FakeLnsAdapter implements LnsAdapter {
       throw e;
     }
     return this.deviceProfile;
+  }
+
+  /**
+   * Lo que «el LNS» dice del dispositivo existente: nombre, JoinEUI, device profile y claves. Por defecto se arma desde
+   * `remote` con valores de prueba; una prueba lo reemplaza para simular diferencias.
+   */
+  remoteDetails = new Map<string, Partial<RemoteDeviceDetails>>();
+
+  async readDevice(_p: LnsProfile, devEui: string): Promise<RemoteDeviceDetails | null> {
+    this.calls.push('read');
+    if (!this.remote.has(devEui)) return null;
+    return {
+      externalId: externalIdFor(this.kind, devEui),
+      name: 'Medidor ajeno',
+      joinEui: '8877665544332211',
+      deviceProfileId: this.kind === 'chirpstack' ? 'dp-remoto' : null,
+      inventariusAssetId: this.remote.get(devEui) ?? null,
+      appKey: null,
+      nwkKey: null,
+      ...this.remoteDetails.get(devEui),
+    };
   }
 
   async testConnection() {

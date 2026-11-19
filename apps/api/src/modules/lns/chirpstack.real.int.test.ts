@@ -117,6 +117,36 @@ describe.skipIf(!real)('ChirpStack v4 real', () => {
     await adapter.deregisterDevice(profile(), { externalId: res.externalId, devEui: d.devEui });
   });
 
+  it('readDevice lee de vuelta lo registrado: JoinEUI, nombre, device profile y claves (vincular)', async () => {
+    const d = device('05', { joinEui: '1122334455667788' });
+    expect(await adapter.readDevice(profile(), d.devEui, '1.0.3')).toBeNull();
+    await adapter.registerDevice(profile(), d);
+    expect(await adapter.readDevice(profile(), d.devEui, '1.0.3')).toEqual({
+      externalId: d.devEui.toLowerCase(),
+      name: d.name,
+      joinEui: '1122334455667788',
+      deviceProfileId: real!.deviceProfileId,
+      inventariusAssetId: d.assetId,
+      appKey: APP_KEY,
+      nwkKey: null,
+    });
+    await adapter.deregisterDevice(profile(), {
+      externalId: d.devEui.toLowerCase(),
+      devEui: d.devEui,
+    });
+    // En 1.1 se leen las dos claves.
+    const d11 = device('06', { lorawanVersion: '1.1', nwkKey: NWK_KEY });
+    await adapter.registerDevice(profile(), d11);
+    expect(await adapter.readDevice(profile(), d11.devEui, '1.1')).toMatchObject({
+      appKey: APP_KEY,
+      nwkKey: NWK_KEY,
+    });
+    await adapter.deregisterDevice(profile(), {
+      externalId: d11.devEui.toLowerCase(),
+      devEui: d11.devEui,
+    });
+  });
+
   it('Probar conexión valida tenant, aplicación y device profile', async () => {
     const res = await adapter.testConnection(profile());
     expect(res.checks).toEqual([
@@ -127,6 +157,15 @@ describe.skipIf(!real)('ChirpStack v4 real', () => {
     const bad = await adapter.testConnection({ ...profile(), credential: 'clave-incorrecta' });
     expect(bad.ok).toBe(false);
     expect(bad.checks[0]!.detail).toMatch(/credencial/);
+  });
+
+  it('el device profile del bootstrap tiene versión, región y un ADR algorithm válido', async () => {
+    expect(await adapter.describeDeviceProfile(profile())).toMatchObject({
+      id: real!.deviceProfileId,
+      version: '1.0.3',
+      region: 'AU915',
+      classes: ['A'],
+    });
   });
 
   it('LoRaWAN 1.0.x: la AppKey queda en nwk_key (Application key en la UI de ChirpStack)', async () => {

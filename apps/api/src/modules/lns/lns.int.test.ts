@@ -456,6 +456,117 @@ describe('registro en el LNS (RF-60 a RF-65)', () => {
     expect(actions).not.toContain('lns.deregistered');
   });
 
+  describe('vincular lee el dispositivo remoto, muestra diferencias y adopta sus datos (P6)', () => {
+    const linkPreview = (assetId: string, client = fx.tech) =>
+      client.post(`${base}/assets/${assetId}/lns-registration/link-preview`);
+    const resolve = (assetId: string, action: 'link' | 'cancel') =>
+      fx.tech.post(`${base}/assets/${assetId}/lns-registration/resolve`, { action });
+    const NWK = '0F1E2D3C4B5A69788796A5B4C3D2E1F0';
+
+    async function conflicted(remote: Record<string, unknown> = {}) {
+      reset();
+      const p = await newProfile();
+      const a = await readyAsset();
+      chirp.remote.set(a.devEui, null);
+      chirp.remoteDetails.set(a.devEui, remote);
+      await register(a.id, p.id);
+      await drain();
+      return { p, a };
+    }
+
+    it('la lectura previa informa JoinEUI, device profile, claves y nombre sin modificar nada ni mostrar claves', async () => {
+      const { p, a } = await conflicted({
+        joinEui: 'AABBCCDDEEFF0011',
+        appKey: null,
+        name: 'Medidor de otra persona',
+      });
+      chirp.calls = [];
+      const res = await linkPreview(a.id);
+      expect(res.statusCode, res.body).toBe(200);
+      const body = res.json();
+      expect(body.profile.id).toBe(p.id);
+      expect(body.remote).toEqual({
+        name: 'Medidor de otra persona',
+        joinEui: 'AABBCCDDEEFF0011',
+        deviceProfileId: 'dp-remoto',
+        hasAppKey: false,
+        hasNwkKey: false,
+      });
+      expect(body.differences.map((d: { field: string }) => d.field)).toEqual([
+        'joinEui',
+        'deviceProfile',
+        'appKey',
+        'name',
+      ]);
+      expect(body.differences.find((d: { field: string }) => d.field === 'appKey')).toEqual({
+        field: 'appKey',
+        local: 'present',
+        remote: 'absent',
+      });
+      // Solo lectura: nada se escribe en el LNS, y las claves no viajan en la respuesta.
+      expect(chirp.calls).toEqual(['read']);
+      expect(res.body).not.toContain(APP_KEY);
+      // Sigue en conflicto: ver no vincula.
+      expect((await lorawan(a.id)).registration.status).toBe('conflict');
+    });
+
+    it('vincular adopta el JoinEUI y las claves del LNS, guarda lo que el LNS tiene y no modifica el remoto', async () => {
+      const { a } = await conflicted({ joinEui: 'AABBCCDDEEFF0011', appKey: NWK });
+      chirp.calls = [];
+      const res = await resolve(a.id, 'link');
+      expect(res.statusCode, res.body).toBe(200);
+      expect(res.json()).toMatchObject({
+        status: 'registered',
+        origin: 'linked',
+        remote: { joinEui: 'AABBCCDDEEFF0011', hasAppKey: true, hasNwkKey: false },
+      });
+      expect(chirp.calls).toEqual(['read']); // nada de register ni deregister
+      const lw = await lorawan(a.id);
+      expect(lw.joinEui).toBe('AABBCCDDEEFF0011');
+      expect((await fx.admin.post(`${base}/assets/${a.id}/lorawan/reveal`)).json().appKey).toBe(
+        NWK,
+      );
+      // Queda en la auditoría sin claves; la edición de datos lleva «AppKey actualizada».
+      const audit = await env.db.migratorPool.query(
+        `SELECT action, diff::text AS d FROM audit_log WHERE entity_id = $1`,
+        [a.id],
+      );
+      expect(audit.rows.map((r) => r.action)).toEqual(
+        expect.arrayContaining(['lorawan.update', 'lns.link']),
+      );
+      expect(audit.rows.map((r) => r.d).join()).not.toContain(NWK);
+    });
+
+    it('lo que el LNS no tiene no se borra del activo; la ficha muestra que no está en el LNS', async () => {
+      const { a } = await conflicted({ appKey: null });
+      const res = await resolve(a.id, 'link');
+      expect(res.json().remote).toMatchObject({ hasAppKey: false });
+      const lw = await lorawan(a.id);
+      expect(lw.hasAppKey).toBe(true); // la local se conserva
+      expect(lw.registration.remote.hasAppKey).toBe(false); // y la ficha dice la verdad del LNS
+    });
+
+    it('si el dispositivo desapareció del LNS no se vincula', async () => {
+      const { a } = await conflicted();
+      chirp.remote.clear();
+      const res = await resolve(a.id, 'link');
+      expect(res.statusCode, res.body).toBe(409);
+      expect((await lorawan(a.id)).registration.status).toBe('conflict');
+    });
+
+    it('solo se puede leer para vincular cuando hay conflicto, y con permiso', async () => {
+      reset();
+      const p = await newProfile();
+      const a = await readyAsset();
+      expect((await linkPreview(a.id)).statusCode).toBe(409); // sin registro
+      await register(a.id, p.id);
+      await drain();
+      expect((await linkPreview(a.id)).statusCode).toBe(409); // registrado, no en conflicto
+      const b = await conflicted();
+      expect((await linkPreview(b.a.id, fx.reader)).statusCode).toBe(403);
+    });
+  });
+
   it('cancelar un conflicto deja el activo sin registro', async () => {
     reset();
     const p = await newProfile();

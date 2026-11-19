@@ -220,6 +220,34 @@ describe('TTN: consulta, baja y conexión', () => {
     expect((await adapter.findDevice(profile, DEV_EUI))!.inventariusAssetId).toBeNull();
   });
 
+  it('readDevice: nombre, JoinEUI y claves tal como están en TTN, sin escribir nada', async () => {
+    expect(await adapter.readDevice(profile, DEV_EUI, '1.0.3')).toBeNull();
+    fake.existing = {
+      name: 'Medidor ajeno',
+      ids: { dev_eui: DEV_EUI, join_eui: '8877665544332211' },
+      attributes: {},
+      root_keys: {
+        app_key: { key: APP_KEY },
+        nwk_key: { key: '0F1E2D3C4B5A69788796A5B4C3D2E1F0' },
+      },
+    };
+    expect(await adapter.readDevice(profile, DEV_EUI, '1.1')).toEqual({
+      externalId: `inv-${DEV_EUI.toLowerCase()}`,
+      name: 'Medidor ajeno',
+      joinEui: '8877665544332211',
+      deviceProfileId: null,
+      inventariusAssetId: null,
+      appKey: APP_KEY,
+      nwkKey: '0F1E2D3C4B5A69788796A5B4C3D2E1F0',
+    });
+    // En 1.0.x no hay NwkKey.
+    expect((await adapter.readDevice(profile, DEV_EUI, '1.0.3'))!.nwkKey).toBeNull();
+    // Sin permiso para leer claves (o sin claves): «no están», no un error.
+    fake.existing = { name: 'x', ids: { join_eui: '8877665544332211' }, attributes: {} };
+    expect((await adapter.readDevice(profile, DEV_EUI, '1.0.3'))!.appKey).toBeNull();
+    expect(fake.calls.every((c) => c.method === 'GET')).toBe(true);
+  });
+
   it('baja: AS → NS → JS → IS, y lo que ya no existe (404) no es error', async () => {
     fake.failures.set('DELETE /ns/', 404);
     await adapter.deregisterDevice(profile, { externalId: 'inv-x', devEui: DEV_EUI });

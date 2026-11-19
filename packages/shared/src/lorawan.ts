@@ -183,6 +183,16 @@ export function missingForRegistration(d: LorawanReadinessInput): string[] {
   return missing;
 }
 
+/** Lo que el LNS tiene de un dispositivo, sin claves: solo si están o no (vincular, RF-64). */
+export const remoteDeviceSchema = z.object({
+  name: z.string(),
+  joinEui: z.string().nullable(),
+  deviceProfileId: z.string().nullable(),
+  hasAppKey: z.boolean(),
+  hasNwkKey: z.boolean(),
+});
+export type RemoteDeviceDto = z.infer<typeof remoteDeviceSchema>;
+
 export const lnsRegistrationSchema = z.object({
   status: lnsRegistrationStatusSchema,
   profile: z.object({ id: z.uuid(), name: z.string(), kind: z.enum(['chirpstack', 'ttn']) }),
@@ -193,6 +203,8 @@ export const lnsRegistrationSchema = z.object({
   orphans: z.array(z.string()),
   attempts: z.number().int(),
   registeredAt: z.iso.datetime().nullable(),
+  /** Lo que el LNS tenía de un dispositivo vinculado en el momento de vincularlo; `null` si no es vinculado. */
+  remote: remoteDeviceSchema.extend({ readAt: z.iso.datetime() }).nullable(),
   updatedAt: z.iso.datetime(),
 });
 export type LnsRegistrationDto = z.infer<typeof lnsRegistrationSchema>;
