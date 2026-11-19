@@ -53,6 +53,13 @@ Los dobles no los habrían encontrado; están cubiertos por `chirpstack.real.int
 - Con una API key de **tenant**, `Get` y `Delete` de un dispositivo inexistente responden `UNAUTHENTICATED`, no `NOT_FOUND`.
   Se distingue de una credencial inválida probando un recurso propio (la aplicación del perfil).
 - Un DevEUI repetido responde `INTERNAL` con «duplicate key», no `ALREADY_EXISTS`: se trata como conflicto y no se reintenta.
+- `isDuplicate` (`chirpstack.ts`) depende del **texto** del error de ChirpStack 4.20.0 («duplicate key» / «already exists»
+  dentro de un `INTERNAL`). Si una versión posterior cambia ese texto o pasa a `ALREADY_EXISTS`, un duplicado volvería a
+  verse como error transitorio. Lo cubre el test «ChirpStack real responde INTERNAL con «duplicate key»…» de
+  `chirpstack.test.ts` (con el doble) y `chirpstack.real.int.test.ts` (contra ChirpStack real): hay que revisarlos al
+  subir la versión de ChirpStack.
+- `PERMISSION_DENIED` no se trata como «no existe»: solo `UNAUTHENTICATED` se confirma con `confirmAbsent`. Una API key de
+  tenant sin `is_device_admin` lee la aplicación pero no borra, y la baja no debe darse por hecha.
 - `DeviceService.List` con `search` no busca por DevEUI, así que no sirve para comprobar existencia.
 
 ## Consecuencias
