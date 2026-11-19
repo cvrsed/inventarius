@@ -34,7 +34,14 @@ type IdReq = { getId(): string };
 class FakeChirpstack {
   calls: string[] = [];
   keys: { nwk: string; app: string } | null = null;
-  device: { name: string; tags: Record<string, string> } | null = null;
+  device: {
+    name: string;
+    description: string;
+    joinEui: string;
+    applicationId: string;
+    deviceProfileId: string;
+    tags: Record<string, string>;
+  } | null = null;
   /** `método` -> código gRPC a devolver. */
   failures = new Map<string, number>();
   failureDetails = new Map<string, string>();
@@ -60,7 +67,14 @@ class FakeChirpstack {
     this.server.addService(deviceGrpc.DeviceServiceService, {
       create: this.wrap<CreateReq>('create', (call, cb) => {
         const d = call.request.getDevice()!;
-        this.device = { name: d.getName(), tags: Object.fromEntries(d.getTagsMap().entries()) };
+        this.device = {
+          name: d.getName(),
+          description: d.getDescription(),
+          joinEui: d.getJoinEui(),
+          applicationId: d.getApplicationId(),
+          deviceProfileId: d.getDeviceProfileId(),
+          tags: Object.fromEntries(d.getTagsMap().entries()),
+        };
         cb(null, new (require_empty())());
       }),
       get: this.wrap('get', (_c, cb) => {
@@ -165,11 +179,20 @@ describe('ChirpStack: registro', () => {
     const res = await adapter.registerDevice(profile, device);
     expect(res).toEqual({ externalId: DEV_EUI.toLowerCase(), stepsDone: ['device', 'keys'] });
     expect(fake.calls).toEqual(['create', 'createKeys']);
+    expect(new Set(fake.authSeen)).toEqual(new Set([`Bearer ${API_KEY}`]));
+  });
+
+  it('envía al LNS, campo por campo, lo mismo que tiene el dispositivo (incluido el JoinEUI)', async () => {
+    await adapter.registerDevice(profile, device);
     expect(fake.device).toEqual({
       name: device.name,
+      description: device.description,
+      joinEui: device.joinEui.toLowerCase(),
+      applicationId: APP,
+      deviceProfileId: DP,
       tags: { inventarius_asset_id: device.assetId },
     });
-    expect(new Set(fake.authSeen)).toEqual(new Set([`Bearer ${API_KEY}`]));
+    expect(fake.keys).toEqual({ nwk: device.appKey, app: '' });
   });
 
   it('en 1.0.x la AppKey va en nwk_key; en 1.1 van nwk_key y app_key', async () => {
@@ -256,7 +279,14 @@ describe('ChirpStack: consulta, baja y conexión', () => {
       externalId: DEV_EUI.toLowerCase(),
       inventariusAssetId: device.assetId,
     });
-    fake.device = { name: 'ajeno', tags: {} };
+    fake.device = {
+      name: 'ajeno',
+      description: '',
+      joinEui: '',
+      applicationId: APP,
+      deviceProfileId: DP,
+      tags: {},
+    };
     expect((await adapter.findDevice(profile, DEV_EUI))!.inventariusAssetId).toBeNull();
   });
 

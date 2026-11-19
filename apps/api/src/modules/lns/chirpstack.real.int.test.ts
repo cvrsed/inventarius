@@ -76,6 +76,47 @@ describe.skipIf(!real)('ChirpStack v4 real', () => {
     }
   }
 
+  /** El dispositivo tal como quedó en ChirpStack. */
+  async function storedDevice(devEui: string) {
+    const client = new deviceGrpc.DeviceServiceClient(real!.endpoint, credentials.createInsecure());
+    const meta = new Metadata();
+    meta.set('authorization', `Bearer ${real!.apiKey}`);
+    const req = new devicePb.GetDeviceRequest();
+    req.setDevEui(devEui.toLowerCase());
+    try {
+      const res = await new Promise<InstanceType<typeof devicePb.GetDeviceResponse>>((ok, ko) =>
+        client.get(req, meta, (e, r) => (e || !r ? ko(e ?? new Error('sin respuesta')) : ok(r))),
+      );
+      const d = res.getDevice()!;
+      return {
+        joinEui: d.getJoinEui(),
+        name: d.getName(),
+        description: d.getDescription(),
+        applicationId: d.getApplicationId(),
+        deviceProfileId: d.getDeviceProfileId(),
+        tags: Object.fromEntries(d.getTagsMap().entries()),
+      };
+    } finally {
+      client.close();
+    }
+  }
+
+  it('lo que se envía es lo que queda en ChirpStack, campo por campo', async () => {
+    const d = device('04', { joinEui: '1122334455667788' });
+    const res = await adapter.registerDevice(profile(), d);
+    expect(await storedDevice(d.devEui)).toEqual({
+      joinEui: d.joinEui.toLowerCase(),
+      name: d.name,
+      description: d.description,
+      applicationId: real!.applicationId,
+      deviceProfileId: real!.deviceProfileId,
+      tags: { inventarius_asset_id: d.assetId },
+    });
+    // En 1.0.x ChirpStack guarda app_key en ceros.
+    expect(await storedKeys(d.devEui)).toEqual({ nwk: APP_KEY, app: '0'.repeat(32) });
+    await adapter.deregisterDevice(profile(), { externalId: res.externalId, devEui: d.devEui });
+  });
+
   it('Probar conexión valida tenant, aplicación y device profile', async () => {
     const res = await adapter.testConnection(profile());
     expect(res.checks).toEqual([

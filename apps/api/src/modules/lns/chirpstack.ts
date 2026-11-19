@@ -211,6 +211,7 @@ export class ChirpstackAdapter implements LnsAdapter {
     try {
       const device = new devicePb.Device();
       device.setDevEui(externalId);
+      device.setJoinEui(d.joinEui.toLowerCase());
       device.setName(d.name.slice(0, 100));
       device.setDescription(d.description);
       device.setApplicationId(profile.target.applicationId ?? '');
