@@ -7,7 +7,9 @@ import { describeAuditDetail } from './detail';
 /** Detalle legible de una auditoría: campo → valor, o antes → después cuando algo cambió (RF-31). */
 const props = defineProps<{ entry: AuditEntryDto }>();
 const { t, te } = useI18n();
-const rows = computed(() => describeAuditDetail(props.entry.diff, { t, te }));
+const rows = computed(() =>
+  describeAuditDetail(props.entry.diff, { t, te }, { entity: props.entry.entity }),
+);
 </script>
 
 <template>

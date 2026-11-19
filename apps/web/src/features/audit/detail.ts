@@ -17,6 +17,54 @@ export interface DetailText {
 }
 
 const EMPTY = '—';
+/** Cuántos elementos de una lista (p. ej. las series de una importación) se nombran antes de resumir el resto. */
+const LIST_LIMIT = 10;
+
+/** Opciones del detalle: la entidad del evento (rótulos que dependen de ella) y campos que no se muestran. */
+export interface DetailOptions {
+  entity?: string;
+  skip?: ReadonlySet<string>;
+}
+
+/**
+ * Las claves se auditan como `hasAppKey` (hay/no hay) y `appKeyChanged` (se escribió una): al lector le basta una
+ * línea «AppKey: cargada / actualizada / eliminada». Los dos campos crudos no se muestran.
+ */
+const KEY_FIELDS = [
+  { field: 'appKey', has: 'hasAppKey', changed: 'appKeyChanged' },
+  { field: 'nwkKey', has: 'hasNwkKey', changed: 'nwkKeyChanged' },
+] as const;
+
+function keyRows(
+  before: Record<string, unknown> | null,
+  after: Record<string, unknown> | null,
+  entity: string | undefined,
+  text: DetailText,
+): { rows: DetailRow[]; hidden: Set<string> } {
+  const rows: DetailRow[] = [];
+  const hidden = new Set<string>();
+  for (const k of KEY_FIELDS) {
+    hidden.add(k.has).add(k.changed);
+    const hadBefore = before?.[k.has] === true;
+    const hasAfter = after?.[k.has];
+    const state =
+      hasAfter === true && !hadBefore
+        ? 'loaded'
+        : hasAfter === false && hadBefore
+          ? 'removed'
+          : (after ?? before)?.[k.changed] === true
+            ? 'updated'
+            : null;
+    if (state) {
+      rows.push({
+        field: k.field,
+        label: auditFieldLabel(k.field, entity),
+        value: text.t(`audit.keyState.${state}`),
+      });
+    }
+  }
+  return { rows, hidden };
+}
 
 /**
  * Datos propios del evento, no un campo que cambió de valor: el motivo de una baja, la nota de una asignación, a quién
@@ -35,21 +83,35 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
   v !== null && typeof v === 'object' && !Array.isArray(v);
 
 /** Valor de un campo en lenguaje de persona: sin `null`, `true`, códigos internos ni JSON. */
-export function formatDetailValue(field: string, value: unknown, text: DetailText): string {
+export function formatDetailValue(
+  field: string,
+  value: unknown,
+  text: DetailText,
+  entity?: string,
+): string {
   if (value === null || value === undefined || value === '') return EMPTY;
   if (typeof value === 'boolean') return text.t(value ? 'common.yes' : 'common.no');
   if (Array.isArray(value)) {
     if (!value.length) return EMPTY;
-    return value
-      .map((v) =>
-        typeof v === 'string' && text.te(`permissions.${v}`)
-          ? text.t(`permissions.${v}`)
-          : String(v),
-      )
-      .join(', ');
+    const shown = value.slice(0, LIST_LIMIT).map((v) => {
+      if (typeof v !== 'string') return String(v);
+      if (text.te(`permissions.${v}`)) return text.t(`permissions.${v}`);
+      return auditValueLabel(field, v, entity) ?? v;
+    });
+    const more = value.length - shown.length;
+    return more > 0
+      ? `${shown.join(', ')} … ${text.t('audit.andMore').replace('{n}', String(more))}`
+      : shown.join(', ');
+  }
+  if (isRecord(value)) {
+    // Objeto plano (p. ej. el destino de un perfil LNS): «Tenant: …; Aplicación: …».
+    const parts = Object.entries(value).map(
+      ([k, v]) => `${auditFieldLabel(k, entity)}: ${formatDetailValue(k, v, text, entity)}`,
+    );
+    return parts.length ? parts.join('; ') : EMPTY;
   }
   if (typeof value === 'string') {
-    const enumerated = auditValueLabel(field, value);
+    const enumerated = auditValueLabel(field, value, entity);
     if (enumerated !== undefined) return enumerated;
     if (
       (field === 'purchaseDate' || field === 'expectedReturnOn') &&
@@ -70,44 +132,50 @@ export function formatDetailValue(field: string, value: unknown, text: DetailTex
 export function describeAuditDetail(
   diff: Record<string, unknown> | null,
   text: DetailText,
+  options: DetailOptions = {},
 ): DetailRow[] {
   if (!diff) return [];
+  const { entity } = options;
   const before = isRecord(diff['before']) ? diff['before'] : null;
   const after = isRecord(diff['after']) ? diff['after'] : null;
-  const row = (field: string) => ({ field, label: auditFieldLabel(field) });
+  const keys = keyRows(before, after ?? (before ? null : diff), entity, text);
+  const hide = (f: string) => keys.hidden.has(f) || (options.skip?.has(f) ?? false);
+  const row = (field: string) => ({ field, label: auditFieldLabel(field, entity) });
+  const fmt = (f: string, v: unknown) => formatDetailValue(f, v, text, entity);
   // `context`: datos que no cambiaron pero ayudan a entender el evento (p. ej. el estado de un activo dado de baja).
   const context = isRecord(diff['context'])
     ? Object.entries(diff['context']).map(([f, v]) => ({
         ...row(f),
-        value: formatDetailValue(f, v, text),
+        value: fmt(f, v),
       }))
     : [];
 
   if (before && after) {
     const fields = [...new Set([...Object.keys(before), ...Object.keys(after)])];
     const changes: DetailRow[] = [];
-    for (const f of fields) {
+    for (const f of fields.filter((x) => !hide(x))) {
       if (EVENT_FIELDS.has(f)) {
         // Dato del evento: valor simple (el de después; en una restauración, el que traía la baja).
         const v = after[f] ?? before[f];
         if (v !== null && v !== undefined && v !== '') {
-          changes.push({ ...row(f), value: formatDetailValue(f, v, text) });
+          changes.push({ ...row(f), value: fmt(f, v) });
         }
       } else if (JSON.stringify(before[f] ?? null) !== JSON.stringify(after[f] ?? null)) {
         changes.push({
           ...row(f),
-          before: formatDetailValue(f, before[f], text),
-          after: formatDetailValue(f, after[f], text),
+          before: fmt(f, before[f]),
+          after: fmt(f, after[f]),
         });
       }
     }
-    return [...changes, ...context];
+    return [...changes, ...keys.rows, ...context];
   }
   const single = after ?? before ?? diff;
   return [
     ...Object.entries(single)
-      .filter(([f]) => single !== diff || f !== 'context')
-      .map(([f, v]) => ({ ...row(f), value: formatDetailValue(f, v, text) })),
+      .filter(([f]) => (single !== diff || f !== 'context') && !hide(f))
+      .map(([f, v]) => ({ ...row(f), value: fmt(f, v) })),
+    ...keys.rows,
     ...context,
   ];
 }

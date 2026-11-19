@@ -152,4 +152,123 @@ describe('describeAuditDetail (RF-31)', () => {
       value: 'x',
     });
   });
+
+  describe('LoRaWAN y LNS (P8): ni claves internas ni valores crudos', () => {
+    /** Ninguna fila debe contener un código interno ni un valor técnico crudo. */
+    const raw = [
+      /devEui|joinEui|deviceClass|lorawanVersion|externalId|deviceDefaults|appKeyChanged|hasAppKey/,
+      /\b(true|false|linked|created)\b/,
+    ];
+    const show = (rows: ReturnType<typeof describeAuditDetail>) =>
+      rows
+        .map((r) => [r.label, r.value, r.before, r.after].filter((x) => x !== undefined).join(' '))
+        .join('\n');
+
+    it('edición de datos LoRaWAN: campos, valores y la línea «AppKey: cargada»', () => {
+      const rows = describeAuditDetail(
+        {
+          before: { devEui: null, hasAppKey: false, region: null, deviceClass: 'A' },
+          after: {
+            devEui: '70B3D57ED0000001',
+            hasAppKey: true,
+            appKeyChanged: true,
+            region: 'AU915',
+            deviceClass: 'C',
+            lorawanVersion: '1.0.3',
+            batchId: '0190a1b2-0000-7000-8000-000000000001',
+          },
+        },
+        text,
+        { entity: 'asset' },
+      );
+      expect(rows.find((r) => r.field === 'appKey')).toEqual({
+        field: 'appKey',
+        label: 'AppKey',
+        value: 'cargada',
+      });
+      expect(rows.some((r) => r.field === 'hasAppKey' || r.field === 'appKeyChanged')).toBe(false);
+      expect(rows.find((r) => r.field === 'devEui')).toMatchObject({
+        label: 'DevEUI',
+        before: '—',
+      });
+      expect(rows.find((r) => r.field === 'region')).toMatchObject({ label: 'Región' });
+      expect(rows.find((r) => r.field === 'deviceClass')!.after).not.toBe('C');
+      expect(rows.find((r) => r.field === 'lorawanVersion')!.after).toBe('LoRaWAN 1.0.3');
+      const out = show(rows);
+      for (const re of raw) expect(out).not.toMatch(re);
+    });
+
+    it('si solo se escribió la clave: «AppKey: actualizada»; NwkKey igual', () => {
+      const rows = describeAuditDetail(
+        { before: {}, after: { appKeyChanged: true, nwkKeyChanged: true } },
+        text,
+      );
+      expect(rows).toEqual([
+        { field: 'appKey', label: 'AppKey', value: 'actualizada' },
+        { field: 'nwkKey', label: 'NwkKey', value: 'actualizada' },
+      ]);
+    });
+
+    it('registro, vínculo y fallo: perfil, id, origen, huérfanos y error en español', () => {
+      const linked = describeAuditDetail(
+        {
+          after: {
+            profile: 'ChirpStack de prueba',
+            externalId: '70b3d57ed0000001',
+            origin: 'linked',
+          },
+        },
+        text,
+      );
+      expect(show(linked)).toContain('Perfil LNS ChirpStack de prueba');
+      expect(show(linked)).toContain('Id en el LNS 70b3d57ed0000001');
+      expect(show(linked)).toContain('Origen Vinculado');
+      const failed = describeAuditDetail(
+        { after: { profile: 'TTN', error: 'No se pudo conectar', orphans: ['device', 'js'] } },
+        text,
+      );
+      expect(show(failed)).toContain('Componentes huérfanos Dispositivo, Join Server');
+      expect(show(failed)).not.toMatch(/\bjs\b/);
+    });
+
+    it('importación: las series se listan y, si son muchas, se resumen', () => {
+      const serials = Array.from({ length: 25 }, (_, i) => `SN-${i + 1}`);
+      const rows = describeAuditDetail({ after: { count: 25, serials } }, text);
+      const value = rows.find((r) => r.field === 'serials')!.value!;
+      expect(rows.find((r) => r.field === 'serials')!.label).toBe('Números de serie');
+      expect(value).toContain('SN-10');
+      expect(value).not.toContain('SN-11');
+      expect(value).toContain('y 15 más');
+    });
+
+    it('perfil LNS: «Tipo de LNS», valor «ChirpStack», destino y valores por defecto legibles', () => {
+      const rows = describeAuditDetail(
+        {
+          after: {
+            kind: 'chirpstack',
+            tls: false,
+            target: { tenantId: 'T-1', applicationId: 'A-1' },
+            deviceDefaults: { deviceProfileId: 'D-1' },
+          },
+        },
+        text,
+        { entity: 'lns_profile' },
+      );
+      expect(rows.find((r) => r.field === 'kind')).toEqual({
+        field: 'kind',
+        label: 'Tipo de LNS',
+        value: 'ChirpStack',
+      });
+      expect(rows.find((r) => r.field === 'target')!.value).toBe('Tenant: T-1; Aplicación: A-1');
+      expect(rows.find((r) => r.field === 'deviceDefaults')!.value).toBe('Device profile: D-1');
+      expect(rows.find((r) => r.field === 'tls')!.value).toBe('No');
+      const out = show(rows);
+      for (const re of raw) expect(out).not.toMatch(re);
+    });
+
+    it('revelado de claves: nombres de las claves, no sus códigos', () => {
+      const rows = describeAuditDetail({ keys: ['appKey', 'nwkKey'] }, text);
+      expect(rows).toEqual([{ field: 'keys', label: 'Claves reveladas', value: 'AppKey, NwkKey' }]);
+    });
+  });
 });

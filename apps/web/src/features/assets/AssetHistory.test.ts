@@ -49,7 +49,8 @@ describe('AssetHistory (RF-24)', () => {
     expect(text).toContain('por Olga');
     expect(text).toContain('Disponible');
     expect(text).toContain('sale a terreno');
-    expect(text).toContain('(vacío)'); // serie: de nada a S1
+    expect(text).toContain('Número de serie'); // serie: de nada a S1
+    expect(text).toContain('— → aS1');
     expect(w.findAll('ol > li')).toHaveLength(3);
   });
 

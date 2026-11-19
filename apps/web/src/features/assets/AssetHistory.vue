@@ -7,7 +7,7 @@ import { useI18n } from 'vue-i18n';
 import { actorDisplay } from '@/features/audit/actor';
 import { formatDateTime } from '@/shared/format/format';
 import { useAssetHistory } from './api';
-import { auditActionLabel, auditValueLabel } from '@/app/i18n/audit';
+import { auditActionLabel } from '@/app/i18n/audit';
 import { describeEntry } from './history';
 
 const props = defineProps<{ assetId: string }>();
@@ -28,15 +28,9 @@ const ICONS = {
 const items = computed(() =>
   (data.value?.pages.flatMap((p) => p.data) ?? []).map((entry) => ({
     entry,
-    view: describeEntry(entry),
+    view: describeEntry(entry, { t, te }),
   })),
 );
-const fieldLabel = (f: string) =>
-  te(`assets.history.fields.${f}`) ? t(`assets.history.fields.${f}`) : f;
-const show = (field: string, v: unknown) =>
-  v === null || v === ''
-    ? t('assets.history.empty_value')
-    : (auditValueLabel(field, String(v)) ?? String(v));
 </script>
 
 <template>
@@ -65,16 +59,16 @@ const show = (field: string, v: unknown) =>
             {{ formatDateTime(entry.at) }} ·
             {{ t('assets.history.by', { name: actorDisplay(entry, t) }) }}
           </p>
-          <ul v-if="view.changes.length" class="m-0 mt-1 flex list-none flex-col gap-1 p-0 text-sm">
-            <li v-for="c in view.changes" :key="c.field" class="break-words">
-              <UBadge :label="fieldLabel(c.field)" color="neutral" variant="subtle" class="mr-1" />
-              <template v-if="c.single">
-                <span class="text-default">{{ show(c.field, c.after ?? c.before) }}</span>
+          <ul v-if="view.rows.length" class="m-0 mt-1 flex list-none flex-col gap-1 p-0 text-sm">
+            <li v-for="r in view.rows" :key="r.field" class="break-words">
+              <UBadge :label="r.label" color="neutral" variant="subtle" class="mr-1" />
+              <template v-if="r.value !== undefined">
+                <span class="text-default">{{ r.value }}</span>
               </template>
               <template v-else>
-                <span class="text-muted">{{ show(c.field, c.before) }}</span>
+                <span class="text-muted">{{ r.before }}</span>
                 <span aria-hidden="true"> → </span><span class="sr-only">a</span>
-                <span class="text-default">{{ show(c.field, c.after) }}</span>
+                <span class="text-default">{{ r.after }}</span>
               </template>
             </li>
           </ul>
