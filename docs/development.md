@@ -131,7 +131,9 @@ en la web (Perfiles LNS): endpoint `chirpstack:8080`, sin TLS. La interfaz de Ch
 CHIRPSTACK_TEST_CONFIG=/ruta/a/chirpstack.json pnpm --filter @inventarius/api test:int src/modules/lns/chirpstack.real.int.test.ts
 ```
 
-(sin la variable esa prueba se omite). El e2e de LoRaWAN (`e2e/tests/lorawan.spec.ts`) levanta su propio ChirpStack en
+(sin la variable esa prueba se omite). El script `chirpstack-bootstrap` también crea dos dispositivos «ajenos» de prueba
+(sin la etiqueta de Inventarius; DevEUI con prefijo `70B3D5FF` y un contador) que usa el e2e para probar «Vincular»; salen en
+`foreignDevices` del JSON. El e2e de LoRaWAN (`e2e/tests/lorawan.spec.ts`) levanta su propio ChirpStack en
 `compose.e2e.yml`.
 
 ### Prueba manual contra TTN real

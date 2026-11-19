@@ -10,6 +10,8 @@ import applicationGrpc from '@chirpstack/chirpstack-api/api/application_grpc_pb.
 import applicationPb from '@chirpstack/chirpstack-api/api/application_pb.js';
 import profileGrpc from '@chirpstack/chirpstack-api/api/device_profile_grpc_pb.js';
 import profilePb from '@chirpstack/chirpstack-api/api/device_profile_pb.js';
+import deviceGrpc from '@chirpstack/chirpstack-api/api/device_grpc_pb.js';
+import devicePb from '@chirpstack/chirpstack-api/api/device_pb.js';
 import internalGrpc from '@chirpstack/chirpstack-api/api/internal_grpc_pb.js';
 import internalPb from '@chirpstack/chirpstack-api/api/internal_pb.js';
 import tenantGrpc from '@chirpstack/chirpstack-api/api/tenant_grpc_pb.js';
@@ -17,6 +19,7 @@ import tenantPb from '@chirpstack/chirpstack-api/api/tenant_pb.js';
 import commonPb from '@chirpstack/chirpstack-api/common/common_pb.js';
 import { credentials, Metadata, type Client, type ServiceError } from '@grpc/grpc-js';
 import { writeFileSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { createRequire } from 'node:module';
 
 type Make = (address: string, creds: ReturnType<typeof credentials.createInsecure>) => Client;
@@ -208,6 +211,67 @@ if (existingProfile) {
   ).getId();
 }
 
+// Dispositivos «ajenos» (sin la etiqueta de Inventarius) para probar el flujo de vincular con un ChirpStack real. Son dos
+// porque el e2e corre en escritorio y móvil a la vez y cada uno necesita el suyo. Los identificadores y la clave son
+// inventados: el DevEUI sale de un prefijo y un contador; JoinEUI y clave, de bytes aleatorios en la primera corrida (en
+// las siguientes se leen del dispositivo, así el JSON siempre dice lo que hay en ChirpStack).
+const FOREIGN_PREFIX = '70b3d5ff';
+const devices = (a: string, c: ReturnType<typeof credentials.createInsecure>) =>
+  new deviceGrpc.DeviceServiceClient(a, c);
+const foreignDevices: { devEui: string; joinEui: string; appKey: string }[] = [];
+for (const n of [1, 2]) {
+  const devEui = `${FOREIGN_PREFIX}${String(n).padStart(8, '0')}`;
+  const getReq = new devicePb.GetDeviceRequest();
+  getReq.setDevEui(devEui);
+  const existing = await call<InstanceType<typeof devicePb.GetDeviceResponse>>(
+    devices,
+    'get',
+    getReq,
+    jwt,
+  ).catch(() => null);
+  let joinEui: string;
+  let appKey: string;
+  if (existing) {
+    joinEui = existing.getDevice()!.getJoinEui();
+    const keysReq = new devicePb.GetDeviceKeysRequest();
+    keysReq.setDevEui(devEui);
+    appKey = (
+      await call<InstanceType<typeof devicePb.GetDeviceKeysResponse>>(
+        devices,
+        'getKeys',
+        keysReq,
+        jwt,
+      )
+    )
+      .getDeviceKeys()!
+      .getNwkKey();
+  } else {
+    joinEui = randomBytes(8).toString('hex');
+    appKey = randomBytes(16).toString('hex');
+    const device = new devicePb.Device();
+    device.setDevEui(devEui);
+    device.setJoinEui(joinEui);
+    device.setName(`Dispositivo ajeno de prueba ${n}`);
+    device.setApplicationId(applicationId);
+    device.setDeviceProfileId(deviceProfileId);
+    const createReq = new devicePb.CreateDeviceRequest();
+    createReq.setDevice(device);
+    await call(devices, 'create', createReq, jwt);
+    // LoRaWAN 1.0.x: la AppKey va en `nwk_key`.
+    const keys = new devicePb.DeviceKeys();
+    keys.setDevEui(devEui);
+    keys.setNwkKey(appKey);
+    const keysReq = new devicePb.CreateDeviceKeysRequest();
+    keysReq.setDeviceKeys(keys);
+    await call(devices, 'createKeys', keysReq, jwt);
+  }
+  foreignDevices.push({
+    devEui: devEui.toUpperCase(),
+    joinEui: joinEui.toUpperCase(),
+    appKey: appKey.toUpperCase(),
+  });
+}
+
 // API key del tenant (con los derechos mínimos que usa Inventarius)
 const key = new internalPb.ApiKey();
 key.setName(`inventarius-${Date.now()}`);
@@ -224,6 +288,17 @@ const created = await call<InstanceType<typeof internalPb.CreateApiKeyResponse>>
 
 writeFileSync(
   outFile,
-  `${JSON.stringify({ endpoint, tenantId, applicationId, deviceProfileId, apiKey: created.getToken() }, null, 2)}\n`,
+  `${JSON.stringify(
+    {
+      endpoint,
+      tenantId,
+      applicationId,
+      deviceProfileId,
+      apiKey: created.getToken(),
+      foreignDevices,
+    },
+    null,
+    2,
+  )}\n`,
 );
 process.stdout.write(`ChirpStack de prueba listo: tenant ${tenantId}\n`);

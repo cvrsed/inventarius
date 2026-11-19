@@ -61,7 +61,13 @@ async function adopt(): Promise<void> {
     :description="t('lorawan.linkDialog.description')"
   >
     <template #body>
-      <div class="flex flex-col gap-4">
+      <!-- Enfocable para que el contenido, que puede desbordar en 360 px, se desplace con el teclado. -->
+      <div
+        class="flex flex-col gap-4 rounded-md outline-primary/25 focus-visible:outline-3"
+        role="region"
+        tabindex="0"
+        :aria-label="t('lorawan.linkDialog.title')"
+      >
         <UAlert
           v-if="loadError"
           color="error"

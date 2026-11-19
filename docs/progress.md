@@ -473,6 +473,27 @@ Revisión manual del PR #6 contra ChirpStack 4.20.0 (2026-11-19). Cada punto va 
 - [x] P22 En producción la app no arranca sin `APP_ENCRYPTION_KEY` o con el valor por defecto de `compose.yml`
 - [x] P23 Informe: TLS con CA propia en el adaptador de ChirpStack (`docs/open-questions.md`)
 
+**Resumen de la revisión (2026-11-19)**
+
+- Todos los puntos P1 a P9, P15 a P23 quedaron hechos (P10 a P14 no se pidieron). Un commit por punto, salvo P16 y P17 (mismo
+  commit: tocan los mismos archivos) y P2/P6, que llevan un commit de API y otro de la interfaz.
+- **Verificado contra ChirpStack 4.20.0 real** (`chirpstack.real.int.test.ts`, 7 pruebas): el JoinEUI llega al LNS y se lee de
+  vuelta campo por campo, el device profile del bootstrap lleva ADR algorithm, `readDevice` y `describeDeviceProfile`.
+- **e2e** (Playwright, escritorio y 360 px): suite completa en verde salvo lo corregido durante la revisión; nuevos: Auditoría sin
+  desborde a 1280, 1024, 800, 768 y 360 px, y el flujo de vincular contra un dispositivo ajeno real de ChirpStack
+  (`chirpstack-bootstrap` crea dos, uno por proyecto) con lectura, diferencias, adopción, ficha y «Desvincular».
+- Migraciones nuevas: 0014 (serie única sin distinguir mayúsculas; se detiene y lista los duplicados si los hay) y 0015
+  (`lns_registrations.remote_snapshot`).
+- Decisiones provisionales nuevas en `docs/open-questions.md`: Q51 (informe TLS con CA propia, P23), Q52 (serie única),
+  Q53 (máscara de la AppKey), Q54 (qué se adopta al vincular).
+
+**Pendiente / no verificado**
+
+- **TTN:** la lectura para vincular (`readDevice`) y la región por plan de frecuencias siguen la documentación; no se probaron
+  contra una aplicación real (mismo límite que Q48, requiere los secretos `TTN_TEST_*`).
+- El CI de GitHub no se esperó (instrucción del responsable): los checks del PR #6 los revisa el responsable.
+- La migración 0014 puede abortar si la base ya tiene números de serie repetidos sin distinguir mayúsculas; el mensaje los lista.
+
 ### Backlog post-F3
 
 Para una fase de endurecimiento; **no se implementa en F3**.

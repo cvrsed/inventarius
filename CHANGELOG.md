@@ -18,6 +18,22 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). D
 - ChirpStack v4 real en el compose de desarrollo (perfil `chirpstack`) y en el de e2e; job manual `ttn-real` sin credenciales.
 - ADR 0007.
 
+#### Revisión manual del PR #6 contra ChirpStack 4.20.0
+
+- «Probar conexión»: un solo mensaje si todo falla por lo mismo [P1].
+- El registro valida versión, clase y región contra el device profile del LNS y explica qué difiere; la identidad queda
+  bloqueada con el dispositivo registrado o vinculado y la edición avisa que el LNS no se actualiza [P2].
+- Corregido: el adaptador de ChirpStack no enviaba el JoinEUI; test campo por campo contra ChirpStack real [P3].
+- `chirpstack-bootstrap` crea el device profile con ADR algorithm [P4].
+- Vincular lee el dispositivo remoto, muestra diferencias y adopta sus datos sin modificarlo; la ficha muestra lo que el LNS
+  tiene; «Desvincular» sin estilo destructivo; migración 0015 [P5, P6, P7].
+- Una sola tabla de traducciones para el historial y la Auditoría; actor del worker como «Sistema» [P8, P15].
+- Confirmación previa con exactamente lo que se enviará al LNS, con las claves enmascaradas [P9].
+- Importación: «Importar 1 dispositivo», defaults del modelo, id de lote en la auditoría por activo [P16, P19, P20].
+- Botones desactivados con motivo [P17]. Serie única sin distinguir mayúsculas, migración 0014 [P18].
+- Auditoría sin scroll horizontal en escritorio; la IP va al detalle [P21].
+- En producción la app no arranca con la clave de cifrado por defecto de `compose.yml` [P22].
+
 ### F2 — Inventario
 
 #### Sexta tanda de revisión (PR #5)

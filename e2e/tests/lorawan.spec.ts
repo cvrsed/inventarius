@@ -19,6 +19,8 @@ const chirpstack = JSON.parse(readFileSync(process.env['CHIRPSTACK_CONFIG'] ?? '
   applicationId: string;
   deviceProfileId: string;
   apiKey: string;
+  /** Dispositivos creados por el bootstrap sin la etiqueta de Inventarius, para probar «vincular» (uno por proyecto). */
+  foreignDevices: { devEui: string; joinEui: string; appKey: string }[];
 };
 
 // Datos inventados: DevEUI y claves aleatorios por corrida, nunca valores reales.
@@ -50,7 +52,7 @@ async function createProfile(page: Page): Promise<{ id: string; name: string }> 
 }
 
 /** Modelo y activo LoRaWAN con todos los datos listos para registrar. */
-async function createLorawanAsset(page: Page) {
+async function createLorawanAsset(page: Page, over: { devEui?: string } = {}) {
   const manufacturer = await apiPost<{ id: string }>(page.request, '/api/v1/manufacturers', {
     name: uniqueName('Fabricante LW'),
   });
@@ -70,7 +72,7 @@ async function createLorawanAsset(page: Page) {
     name: uniqueName('Bodega LW'),
     type: 'warehouse',
   });
-  const devEui = newDevEui();
+  const devEui = over.devEui ?? newDevEui();
   const appKey = hex(16);
   const asset = await createAssetViaApi(
     page.request,
@@ -108,7 +110,14 @@ test.describe('LoRaWAN (RF-21, RF-50 a RF-66) contra un ChirpStack v4 real', () 
     const dialog = page.getByRole('dialog');
     await dialog.locator('#reg-profile').click();
     await page.getByRole('option', { name: new RegExp(profile.name) }).click();
-    await expect(dialog.getByText('Se enviará')).toBeVisible();
+    await expect(
+      dialog.getByRole('heading', { name: 'Se enviará exactamente esto' }),
+    ).toBeVisible();
+    // La confirmación muestra la AppKey enmascarada, el device profile con su versión y región, y los tags (P9).
+    await expect(dialog).toContainText('Device profile (en el LNS)');
+    await expect(dialog).toContainText('AU915');
+    await expect(dialog).toContainText('inventarius_asset_id');
+    await expect(dialog.getByText('•'.repeat(32), { exact: true })).toBeVisible();
     await expect(dialog.getByText(asset.devEui.toLowerCase(), { exact: true })).toBeVisible();
     await expect(dialog).not.toContainText(asset.appKey);
     expect(await horizontalOverflow(page)).toBe(false);
@@ -135,6 +144,81 @@ test.describe('LoRaWAN (RF-21, RF-50 a RF-66) contra un ChirpStack v4 real', () 
       .click();
     await expect(section.getByText('No registrado')).toBeVisible({ timeout: 45_000 });
     await expect(section.getByRole('button', { name: 'Registrar en LNS' })).toBeVisible();
+  });
+
+  test('vincular un dispositivo que ya existe en ChirpStack: lee, muestra diferencias, adopta y desvincula', async ({
+    page,
+  }, info) => {
+    const foreign = chirpstack.foreignDevices[info.project.name === 'mobile' ? 1 : 0]!;
+    const profile = await createProfile(page);
+    const asset = await createLorawanAsset(page, { devEui: foreign.devEui });
+
+    // Registrar: el DevEUI ya existe en ChirpStack y no lo creó Inventarius -> conflicto, sin tocarlo.
+    await apiPost(page.request, `/api/v1/assets/${asset.id}/lns-registration`, {
+      profileId: profile.id,
+    });
+    await page.goto(`/activos/${asset.id}`);
+    const section = page.getByTestId('lorawan-section');
+    await expect(section.getByText('Conflicto', { exact: true })).toBeVisible({ timeout: 45_000 });
+    // El mensaje del conflicto sale una sola vez (P5).
+    await expect(section.getByText(/ya hay un dispositivo con ese DevEUI/i)).toHaveCount(1);
+    await expect(section.getByText('Último error')).toHaveCount(0);
+
+    // Vincular: se lee el dispositivo remoto y se muestran las diferencias antes de confirmar (P6).
+    await section.getByRole('button', { name: 'Vincular', exact: true }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByText('Lo que tiene el LNS')).toBeVisible();
+    await expect(dialog.getByText(foreign.joinEui).first()).toBeVisible();
+    await expect(dialog.getByTestId('link-differences')).toContainText('JoinEUI: el activo tiene');
+    await expect(dialog.getByTestId('link-differences')).toContainText(
+      'AppKey: es distinta en el LNS y en el activo',
+    );
+    // Nunca se muestra el valor de una clave, ni la del LNS ni la del activo.
+    await expect(dialog).not.toContainText(foreign.appKey);
+    await expect(dialog).not.toContainText(asset.appKey);
+    expect(await horizontalOverflow(page)).toBe(false);
+    await expectNoA11yViolations(page);
+    await dialog.getByRole('button', { name: 'Adoptar los datos del LNS y vincular' }).click();
+
+    // Vinculado: la ficha muestra lo que de verdad tiene el LNS y el activo adoptó su JoinEUI.
+    await expect(section.getByText('Vinculado (ya existía en el LNS)')).toBeVisible();
+    const remote = section.getByTestId('lorawan-remote');
+    await expect(remote).toContainText(foreign.joinEui);
+    await expect(remote).toContainText('AppKey');
+    await expect(remote).toContainText('cargada en el LNS');
+    await expect(section.getByText(foreign.joinEui).first()).toBeVisible();
+
+    // Desvincular (P7): sin estilo destructivo y sin borrar nada en ChirpStack.
+    const unlink = section.getByRole('button', { name: 'Desvincular' });
+    await expect(unlink).toBeVisible();
+    await expect(section.getByRole('button', { name: 'Dar de baja en LNS' })).toHaveCount(0);
+    await unlink.click();
+    await page
+      .getByRole('alertdialog')
+      .or(page.getByRole('dialog'))
+      .getByRole('button', { name: 'Desvincular' })
+      .click();
+    await expect(section.getByText('No registrado')).toBeVisible({ timeout: 45_000 });
+
+    // El dispositivo ajeno sigue en ChirpStack: registrar otra vez vuelve a dar conflicto, no un registro nuevo.
+    await apiPost(page.request, `/api/v1/assets/${asset.id}/lns-registration`, {
+      profileId: profile.id,
+    });
+    await page.reload();
+    await expect(section.getByText('Conflicto', { exact: true })).toBeVisible({ timeout: 45_000 });
+    // Se libera el DevEUI para que la prueba se pueda repetir en el mismo ChirpStack.
+    const token = (
+      (await (await page.request.get('/api/v1/auth/csrf')).json()) as { token: string }
+    ).token;
+    const headers = { 'x-csrf-token': token };
+    await page.request.post(`/api/v1/assets/${asset.id}/lns-registration/resolve`, {
+      data: { action: 'cancel' },
+      headers,
+    });
+    await page.request.patch(`/api/v1/assets/${asset.id}/lorawan`, {
+      data: { devEui: newDevEui() },
+      headers,
+    });
   });
 
   test('un activo ya registrado rechaza otro registro (409) y se da de baja por API', async ({

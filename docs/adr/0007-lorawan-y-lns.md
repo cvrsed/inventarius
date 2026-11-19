@@ -44,6 +44,21 @@ dispositivos en ChirpStack v4 y TTN v3 (RF-60 a RF-65) y la importación CSV (RF
 10. **Importación CSV todo o nada (RF-66).** Vista previa y aplicación comparten el mismo análisis; la aplicación corre en una
     transacción y, con cualquier error de archivo o de fila, responde 422 sin escribir nada. Tope de 2.000 filas.
 
+11. **Coherencia con el device profile (revisión del PR #6).** En ChirpStack la versión de MAC, la región y las clases viven
+    en el device profile, no en el dispositivo. Antes de encolar un registro (y en la vista previa) el adaptador lee el
+    device profile (`describeDeviceProfile`) y `compareWithDeviceProfile` lo contrasta con el activo; si difiere, 422 con una
+    explicación por campo y nada se encola. En TTN la versión y la clase las envía el activo, así que solo se valida la región
+    por el plan de frecuencias. Un LNS que no responde impide validar y se informa, en vez de registrar a ciegas.
+12. **Vincular es lectura más adopción local (RF-64).** `readDevice` hace `Get` y `GetKeys` (solo lectura); la API devuelve las
+    diferencias (JoinEUI, device profile, claves presentes/ausentes sin su valor, nombre). Vincular vuelve a leer, copia al
+    activo el JoinEUI y las claves que el LNS sí tiene (lo que falta allá no se borra acá) y guarda en `remote_snapshot` lo que
+    el LNS tenía, para mostrarlo en la ficha. Jamás escribe en el LNS. Un vinculado se **desvincula** (`lns.unlink`).
+13. **La confirmación previa y el registro usan la misma función** (`outgoingDevice` + `assetMarkers`): lo que se muestra es lo
+    que recibe el adaptador, con las claves enmascaradas. Un test compara ambos campo por campo.
+14. **El historial de la ficha y la Auditoría comparten una sola tabla de traducciones** (`describeAuditDetail`); los rótulos
+    que dependen de la entidad (`kind` de un perfil LNS) se resuelven con la entidad del evento.
+15. **Serie única sin distinguir mayúsculas** (migración 0014, índice sobre `lower(serial)`): la importación CSV empareja así.
+
 ## Hallazgos contra un ChirpStack v4.20 real
 
 Los dobles no los habrían encontrado; están cubiertos por `chirpstack.real.int.test.ts` y el e2e:
@@ -60,6 +75,10 @@ Los dobles no los habrían encontrado; están cubiertos por `chirpstack.real.int
   subir la versión de ChirpStack.
 - `PERMISSION_DENIED` no se trata como «no existe»: solo `UNAUTHENTICATED` se confirma con `confirmAbsent`. Una API key de
   tenant sin `is_device_admin` lee la aplicación pero no borra, y la baja no debe darse por hecha.
+- El `Create` de ChirpStack no recibía el JoinEUI (el dispositivo quedaba con el JoinEUI en ceros): un test compara campo por
+  campo lo enviado con lo guardado. En 1.0.x `GetKeys` devuelve `app_key` en ceros.
+- El device profile creado por `chirpstack-bootstrap` quedaba sin ADR algorithm: ahora se toma uno de los que ofrece el
+  servidor (`default`).
 - `DeviceService.List` con `search` no busca por DevEUI, así que no sirve para comprobar existencia.
 
 ## Consecuencias

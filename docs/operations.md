@@ -103,5 +103,10 @@ Generarla: `openssl rand -hex 32`.
   `lns-deregister` de pg-boss.
 - Un registro atascado en `error` o `parcial` se reintenta desde la ficha del activo (**Reintentar**). `parcial` indica qué
   componente quedó huérfano en el LNS (en TTN: Identity, Join, Network o Application Server).
-- Ante un conflicto (el DevEUI ya existía en el LNS y no lo creó Inventarius) la ficha ofrece **Vincular** o **Cancelar**.
+- Antes de registrar se compara el activo con el **device profile** del perfil LNS: si la versión de LoRaWAN, la clase o la
+  región no calzan, no se registra y se explica qué difiere. Si el LNS no responde, tampoco se registra a ciegas.
+- Ante un conflicto (el DevEUI ya existía en el LNS y no lo creó Inventarius) la ficha ofrece **Vincular** o **Cancelar
+  registro**. **Vincular** lee el dispositivo del LNS (solo lectura), muestra las diferencias y permite adoptar sus datos
+  (JoinEUI y claves que el LNS tiene) o cancelar. Nunca modifica el dispositivo remoto. Un vinculado se **desvincula**: no se
+  borra nada en el LNS.
 - Las API keys de los perfiles deben tener el mínimo de derechos: de **tenant** en ChirpStack y de **aplicación** en TTN.
