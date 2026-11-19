@@ -1,5 +1,6 @@
 import { currencySchema, type Currency } from '@inventarius/shared';
 import { randomBytes } from 'node:crypto';
+import { parseMasterKey, SecretBox } from './secret-box.js';
 import { isIP } from 'node:net';
 import type { DbTimeouts } from './db/timeouts.js';
 import { z } from 'zod';
@@ -69,6 +70,24 @@ const envSchema = z.object({
     (v) => (v === '' ? undefined : v),
     z.string().min(32, 'mínimo 32 caracteres').optional(),
   ),
+  /**
+   * Clave maestra (32 bytes: 64 hex o base64) con que se cifran AppKey, NwkKey y credenciales LNS. Obligatoria en
+   * producción; sin ella, las operaciones con secretos fallan con un error claro. Solo vive en el entorno del servidor.
+   */
+  APP_ENCRYPTION_KEY: z.preprocess((v) => (v === '' ? undefined : v), z.string().optional()),
+  /** Identificador de la clave vigente; se guarda junto a cada valor cifrado para poder rotarla. */
+  APP_ENCRYPTION_KEY_ID: z
+    .string()
+    .regex(/^[A-Za-z0-9._-]{1,32}$/, 'letras, números, punto, guion; hasta 32 caracteres')
+    .default('k1'),
+  /** Claves anteriores aún necesarias para descifrar durante una rotación: `id=clave,id=clave`. */
+  APP_ENCRYPTION_KEYS_PREVIOUS: z.string().default(''),
+  /** Reintentos automáticos de un registro LNS ante errores transitorios (RF-63). */
+  LNS_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(20).default(5),
+  /** Espera entre reintentos, en segundos; se duplica en cada intento. */
+  LNS_RETRY_DELAY_SECONDS: z.coerce.number().int().min(1).default(30),
+  /** Tope de cada llamada al LNS, en milisegundos. */
+  LNS_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(15_000),
   DATABASE_URL: z.string().min(1),
   MIGRATION_DATABASE_URL: z.string().min(1).optional(),
   SESSION_IDLE_TIMEOUT_SECONDS: z.coerce
@@ -121,6 +140,9 @@ export interface AppConfig {
   metricsToken: string | undefined;
   assetTagPrefix: string;
   defaultCurrency: Currency;
+  /** Cifrado de secretos; `undefined` si no hay clave maestra configurada (solo fuera de producción). */
+  secretBox: SecretBox | undefined;
+  lns: { maxAttempts: number; retryDelaySeconds: number; requestTimeoutMs: number };
   session: {
     idleTimeoutSeconds: number;
     absoluteTimeoutSeconds: number;
@@ -156,6 +178,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       'Configuración inválida: CSRF_SECRET: obligatorio en producción (mínimo 32 caracteres)',
     );
   }
+  if (e.NODE_ENV === 'production' && !e.APP_ENCRYPTION_KEY) {
+    throw new Error(
+      'Configuración inválida: APP_ENCRYPTION_KEY: obligatoria en producción (32 bytes: openssl rand -hex 32)',
+    );
+  }
   return {
     nodeEnv: e.NODE_ENV,
     isProduction: e.NODE_ENV === 'production',
@@ -176,6 +203,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     metricsToken: e.METRICS_TOKEN,
     assetTagPrefix: e.ASSET_TAG_PREFIX,
     defaultCurrency: e.DEFAULT_CURRENCY,
+    secretBox: buildSecretBox(e),
+    lns: {
+      maxAttempts: e.LNS_MAX_ATTEMPTS,
+      retryDelaySeconds: e.LNS_RETRY_DELAY_SECONDS,
+      requestTimeoutMs: e.LNS_REQUEST_TIMEOUT_MS,
+    },
     session: {
       idleTimeoutSeconds: e.SESSION_IDLE_TIMEOUT_SECONDS,
       absoluteTimeoutSeconds: e.SESSION_ABSOLUTE_TIMEOUT_SECONDS,
@@ -192,4 +225,25 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     },
     rateLimitMaxPerMinute: e.RATE_LIMIT_MAX_PER_MINUTE,
   };
+}
+
+function buildSecretBox(e: z.infer<typeof envSchema>): SecretBox | undefined {
+  if (!e.APP_ENCRYPTION_KEY) return undefined;
+  try {
+    const keys = new Map<string, Buffer>([
+      [e.APP_ENCRYPTION_KEY_ID, parseMasterKey(e.APP_ENCRYPTION_KEY)],
+    ]);
+    for (const entry of e.APP_ENCRYPTION_KEYS_PREVIOUS.split(',').filter((x) => x.trim())) {
+      const [id, value, ...rest] = entry.trim().split('=');
+      if (!id || !value || rest.length) throw new Error('formato id=clave');
+      if (keys.has(id)) throw new Error(`id repetido: ${id}`);
+      keys.set(id, parseMasterKey(value));
+    }
+    return new SecretBox(e.APP_ENCRYPTION_KEY_ID, keys);
+  } catch (err) {
+    throw new Error(
+      `Configuración inválida: APP_ENCRYPTION_KEY: ${err instanceof Error ? err.message : 'inválida'}`,
+      { cause: err },
+    );
+  }
 }

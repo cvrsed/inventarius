@@ -10,6 +10,8 @@ x-app-env: &app-env
   NODE_ENV: production
   # Secreto de firma de los tokens CSRF (obligatorio en producción); valor ficticio solo para estas pruebas.
   CSRF_SECRET: e2e-csrf-secret-solo-para-pruebas-no-usar-en-produccion
+  # Clave maestra de cifrado de secretos (obligatoria en producción); valor ficticio solo para estas pruebas.
+  APP_ENCRYPTION_KEY: e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0
   LOG_LEVEL: warn
   # Sin HTTPS dentro de la red de Compose: la cookie no puede ser Secure/__Host- aquí.
   SESSION_COOKIE_SECURE: 'false'

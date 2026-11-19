@@ -15,6 +15,9 @@ x-dev-service: &dev-service
     DEFAULT_CURRENCY: ${DEFAULT_CURRENCY:-CLP}
     ASSET_TAG_PREFIX: ${ASSET_TAG_PREFIX:-INV}
     TRUSTED_PROXIES: ${TRUSTED_PROXIES:-loopback,uniquelocal}
+    # Clave de cifrado de secretos solo para desarrollo local (con un .env se sobrescribe).
+    APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:-d3e0d3e0d3e0d3e0d3e0d3e0d3e0d3e0d3e0d3e0d3e0d3e0d3e0d3e0d3e0d3e0}
+    APP_ENCRYPTION_KEY_ID: ${APP_ENCRYPTION_KEY_ID:-k1}
   restart: unless-stopped
 
 services:
