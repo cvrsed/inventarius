@@ -51,6 +51,19 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   'asset.checkin': 'Devolución',
   'asset.delete': 'Baja',
   'asset.restore': 'Restauración',
+  'lorawan.update': 'Edición de datos LoRaWAN',
+  'lorawan.reveal_keys': 'Revelado de claves LoRaWAN',
+  'lorawan.import': 'Importación de datos LoRaWAN',
+  'lns_profile.create': 'Alta de perfil LNS',
+  'lns_profile.update': 'Edición de perfil LNS',
+  'lns_profile.delete': 'Eliminación de perfil LNS',
+  'lns.register': 'Registro en LNS solicitado',
+  'lns.registered': 'Registrado en LNS',
+  'lns.register_failed': 'Registro en LNS fallido',
+  'lns.deregister': 'Baja en LNS solicitada',
+  'lns.deregistered': 'Dado de baja en LNS',
+  'lns.link': 'Vinculado a un dispositivo existente en LNS',
+  'lns.cancel': 'Registro en LNS cancelado',
 };
 
 export const AUDIT_ENTITY_LABELS: Record<AuditEntity, string> = {
@@ -63,6 +76,8 @@ export const AUDIT_ENTITY_LABELS: Record<AuditEntity, string> = {
   model: 'Modelo',
   location: 'Ubicación',
   status_label: 'Estado',
+  lns_profile: 'Perfil LNS',
+  lorawan_import: 'Importación LoRaWAN',
 };
 
 /** Texto de una acción; un código desconocido (p. ej. de una versión futura) se muestra tal cual. */
@@ -116,6 +131,21 @@ export const AUDIT_FIELD_LABELS: Record<string, string> = {
   lorawanRegion: 'Región / plan de frecuencias',
   lorawanVersion: 'Versión de LoRaWAN',
   lorawanRegionalParameters: 'Versión de parámetros regionales',
+  devEui: 'DevEUI',
+  joinEui: 'JoinEUI',
+  appKeyChanged: 'AppKey modificada',
+  nwkKeyChanged: 'NwkKey modificada',
+  region: 'Región',
+  deviceClass: 'Clase',
+  profile: 'Perfil LNS',
+  externalId: 'Id en el LNS',
+  error: 'Error',
+  orphans: 'Componentes huérfanos',
+  origin: 'Origen',
+  keys: 'Claves reveladas',
+  endpoint: 'Endpoint',
+  credentialChanged: 'Credencial reemplazada',
+  tls: 'TLS',
 };
 
 export const auditFieldLabel = (field: string): string => AUDIT_FIELD_LABELS[field] ?? field;

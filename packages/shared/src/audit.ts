@@ -71,6 +71,19 @@ export const AUDIT_ACTIONS = [
   'asset.checkin',
   'asset.delete',
   'asset.restore',
+  'lorawan.update',
+  'lorawan.reveal_keys',
+  'lorawan.import',
+  'lns_profile.create',
+  'lns_profile.update',
+  'lns_profile.delete',
+  'lns.register',
+  'lns.registered',
+  'lns.register_failed',
+  'lns.deregister',
+  'lns.deregistered',
+  'lns.link',
+  'lns.cancel',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -84,5 +97,7 @@ export const AUDIT_ENTITIES = [
   'model',
   'location',
   'status_label',
+  'lns_profile',
+  'lorawan_import',
 ] as const;
 export type AuditEntity = (typeof AUDIT_ENTITIES)[number];

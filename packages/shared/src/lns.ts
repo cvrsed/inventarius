@@ -1,0 +1,108 @@
+import { z } from 'zod';
+
+/** Proveedores de LNS soportados (sección 5.1). */
+export const LNS_KINDS = ['chirpstack', 'ttn'] as const;
+export type LnsKind = (typeof LNS_KINDS)[number];
+export const lnsKindSchema = z.enum(LNS_KINDS);
+
+const text = (max: number) => z.string().trim().min(1).max(max);
+const description = z
+  .string()
+  .trim()
+  .max(500)
+  .transform((v) => (v === '' ? null : v))
+  .nullable();
+
+const chirpstackBase = {
+  kind: z.literal('chirpstack'),
+  /** `host:puerto` gRPC (8080 por defecto). */
+  endpoint: z
+    .string()
+    .trim()
+    .min(1)
+    .max(255)
+    .regex(/^[A-Za-z0-9._-]+:\d{1,5}$/, 'Usa el formato host:puerto'),
+  tls: z.boolean().default(false),
+  target: z.object({ tenantId: z.uuid(), applicationId: z.uuid() }),
+  deviceDefaults: z.object({ deviceProfileId: z.uuid() }),
+};
+
+const ttnBase = {
+  kind: z.literal('ttn'),
+  /** URL del cluster o de la instancia propia. */
+  endpoint: z.url({ protocol: /^https?$/ }).max(255),
+  target: z.object({
+    applicationId: z
+      .string()
+      .trim()
+      .regex(/^[a-z0-9](?:[-]?[a-z0-9]){1,35}$/, 'Id de aplicación TTN inválido'),
+  }),
+  deviceDefaults: z.object({
+    frequencyPlanId: text(64),
+    macVersion: text(16),
+    phyVersion: text(32),
+    joinServerAddress: text(255),
+    networkServerAddress: text(255),
+    applicationServerAddress: text(255),
+  }),
+};
+
+const common = {
+  name: text(80),
+  description: description.default(null),
+  active: z.boolean().default(true),
+};
+const credential = z.string().trim().min(8).max(2000);
+
+export const createLnsProfileSchema = z.discriminatedUnion('kind', [
+  z.object({ ...common, ...chirpstackBase, credential }),
+  z.object({ ...common, ...ttnBase, credential }),
+]);
+export type CreateLnsProfileInput = z.infer<typeof createLnsProfileSchema>;
+
+/** Edición parcial: el proveedor no cambia; la credencial solo se reemplaza, nunca se lee (RF-50). */
+export const updateLnsProfileSchema = z.object({
+  name: common.name.optional(),
+  description: description.optional(),
+  active: z.boolean().optional(),
+  endpoint: z.string().trim().min(1).max(255).optional(),
+  tls: z.boolean().optional(),
+  credential: credential.optional(),
+  target: z.record(z.string(), z.string()).optional(),
+  deviceDefaults: z.record(z.string(), z.string()).optional(),
+});
+export type UpdateLnsProfileInput = z.infer<typeof updateLnsProfileSchema>;
+
+export const lnsProfileSchema = z.object({
+  id: z.uuid(),
+  kind: lnsKindSchema,
+  name: z.string(),
+  description: z.string().nullable(),
+  endpoint: z.string(),
+  tls: z.boolean(),
+  /** `•••• abcd`: los últimos 4 caracteres de la credencial. */
+  credentialHint: z.string(),
+  target: z.record(z.string(), z.string()),
+  deviceDefaults: z.record(z.string(), z.string()),
+  active: z.boolean(),
+  registeredDevices: z.number().int(),
+  updatedAt: z.iso.datetime(),
+});
+export type LnsProfileDto = z.infer<typeof lnsProfileSchema>;
+
+export const connectionCheckSchema = z.object({
+  ok: z.boolean(),
+  latencyMs: z.number().int(),
+  /** Un mensaje legible por cada comprobación (credencial, tenant, aplicación…). */
+  checks: z.array(z.object({ name: z.string(), ok: z.boolean(), detail: z.string().nullable() })),
+});
+export type ConnectionCheckDto = z.infer<typeof connectionCheckSchema>;
+
+/** Vista previa de lo que se enviará al LNS, sin claves (RF-60). */
+export const registrationPreviewSchema = z.object({
+  profile: z.object({ id: z.uuid(), name: z.string(), kind: lnsKindSchema }),
+  deviceName: z.string(),
+  externalId: z.string(),
+  fields: z.array(z.object({ label: z.string(), value: z.string() })),
+});
+export type RegistrationPreviewDto = z.infer<typeof registrationPreviewSchema>;
