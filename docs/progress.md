@@ -470,7 +470,7 @@ Revisión manual del PR #6 contra ChirpStack 4.20.0 (2026-11-19). Cada punto va 
 - [ ] P19 Los eventos de auditoría por activo de una importación CSV referencian el id del lote
 - [ ] P20 La importación aplica los defaults del modelo (clase, versión, región)
 - [ ] P21 Auditoría sin scroll horizontal en escritorio; tarjetas en 360 px
-- [ ] P22 En producción la app no arranca sin `APP_ENCRYPTION_KEY` o con el valor por defecto de `compose.yml`
+- [x] P22 En producción la app no arranca sin `APP_ENCRYPTION_KEY` o con el valor por defecto de `compose.yml`
 - [ ] P23 Informe: TLS con CA propia en el adaptador de ChirpStack (`docs/open-questions.md`)
 
 ### Backlog post-F3

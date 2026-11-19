@@ -183,6 +183,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       'Configuración inválida: APP_ENCRYPTION_KEY: obligatoria en producción (32 bytes: openssl rand -hex 32)',
     );
   }
+  if (e.NODE_ENV === 'production' && e.APP_ENCRYPTION_KEY === COMPOSE_DEV_ENCRYPTION_KEY) {
+    throw new Error(
+      'Configuración inválida: APP_ENCRYPTION_KEY: es la clave de desarrollo de compose.yml, que es pública; genera una propia (openssl rand -hex 32)',
+    );
+  }
   return {
     nodeEnv: e.NODE_ENV,
     isProduction: e.NODE_ENV === 'production',
@@ -226,6 +231,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     rateLimitMaxPerMinute: e.RATE_LIMIT_MAX_PER_MINUTE,
   };
 }
+
+/**
+ * Clave de cifrado que `compose.yml` usa por defecto cuando no hay `.env` (solo desarrollo). Está en el repositorio, así
+ * que en producción se rechaza: un test comprueba que coincide con la de `compose.yml`.
+ */
+export const COMPOSE_DEV_ENCRYPTION_KEY = 'd3e0'.repeat(16);
 
 function buildSecretBox(e: z.infer<typeof envSchema>): SecretBox | undefined {
   if (!e.APP_ENCRYPTION_KEY) return undefined;

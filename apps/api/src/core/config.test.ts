@@ -1,5 +1,6 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { loadConfig } from './config.js';
+import { COMPOSE_DEV_ENCRYPTION_KEY, loadConfig } from './config.js';
 
 const valid = {
   DATABASE_URL: 'postgres://app:pw@localhost:5432/inventarius',
@@ -168,6 +169,18 @@ describe('cifrado de secretos', () => {
     expect(() =>
       loadConfig({ ...valid, NODE_ENV: 'production', CSRF_SECRET: 'c'.repeat(32) }),
     ).toThrowError(/APP_ENCRYPTION_KEY/);
+  });
+  it('en producción rechaza la clave por defecto de compose.yml (pública en el repositorio)', () => {
+    const compose = readFileSync(new URL('../../../../compose.yml', import.meta.url), 'utf8');
+    const inCompose = /APP_ENCRYPTION_KEY: \$\{APP_ENCRYPTION_KEY:-([0-9a-f]+)\}/.exec(compose)![1];
+    expect(COMPOSE_DEV_ENCRYPTION_KEY).toBe(inCompose);
+    const prod = { ...valid, NODE_ENV: 'production', CSRF_SECRET: 'c'.repeat(32) };
+    expect(() => loadConfig({ ...prod, APP_ENCRYPTION_KEY: inCompose })).toThrowError(
+      /clave de desarrollo/,
+    );
+    expect(() => loadConfig({ ...prod, APP_ENCRYPTION_KEY: hex })).not.toThrow();
+    // Fuera de producción sigue valiendo para desarrollar.
+    expect(() => loadConfig({ ...valid, APP_ENCRYPTION_KEY: inCompose })).not.toThrow();
   });
   it('construye el SecretBox con la clave vigente y las anteriores', () => {
     const box = loadConfig({

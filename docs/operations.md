@@ -84,6 +84,7 @@ migraciones (`node dist/migrate.js`); si el worker falla al arrancar con «queue
 
 AppKey, NwkKey y las credenciales de los perfiles LNS se guardan cifradas con `APP_ENCRYPTION_KEY` (32 bytes: 64 caracteres
 hex o base64). Es obligatoria en producción y **si se pierde, esas claves son irrecuperables**: guárdala en un gestor de
+La API y el worker no arrancan en producción si falta o si es la clave de desarrollo que `compose.yml` usa por defecto (está en el repositorio, así que no protege nada).
 secretos, aparte de los respaldos de la base (un respaldo de la base sin la clave no revela nada).
 
 Generarla: `openssl rand -hex 32`.
