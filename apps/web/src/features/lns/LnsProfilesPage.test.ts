@@ -72,7 +72,10 @@ describe('LnsProfilesPage (RF-50 a RF-52)', () => {
     const w = mountPage({
       ok: false,
       latencyMs: 7,
-      checks: [{ name: 'tenant', ok: false, detail: 'ChirpStack rechazó la credencial' }],
+      checks: [
+        { name: 'tenant', ok: true, detail: null },
+        { name: 'application', ok: false, detail: 'ChirpStack no encontró el recurso' },
+      ],
     });
     await flushPromises();
     await w
@@ -81,6 +84,29 @@ describe('LnsProfilesPage (RF-50 a RF-52)', () => {
       .trigger('click');
     await flushPromises();
     expect(w.get('[role="status"]').text()).toContain('La conexión falló (7 ms)');
-    expect(w.get('[role="status"]').text()).toContain('Tenant: ChirpStack rechazó la credencial');
+    expect(w.get('[role="status"]').text()).toContain(
+      'Aplicación: ChirpStack no encontró el recurso',
+    );
+  });
+
+  it('si todas las comprobaciones fallan por lo mismo, muestra un solo mensaje', async () => {
+    const detail = 'No se pudo conectar con ChirpStack';
+    const w = mountPage({
+      ok: false,
+      latencyMs: 7,
+      checks: ['tenant', 'application', 'deviceProfile'].map((name) => ({
+        name,
+        ok: false,
+        detail,
+      })),
+    });
+    await flushPromises();
+    await w
+      .findAll('button')
+      .find((b) => b.attributes('aria-label') === 'Probar conexión Perfil 1')!
+      .trigger('click');
+    await flushPromises();
+    const text = w.get('[role="status"]').text();
+    expect(text).toBe(`La conexión falló (7 ms) — ${detail}`);
   });
 });

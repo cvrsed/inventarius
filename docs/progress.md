@@ -454,7 +454,7 @@ Desarrollo manual con ChirpStack: ver `docs/development.md` (perfil `chirpstack`
 
 Revisión manual del PR #6 contra ChirpStack 4.20.0 (2026-11-19). Cada punto va en su propio commit.
 
-- [ ] P1 «Probar conexión»: un solo mensaje cuando todas las verificaciones fallan por la misma causa
+- [x] P1 «Probar conexión»: un solo mensaje cuando todas las verificaciones fallan por la misma causa
 - [ ] P2 Registro valida versión, clase y región contra el device profile; identidad bloqueada si registrado o vinculado; aviso al editar
 - [ ] P3 El adaptador de ChirpStack envía el JoinEUI; test que compara campo por campo contra el LNS
 - [ ] P4 `chirpstack-bootstrap` crea el device profile con un ADR algorithm válido

@@ -12,6 +12,7 @@ import PagedFooter from '@/shared/ui/PagedFooter.vue';
 import ResponsiveTable from '@/shared/ui/ResponsiveTable.vue';
 import { useConfirm } from '@/shared/ui/useConfirm';
 import { useLnsProfileMutations, useLnsProfiles } from './api';
+import { failureDetail } from './connection';
 import LnsProfileFormDialog from './LnsProfileFormDialog.vue';
 
 const { t } = useI18n();
@@ -43,10 +44,7 @@ const results = ref<Record<string, { ok: boolean; text: string }>>({});
 async function runTest(p: LnsProfileDto): Promise<void> {
   try {
     const res = await test.mutateAsync(p);
-    const failed = res.checks.filter((c) => !c.ok);
-    const detail = failed
-      .map((c) => `${t(`lns.test.checks.${c.name}`)}: ${c.detail ?? ''}`)
-      .join(' · ');
+    const detail = failureDetail(res.checks, (n) => t(`lns.test.checks.${n}`));
     results.value = {
       ...results.value,
       [p.id]: {
