@@ -12,6 +12,7 @@ import { formatDateTime } from '@/shared/format/format';
 import { useConfirm } from '@/shared/ui/useConfirm';
 import { useLorawan, useLorawanMutations } from './api';
 import LorawanFormDialog from './LorawanFormDialog.vue';
+import ReasonButton from '@/shared/ui/ReasonButton.vue';
 import RegisterLnsDialog from './RegisterLnsDialog.vue';
 import RevealKeysDialog from './RevealKeysDialog.vue';
 import { lnsActions, lnsStatusColor, lnsStatusKey } from './status';
@@ -172,11 +173,15 @@ async function doRetry(): Promise<void> {
         :aria-label="t('lorawan.registration.title')"
       >
         <template v-if="canRegister">
-          <UButton
+          <ReasonButton
             v-if="actions.register"
             icon="i-lucide-radio-tower"
             :label="t('lorawan.actions.register')"
-            :disabled="data.missingForRegistration.length > 0"
+            :reason="
+              data.missingForRegistration.length
+                ? t('lorawan.missing', { fields: missing })
+                : undefined
+            "
             @click="open('register')"
           />
           <UButton

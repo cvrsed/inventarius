@@ -121,6 +121,10 @@ describe('LorawanSection (RF-21, RF-41, RF-60)', () => {
     const button = w.findAll('button').find((b) => b.text() === 'Registrar en LNS')!;
     expect(button.attributes('disabled')).toBeDefined();
     expect(w.text()).toContain('faltan: DevEUI, AppKey');
+    expect(button.classes().join(' ')).not.toMatch(/primary/);
+    expect(w.get(`#${CSS.escape(button.attributes('aria-describedby')!)}`).text()).toContain(
+      'faltan: DevEUI, AppKey',
+    );
   });
 
   it('según el estado ofrece reintentar, vincular/cancelar o dar de baja', async () => {

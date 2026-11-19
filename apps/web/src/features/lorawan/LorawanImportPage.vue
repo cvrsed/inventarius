@@ -7,6 +7,7 @@ import { useToast } from '@nuxt/ui/composables/useToast';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
+import ReasonButton from '@/shared/ui/ReasonButton.vue';
 import { errorMessage } from '@/features/auth/errors';
 import { previewImport, useApplyImport } from './api';
 
@@ -24,13 +25,15 @@ const preview = ref<LorawanImportPreview | null>(null);
 const error = ref('');
 const loading = ref(false);
 
-const canApply = computed(
-  () =>
-    !!preview.value &&
-    preview.value.invalid === 0 &&
-    preview.value.total > 0 &&
-    !preview.value.fileErrors.length,
-);
+/** Por qué no se puede importar todavía; `undefined` si se puede. */
+const applyBlocked = computed<string | undefined>(() => {
+  const p = preview.value;
+  if (!p) return undefined;
+  if (p.fileErrors.length) return t('lorawan.import.blocked.file');
+  if (p.invalid > 0) return t('lorawan.import.blocked.rows');
+  if (p.total === 0) return t('lorawan.import.blocked.empty');
+  return undefined;
+});
 /** Las filas con error van primero: es lo que hay que corregir. */
 const rows = computed(() =>
   [...(preview.value?.rows ?? [])].sort(
@@ -65,7 +68,7 @@ async function confirmImport(): Promise<void> {
   try {
     const res = await apply.mutateAsync(csv.value);
     toast.add({
-      title: t('lorawan.import.applied', { n: res.applied }),
+      title: t('lorawan.import.applied', { n: res.applied }, res.applied),
       color: 'success',
       duration: 5000,
     });
@@ -162,10 +165,10 @@ async function confirmImport(): Promise<void> {
       </template>
 
       <div class="flex justify-end">
-        <UButton
+        <ReasonButton
           icon="i-lucide-file-check"
-          :label="t('lorawan.import.apply', { n: preview.valid })"
-          :disabled="!canApply"
+          :label="t('lorawan.import.apply', { n: preview.valid }, preview.valid)"
+          :reason="applyBlocked"
           :loading="apply.isPending.value"
           @click="confirmImport"
         />

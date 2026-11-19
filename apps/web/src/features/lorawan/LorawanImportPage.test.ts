@@ -26,10 +26,10 @@ async function chooseFile(w: ReturnType<typeof mount>, text: string) {
   await flushPromises();
 }
 
-function mountPage(preview: object) {
+function mountPage(preview: object, applied = 2) {
   const fetchMock = mockApi({
     'POST /api/v1/lorawan/import/preview': () => preview,
-    'POST /api/v1/lorawan/import': () => ({ applied: 2 }),
+    'POST /api/v1/lorawan/import': () => ({ applied }),
   });
   const w = mount(LorawanImportPage, { global: pagePlugins() });
   mounted.push(w);
@@ -52,6 +52,17 @@ describe('LorawanImportPage (RF-66)', () => {
     expect(JSON.parse(String(posted![1]!.body))).toEqual({ csv: 'serial,DevEUI,JoinEUI,AppKey\n' });
   });
 
+  it('con una sola fila válida el botón dice «Importar 1 dispositivo»', async () => {
+    const w = mountPage({ rows: [row(2)], total: 1, valid: 1, invalid: 0, fileErrors: [] }, 1);
+    await chooseFile(w, 'serial,DevEUI,JoinEUI,AppKey\n');
+    expect(
+      w
+        .findAll('button')
+        .find((b) => b.text().startsWith('Importar'))!
+        .text(),
+    ).toBe('Importar 1 dispositivo');
+  });
+
   it('con errores los muestra por fila (primero) y no deja importar', async () => {
     const w = mountPage({
       rows: [row(2), row(3, ['Ningún activo tiene ese número de serie'])],
@@ -67,6 +78,10 @@ describe('LorawanImportPage (RF-66)', () => {
     expect(w.text()).toContain('no se importará nada');
     const apply = w.findAll('button').find((b) => b.text().startsWith('Importar'))!;
     expect(apply.attributes('disabled')).toBeDefined();
+    // Se ve desactivado (sin el color primario) y dice por qué.
+    expect(apply.classes().join(' ')).not.toMatch(/primary/);
+    const reason = w.get(`#${CSS.escape(apply.attributes('aria-describedby')!)}`);
+    expect(reason.text()).toBe('Corrige las filas con errores: no se importa nada hasta entonces');
   });
 
   it('errores del archivo (p. ej. faltan columnas) se muestran y bloquean', async () => {

@@ -6,6 +6,7 @@ import UModal from '@nuxt/ui/components/Modal.vue';
 import { useToast } from '@nuxt/ui/composables/useToast';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import ReasonButton from '@/shared/ui/ReasonButton.vue';
 import { errorMessage } from '@/features/auth/errors';
 import AppSelect from '@/shared/ui/AppSelect.vue';
 import { useLnsProfileOptions, useLorawanMutations } from './api';
@@ -116,9 +117,9 @@ async function confirm(): Promise<void> {
           variant="ghost"
           @click="visible = false"
         />
-        <UButton
+        <ReasonButton
           :label="t('lorawan.registerDialog.confirm')"
-          :disabled="!preview.data.value"
+          :reason="preview.data.value ? undefined : t('lorawan.registerDialog.needProfile')"
           :loading="register.isPending.value"
           @click="confirm"
         />
