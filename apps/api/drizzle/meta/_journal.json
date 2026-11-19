@@ -92,6 +92,13 @@
       "when": 1795055311355,
       "tag": "0012_lorawan",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1795055828189,
+      "tag": "0013_lns_registration_operation",
+      "breakpoints": true
     }
   ]
 }

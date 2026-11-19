@@ -18,6 +18,7 @@ import {
   type Currency,
   type StatusKind,
   type UpdateAssetInput,
+  type UpdateLorawanInput,
 } from '@inventarius/shared';
 import { randomUUID } from 'node:crypto';
 import { csvRow } from '../../core/csv.js';
@@ -51,6 +52,13 @@ export interface AssigneeDirectory {
     id: string,
   ): Promise<{ id: string; name: string; active: boolean } | undefined>;
   search(q: string | undefined, limit: number): Promise<{ id: string; name: string }[]>;
+}
+
+/** Extensión LoRaWAN del activo; la implementa el módulo `lorawan` (se enlaza en la raíz de composición). */
+export interface LorawanExtension {
+  apply(tx: Executor, actor: Actor, assetId: string, input: UpdateLorawanInput): Promise<unknown>;
+  /** `true` si el activo tiene algo en un LNS (RF-25: no se da de baja así). */
+  hasRemoteFootprint(exec: Executor, assetId: string): Promise<boolean>;
 }
 
 const ENTITY = 'asset' as const;
@@ -103,6 +111,8 @@ export function toListItem(r: AssetRow): AssetListItemDto {
     assignedUser: ref(r.assignedUserId, r.assignedUserName),
     assignedLocation: ref(r.assignedLocationId, r.assignedLocationName),
     deleted: r.deletedAt !== null,
+    devEui: r.devEui,
+    lnsStatus: r.lnsStatus as AssetListItemDto['lnsStatus'],
     updatedAt: iso(r.updatedAt),
   };
 }
@@ -144,6 +154,7 @@ export class AssetsService {
     private readonly defaultCurrency: Currency,
     /** «Hoy» (AAAA-MM-DD) en la zona horaria de la instalación; define qué devoluciones están atrasadas. */
     private readonly today: () => string,
+    private readonly lorawan?: LorawanExtension,
   ) {}
 
   async list(
@@ -207,7 +218,12 @@ export class AssetsService {
     actor: Actor,
     input: CreateAssetInput,
   ): Promise<AssetDto> {
-    await this.catalog.requireModel(tx, input.modelId);
+    const model = await this.catalog.requireModel(tx, input.modelId);
+    if (input.lorawan && model.categoryExtension !== 'lorawan') {
+      throw new ValidationError('El modelo no es de una categoría LoRaWAN', {
+        lorawan: ['Solo los modelos de categoría LoRaWAN llevan datos LoRaWAN'],
+      });
+    }
     const status = await this.catalog.requireStatus(tx, input.statusId);
     if (status.systemKey) throw reservedStatus();
     if (input.baseLocationId)
@@ -231,7 +247,8 @@ export class AssetsService {
     });
     const row = await this.require(tx, id);
     await this.record(tx, actor, 'asset.create', id, { after: snapshot(row) });
-    return toDto(row);
+    if (input.lorawan && this.lorawan) await this.lorawan.apply(tx, actor, id, input.lorawan);
+    return toDto(await this.require(tx, id));
   }
 
   async update(
@@ -487,6 +504,9 @@ export class AssetsService {
     await this.db.transaction(async (tx) => {
       const current = await this.lockAndRead(tx, id);
       assertCanDelete({ deleted: current.deletedAt !== null, assigned: isAssigned(current) });
+      if (await this.lorawan?.hasRemoteFootprint(tx, id)) {
+        throw new ConflictError('El activo está registrado en un LNS: dalo de baja allí antes');
+      }
       await this.repo.setDeleted(tx, id, reason);
       // Antes/después de la situación del activo (el estado del catálogo no cambia con la baja, va como contexto).
       await this.record(tx, actor, 'asset.delete', id, {

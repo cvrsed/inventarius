@@ -392,6 +392,8 @@ export const lnsRegistrations = pgTable(
     stepsDone: jsonb('steps_done').$type<string[]>().notNull().default([]),
     /** Componentes que quedaron en el LNS cuando la compensación falló (`partial`). */
     orphans: jsonb('orphans').$type<string[]>().notNull().default([]),
+    /** Qué operación dejó el estado actual (`register` | `deregister`); el reintento retoma esa. */
+    lastOperation: text('last_operation').notNull().default('register'),
     lastError: text('last_error'),
     attempts: integer('attempts').notNull().default(0),
     requestedBy: uuid('requested_by').references(() => users.id, { onDelete: 'restrict' }),
@@ -407,5 +409,6 @@ export const lnsRegistrations = pgTable(
       sql`${t.status} IN ('registering', 'registered', 'error', 'partial', 'conflict', 'deregistering')`,
     ),
     check('lns_registrations_origin_chk', sql`${t.origin} IN ('created', 'linked')`),
+    check('lns_registrations_operation_chk', sql`${t.lastOperation} IN ('register', 'deregister')`),
   ],
 );

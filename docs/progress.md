@@ -359,15 +359,15 @@ Marcas `[P20]` a `[P26]` al final del asunto de cada commit.
 - [x] Dominio compartido: formatos EUI/clave, esquemas Zod, estados de registro, acciones de auditoría (RF-21, 5.2)
 - [x] Cifrado AES-256-GCM con `APP_ENCRYPTION_KEY` + `key_id` y rotación (RNF, 10.1)
 - [x] Migración: `asset_lorawan`, `lns_profiles`, `lns_registrations`
-- [ ] Extensión LoRaWAN del activo: alta/edición, validación y unicidad de DevEUI, defaults desde el modelo (RF-21)
-- [ ] Reveal de claves con `lorawan:keys:reveal`, auditado (RF-30)
-- [ ] Perfiles LNS: CRUD, credencial enmascarada, «Probar conexión» (RF-50 a RF-52)
+- [x] Extensión LoRaWAN del activo: alta/edición, validación y unicidad de DevEUI, defaults desde el modelo (RF-21)
+- [x] Reveal de claves con `lorawan:keys:reveal`, auditado (RF-30)
+- [x] Perfiles LNS: CRUD, credencial enmascarada, «Probar conexión» (RF-50 a RF-52)
 - [x] Contrato `LnsAdapter` y adaptador ChirpStack v4 (gRPC)
 - [x] Adaptador TTN v3 (REST) con compensación AS → NS → JS → IS
-- [ ] Cola pg-boss y worker: registro, baja, reintento, idempotencia, conflicto/vincular (RF-60 a RF-65)
+- [x] Cola pg-boss y worker: registro, baja, reintento, idempotencia, conflicto/vincular (RF-60 a RF-65)
 - [x] Compensación probada simulando fallo en cada paso (a nivel de adaptador; el flujo completo se prueba con el worker)
-- [ ] Importación CSV por número de serie (RF-66)
-- [ ] Filtros «estado LNS» y búsqueda por DevEUI en el listado (RF-22)
+- [x] Importación CSV por número de serie (RF-66)
+- [x] Filtros «estado LNS» y búsqueda por DevEUI en el listado (RF-22)
 - [ ] UI: sección LoRaWAN de la ficha, registrar/baja/reintentar/vincular, perfiles LNS, importación CSV (360 px, i18n)
 - [ ] ChirpStack de prueba en `compose.yml` y `compose.e2e.yml` + e2e
 - [ ] Job manual contra TTN real (sin credenciales)

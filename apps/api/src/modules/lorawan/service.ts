@@ -65,6 +65,9 @@ const ctx = (assetId: string, column: 'app_key' | 'nwk_key') =>
   `asset_lorawan:${assetId}:${column}`;
 
 /** Campos de los datos LoRaWAN que cambian la identidad del dispositivo en el LNS. */
+/** Estados en que el dispositivo existe (o puede existir) en el LNS: no se cambia su identidad. */
+const REMOTE_STATUSES = new Set<string>(['registered', 'registering', 'deregistering', 'partial']);
+
 const IDENTITY_FIELDS = ['devEui', 'joinEui', 'appKey', 'nwkKey'] as const;
 
 /**
@@ -125,6 +128,7 @@ export class LorawanService {
     const registration = await this.registrations.find(tx, assetId);
     if (
       registration &&
+      REMOTE_STATUSES.has(registration.status) &&
       IDENTITY_FIELDS.some((f) => input[f] !== undefined && changes(current, f, input))
     ) {
       throw new ConflictError(
@@ -225,6 +229,11 @@ export class LorawanService {
         asset.modelDefaults.lorawanVersion) as LorawanVersion | null,
       region: (row.region ?? asset.modelDefaults.region) as LorawanRegion | null,
     };
+  }
+
+  /** DevEUI guardado del activo, sin tocar las claves. */
+  async devEuiOf(exec: Executor, assetId: string): Promise<string | null> {
+    return (await this.repo.get(exec, assetId))?.devEui ?? null;
   }
 
   /** Recifra todas las claves con la clave maestra vigente (rotación). Devuelve cuántas filas cambió. */

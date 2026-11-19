@@ -26,6 +26,10 @@ import { assetsRoutes } from './modules/assets/routes.js';
 import { catalogRoutes } from './modules/catalog/routes.js';
 import { rbacRoutes } from './modules/rbac/routes.js';
 import { dashboardRoutes } from './modules/dashboard/routes.js';
+import { lorawanRoutes } from './modules/lorawan/routes.js';
+import { lnsRoutes } from './modules/lns/routes.js';
+import type { AdapterRegistry } from './modules/lns/adapter.js';
+import type { JobQueue } from './core/queue.js';
 import { settingsRoutes } from './modules/settings/routes.js';
 import { usersRoutes } from './modules/users/routes.js';
 import {
@@ -48,6 +52,10 @@ export interface AppDeps {
   db?: Executor;
   hasher?: PasswordHasher;
   clock?: Clock;
+  /** Cola de trabajos en segundo plano (pg-boss); la necesita el registro en el LNS. */
+  queue?: JobQueue;
+  /** Adaptadores de LNS inyectables (tests). */
+  adapters?: AdapterRegistry;
 }
 
 const PROBLEM_JSON = 'application/problem+json';
@@ -166,6 +174,9 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
           config,
           ...(deps.hasher ? { hasher: deps.hasher } : {}),
           ...(deps.clock ? { clock: deps.clock } : {}),
+          ...(deps.queue ? { queue: deps.queue } : {}),
+          ...(deps.adapters ? { adapters: deps.adapters } : {}),
+          log: app.log,
         });
         await api.register(
           async (v1) => {
@@ -203,6 +214,14 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
             await v1.register(auditRoutes, { audit: services.audit });
             await v1.register(catalogRoutes, { catalog: services.catalog });
             await v1.register(assetsRoutes, { assets: services.assets });
+            await v1.register(lorawanRoutes, {
+              lorawan: services.lorawan,
+              imports: services.lorawanImport,
+            });
+            await v1.register(lnsRoutes, {
+              profiles: services.lnsProfiles,
+              registrations: services.registrations,
+            });
             await v1.register(dashboardRoutes, { dashboard: services.dashboard });
             await v1.register(settingsRoutes, { config });
           },

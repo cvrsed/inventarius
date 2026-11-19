@@ -2,6 +2,11 @@ import { z } from 'zod';
 import { categoryExtensionSchema, refSchema, statusKindSchema } from './catalog.js';
 import { currencySchema } from './currency.js';
 import { pageQuerySchema } from './identity.js';
+import {
+  lnsRegistrationStatusSchema,
+  lnsStatusFilterSchema,
+  updateLorawanSchema,
+} from './lorawan.js';
 
 const dateOnly = z.iso.date();
 const text = (max: number) =>
@@ -56,6 +61,8 @@ export const assetFiltersSchema = z.object({
   statusKind: statusKindSchema.optional(),
   /** `yes` = asignados a una persona o ubicación; `no` = libres. */
   assigned: z.enum(['yes', 'no']).optional(),
+  /** Estado del registro en el LNS (`none` = sin registro, RF-22). */
+  lnsStatus: lnsStatusFilterSchema.optional(),
   /** `true` = con la devolución esperada vencida. */
   overdue: z.enum(['true']).optional(),
   /** `exclude` (por defecto), `include` o `only` (papelera, RF-25). */
@@ -91,6 +98,9 @@ export const assetListItemSchema = z.object({
   assignedUser: refSchema.nullable(),
   assignedLocation: refSchema.nullable(),
   deleted: z.boolean(),
+  /** DevEUI y estado en el LNS; vacíos si el activo no tiene datos LoRaWAN. */
+  devEui: z.string().nullable(),
+  lnsStatus: lnsRegistrationStatusSchema.nullable(),
   updatedAt: z.iso.datetime(),
 });
 export type AssetListItemDto = z.infer<typeof assetListItemSchema>;
@@ -147,6 +157,8 @@ export const createAssetSchema = z.object({
   supplier: assetEditable.supplier.default(null),
   warrantyMonths: assetEditable.warrantyMonths.default(null),
   notes: assetEditable.notes.default(null),
+  /** Datos LoRaWAN opcionales al crear (RF-21); solo para modelos de categoría LoRaWAN. */
+  lorawan: updateLorawanSchema.optional(),
 });
 export type CreateAssetInput = z.infer<typeof createAssetSchema>;
 
