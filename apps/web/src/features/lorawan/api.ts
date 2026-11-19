@@ -1,5 +1,6 @@
 import {
   lnsKindSchema,
+  linkPreviewSchema,
   lnsRegistrationSchema,
   lorawanImportPreviewSchema,
   lorawanImportResultSchema,
@@ -65,6 +66,12 @@ export function useLorawanMutations(assetId: Ref<string>) {
           method: 'POST',
           body: { profileId },
         }),
+    }),
+    // Lectura del dispositivo remoto antes de vincular; solo lectura, no se guarda nada.
+    linkPreview: useMutation({
+      mutationFn: () =>
+        api(`${base()}/lns-registration/link-preview`, linkPreviewSchema, { method: 'POST' }),
+      gcTime: 0,
     }),
     register: useMutation({
       mutationFn: (profileId: string) =>

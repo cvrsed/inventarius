@@ -602,12 +602,37 @@ export const messages = {
         externalId: 'Id en el LNS',
       },
     },
+    linkDialog: {
+      title: 'Vincular un dispositivo que ya existe en el LNS',
+      description:
+        'Se lee el dispositivo del LNS (solo lectura) y se muestra en qué difiere de los datos del activo.',
+      remoteTitle: 'Lo que tiene el LNS',
+      diffTitle: 'Diferencias con el activo',
+      same: 'El dispositivo del LNS coincide con el activo.',
+      willAdopt:
+        'Al adoptar los datos del LNS se reemplazan en el activo: {fields}. Lo que el LNS no tiene no se borra del activo.',
+      nothingToAdopt: 'No hay datos que reemplazar en el activo.',
+      readOnly: 'Vincular no modifica el dispositivo en el LNS.',
+      adopt: 'Adoptar los datos del LNS y vincular',
+      needRead: 'Espera a que se lea el dispositivo del LNS',
+      inLns: 'cargada en el LNS',
+      notInLns: 'no está en el LNS',
+      valueDiff: 'el activo tiene {local} y el LNS {remote}',
+      keyState: { present: 'cargada', absent: 'sin cargar' },
+      keyDiff: {
+        absent: 'no está en el LNS (en el activo: {local})',
+        present: 'está en el LNS (en el activo: {local})',
+        differs: 'es distinta en el LNS y en el activo',
+      },
+      rows: { name: 'Nombre', deviceProfile: 'Device profile', joinEui: 'JoinEUI' },
+      remoteSection: 'Lo que tiene el LNS (al vincular)',
+      readAt: 'Leído el',
+    },
     confirmDeregister:
       'Se borrará el dispositivo del LNS y el activo quedará «no registrado». ¿Continuar?',
     confirmDeregisterLinked:
       'El dispositivo ya existía en el LNS: solo se desvincula del activo y no se borra nada en el LNS. ¿Continuar?',
     confirmCancel: 'Se descarta el intento de registro. ¿Continuar?',
-    confirmLink: 'Se tomará el dispositivo existente como registrado, sin modificarlo. ¿Continuar?',
     done: {
       retry: 'Reintento en curso',
       deregister: 'Baja en curso',

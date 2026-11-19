@@ -11,6 +11,7 @@ import { useAuthStore } from '@/features/auth/useAuthStore';
 import { formatDateTime } from '@/shared/format/format';
 import { useConfirm } from '@/shared/ui/useConfirm';
 import { useLorawan, useLorawanMutations } from './api';
+import LinkDialog from './LinkDialog.vue';
 import LorawanFormDialog from './LorawanFormDialog.vue';
 import ReasonButton from '@/shared/ui/ReasonButton.vue';
 import RegisterLnsDialog from './RegisterLnsDialog.vue';
@@ -30,9 +31,10 @@ const enabled = computed(() => auth.can('lorawan:read'));
 const { data, isPending, isError, refetch } = useLorawan(assetId, enabled);
 const { deregister, retry, resolve } = useLorawanMutations(assetId);
 
-const dialog = ref<'edit' | 'register' | 'reveal' | null>(null);
-const open = (which: 'edit' | 'register' | 'reveal') => (dialog.value = which);
-const bind = (which: 'edit' | 'register' | 'reveal') =>
+type DialogName = 'edit' | 'register' | 'reveal' | 'link';
+const dialog = ref<DialogName | null>(null);
+const open = (which: DialogName) => (dialog.value = which);
+const bind = (which: DialogName) =>
   computed({
     get: () => dialog.value === which,
     set: (v: boolean) => {
@@ -42,6 +44,7 @@ const bind = (which: 'edit' | 'register' | 'reveal') =>
 const editOpen = bind('edit');
 const registerOpen = bind('register');
 const revealOpen = bind('reveal');
+const linkOpen = bind('link');
 
 const registration = computed(() => data.value?.registration ?? null);
 const status = computed(() => registration.value?.status ?? null);
@@ -115,13 +118,13 @@ const askDeregister = () =>
     () => deregister.mutateAsync(),
     linked.value ? t('lorawan.done.unlink') : t('lorawan.done.deregister'),
   );
-const askResolve = (action: 'link' | 'cancel') =>
+const askCancel = () =>
   ask(
-    action === 'link' ? t('lorawan.confirmLink') : t('lorawan.confirmCancel'),
-    t(`lorawan.actions.${action}`),
-    action === 'cancel',
-    () => resolve.mutateAsync(action),
-    t(`lorawan.done.${action}`),
+    t('lorawan.confirmCancel'),
+    t('lorawan.actions.cancel'),
+    true,
+    () => resolve.mutateAsync('cancel'),
+    t('lorawan.done.cancel'),
   );
 async function doRetry(): Promise<void> {
   try {
@@ -195,7 +198,7 @@ async function doRetry(): Promise<void> {
             v-if="actions.resolve"
             icon="i-lucide-link"
             :label="t('lorawan.actions.link')"
-            @click="askResolve('link')"
+            @click="open('link')"
           />
           <UButton
             v-if="actions.resolve"
@@ -203,7 +206,7 @@ async function doRetry(): Promise<void> {
             :label="t('lorawan.actions.cancel')"
             color="neutral"
             variant="outline"
-            @click="askResolve('cancel')"
+            @click="askCancel"
           />
           <UButton
             v-if="actions.deregister"
@@ -279,6 +282,48 @@ async function doRetry(): Promise<void> {
             <dd class="m-0">{{ registration.attempts }}</dd>
           </template>
         </dl>
+        <section
+          v-if="registration.remote"
+          class="mt-3 rounded-md bg-elevated p-3"
+          aria-labelledby="lorawan-remote-title"
+          data-testid="lorawan-remote"
+        >
+          <h4 id="lorawan-remote-title" class="m-0 mb-1 text-sm font-semibold text-highlighted">
+            {{ t('lorawan.linkDialog.remoteSection') }}
+          </h4>
+          <dl class="m-0 grid grid-cols-1 gap-x-4 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
+            <dt class="text-muted">{{ t('lorawan.linkDialog.rows.name') }}</dt>
+            <dd class="m-0 break-words">{{ registration.remote.name || t('lorawan.notSet') }}</dd>
+            <dt class="text-muted">{{ t('lorawan.fields.joinEui') }}</dt>
+            <dd class="m-0 font-mono break-all">
+              {{ registration.remote.joinEui ?? t('lorawan.notSet') }}
+            </dd>
+            <dt class="text-muted">{{ t('lorawan.linkDialog.rows.deviceProfile') }}</dt>
+            <dd class="m-0 font-mono break-all">
+              {{ registration.remote.deviceProfileId ?? t('lorawan.notSet') }}
+            </dd>
+            <dt class="text-muted">{{ t('lorawan.fields.appKey') }}</dt>
+            <dd class="m-0">
+              {{
+                registration.remote.hasAppKey
+                  ? t('lorawan.linkDialog.inLns')
+                  : t('lorawan.linkDialog.notInLns')
+              }}
+            </dd>
+            <template v-if="registration.remote.hasNwkKey || data.lorawanVersion === '1.1'">
+              <dt class="text-muted">{{ t('lorawan.fields.nwkKey') }}</dt>
+              <dd class="m-0">
+                {{
+                  registration.remote.hasNwkKey
+                    ? t('lorawan.linkDialog.inLns')
+                    : t('lorawan.linkDialog.notInLns')
+                }}
+              </dd>
+            </template>
+            <dt class="text-muted">{{ t('lorawan.linkDialog.readAt') }}</dt>
+            <dd class="m-0">{{ formatDateTime(registration.remote.readAt) }}</dd>
+          </dl>
+        </section>
         <UAlert
           v-if="registration.lastError && status !== 'conflict'"
           class="mt-3"
@@ -307,6 +352,7 @@ async function doRetry(): Promise<void> {
       <LorawanFormDialog v-model:visible="editOpen" :asset-id="asset.id" :data="data" />
       <RegisterLnsDialog v-model:visible="registerOpen" :asset-id="asset.id" />
       <RevealKeysDialog v-model:visible="revealOpen" :asset-id="asset.id" />
+      <LinkDialog v-model:visible="linkOpen" :asset-id="asset.id" />
     </template>
   </section>
 </template>

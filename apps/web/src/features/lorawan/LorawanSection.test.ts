@@ -54,6 +54,7 @@ const registration = (status: string, extra: Record<string, unknown> = {}) => ({
   profile: { id: PROFILE, name: 'ChirpStack de prueba', kind: 'chirpstack' },
   externalId: null,
   origin: 'created',
+  remote: null,
   lastError: null,
   orphans: [],
   attempts: 1,
@@ -71,6 +72,19 @@ async function mountSection(permissions: Permission[], lorawan: LorawanDto) {
     [`POST /api/v1/assets/${ID}/lns-registration/preview`]: () => ({
       profile: { id: PROFILE, name: 'ChirpStack de prueba', kind: 'chirpstack' },
       ...PREVIEW,
+    }),
+    [`POST /api/v1/assets/${ID}/lns-registration/link-preview`]: () => ({
+      profile: { id: PROFILE, name: 'ChirpStack de prueba', kind: 'chirpstack' },
+      externalId: '70b3d57ed0000001',
+      remote: {
+        name: 'x',
+        joinEui: null,
+        deviceProfileId: null,
+        hasAppKey: false,
+        hasNwkKey: false,
+      },
+      differences: [],
+      adopts: [],
     }),
     [`POST /api/v1/assets/${ID}/lorawan/reveal`]: () => ({
       appKey: 'A1B2C3D4E5F60718293A4B5C6D7E8F90',
@@ -272,6 +286,62 @@ describe('LorawanSection (RF-21, RF-41, RF-60)', () => {
         danger: true,
       });
       useConfirm().close();
+    });
+  });
+
+  describe('la ficha de un vinculado muestra lo que de verdad tiene el LNS (P6)', () => {
+    const remote = (over: Record<string, unknown> = {}) => ({
+      name: 'Medidor ajeno',
+      joinEui: 'AABBCCDDEEFF0011',
+      deviceProfileId: 'dp-remoto',
+      hasAppKey: false,
+      hasNwkKey: false,
+      readAt: '2026-11-19T12:00:00.000Z',
+      ...over,
+    });
+
+    it('«AppKey: no está en el LNS» aunque el activo tenga la suya guardada', async () => {
+      const w = await mountSection(
+        ['lorawan:read'],
+        data({
+          registration: registration('registered', {
+            origin: 'linked',
+            remote: remote(),
+          }) as never,
+        }),
+      );
+      const block = w.get('[data-testid="lorawan-remote"]');
+      expect(block.text()).toContain('Lo que tiene el LNS');
+      expect(block.text()).toContain('AABBCCDDEEFF0011');
+      expect(block.text()).toContain('dp-remoto');
+      expect(block.text()).toContain('no está en el LNS');
+      expect(w.text()).toContain('Guardada (cifrada)'); // la local, en el bloque de datos del activo
+    });
+
+    it('un registrado por Inventarius no tiene ese bloque', async () => {
+      const w = await mountSection(
+        ['lorawan:read'],
+        data({ registration: registration('registered', { remote: null }) as never }),
+      );
+      expect(w.find('[data-testid="lorawan-remote"]').exists()).toBe(false);
+    });
+
+    it('en conflicto «Vincular» abre la lectura, no vincula de una vez', async () => {
+      const w = await mountSection(
+        ['lorawan:read', 'lorawan:register'],
+        data({ registration: registration('conflict') as never }),
+      );
+      await w
+        .findAll('button')
+        .find((b) => b.text() === 'Vincular')!
+        .trigger('click');
+      await flushPromises();
+      expect(
+        w.fetchMock.mock.calls.some(([u]) => String(u).endsWith('/lns-registration/link-preview')),
+      ).toBe(true);
+      expect(
+        w.fetchMock.mock.calls.some(([u]) => String(u).endsWith('/lns-registration/resolve')),
+      ).toBe(false);
     });
   });
 });
