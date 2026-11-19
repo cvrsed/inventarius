@@ -275,7 +275,7 @@ async function doRetry(): Promise<void> {
           </template>
         </dl>
         <UAlert
-          v-if="registration.lastError"
+          v-if="registration.lastError && status !== 'conflict'"
           class="mt-3"
           :color="status === 'error' ? 'error' : 'warning'"
           variant="subtle"

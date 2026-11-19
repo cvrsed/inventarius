@@ -458,7 +458,7 @@ Revisión manual del PR #6 contra ChirpStack 4.20.0 (2026-11-19). Cada punto va 
 - [ ] P2 Registro valida versión, clase y región contra el device profile; identidad bloqueada si registrado o vinculado; aviso al editar
 - [x] P3 El adaptador de ChirpStack envía el JoinEUI; test que compara campo por campo contra el LNS
 - [x] P4 `chirpstack-bootstrap` crea el device profile con un ADR algorithm válido
-- [ ] P5 Conflicto: el mensaje sale una sola vez
+- [x] P5 Conflicto: el mensaje sale una sola vez
 - [ ] P6 Vincular: lee el remoto, muestra diferencias, adoptar o cancelar; la ficha muestra lo que tiene el LNS
 - [ ] P7 «Desvincular» sin estilo destructivo
 - [ ] P8 Una tabla de traducciones para historial y Auditoría, sin claves internas ni valores crudos

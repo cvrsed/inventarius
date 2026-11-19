@@ -3,7 +3,7 @@ import type { createPinia } from 'pinia';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AssetDto, LorawanDto, Permission } from '@inventarius/shared';
 import { useAuthStore } from '@/features/auth/useAuthStore';
-import { jsonResponse, mockApi, pagePlugins } from '@/test-utils';
+import { mockApi, pagePlugins } from '@/test-utils';
 import LorawanSection from './LorawanSection.vue';
 
 const mounted: { unmount: () => void }[] = [];
@@ -200,6 +200,15 @@ describe('LorawanSection (RF-21, RF-41, RF-60)', () => {
     await flushPromises();
     expect(document.body.querySelector('[data-testid="revealed-key"]')).toBeNull();
   });
-});
 
-void jsonResponse;
+  it('en conflicto el mensaje sale una sola vez', async () => {
+    const message = 'El DevEUI ya existe en el LNS y no lo creó Inventarius';
+    const w = await mountSection(
+      ['lorawan:read', 'lorawan:register'],
+      data({ registration: registration('conflict', { lastError: message }) as never }),
+    );
+    expect(w.text().split('Ya hay un dispositivo con ese DevEUI').length - 1).toBe(1);
+    expect(w.text()).not.toContain('Último error');
+    expect(w.text()).not.toContain(message);
+  });
+});
