@@ -233,7 +233,8 @@ export class RegistrationService implements RegistrationReader {
         await this.repo.remove(tx, row.id);
         await this.audit.record(tx, {
           ...actor,
-          action: 'lns.deregistered',
+          // Un vinculado no se borra del LNS: es «desvinculado», no «dado de baja».
+          action: row.origin === 'linked' ? 'lns.unlink' : 'lns.deregistered',
           entity: 'asset',
           entityId: assetId,
           entityLabel: label,

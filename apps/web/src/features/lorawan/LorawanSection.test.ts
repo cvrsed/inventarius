@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AssetDto, LorawanDto, Permission } from '@inventarius/shared';
 import { useAuthStore } from '@/features/auth/useAuthStore';
 import { mockApi, pagePlugins } from '@/test-utils';
+import { useConfirm } from '@/shared/ui/useConfirm';
 import LorawanSection from './LorawanSection.vue';
 
 const mounted: { unmount: () => void }[] = [];
@@ -229,5 +230,48 @@ describe('LorawanSection (RF-21, RF-41, RF-60)', () => {
     expect(w.text().split('Ya hay un dispositivo con ese DevEUI').length - 1).toBe(1);
     expect(w.text()).not.toContain('Último error');
     expect(w.text()).not.toContain(message);
+  });
+
+  describe('desvincular un dispositivo que ya existía en el LNS (P7)', () => {
+    const perms: Permission[] = ['lorawan:read', 'lorawan:register'];
+    const linked = () =>
+      data({
+        registration: registration('registered', {
+          origin: 'linked',
+          externalId: '70b3d57ed0000001',
+        }) as never,
+      });
+
+    it('el botón y su confirmación se llaman «Desvincular», sin estilo destructivo', async () => {
+      const w = await mountSection(perms, linked());
+      expect(labels(w)).toEqual(['Desvincular']);
+      expect(labels(w)).not.toContain('Dar de baja en LNS');
+      const button = w.findAll('button').find((b) => b.text() === 'Desvincular')!;
+      expect(button.classes().join(' ')).not.toMatch(/error/);
+      await button.trigger('click');
+      const { options } = useConfirm().state;
+      expect(options).toMatchObject({
+        title: 'Desvincular',
+        acceptLabel: 'Desvincular',
+        danger: false,
+      });
+      expect(options!.message).toContain('no se borra nada en el LNS');
+      useConfirm().close();
+    });
+
+    it('si Inventarius lo creó, sigue siendo «Dar de baja en LNS» y destructivo', async () => {
+      const w = await mountSection(
+        perms,
+        data({ registration: registration('registered', { origin: 'created' }) as never }),
+      );
+      expect(labels(w)).toEqual(['Dar de baja en LNS']);
+      const button = w.findAll('button').find((b) => b.text() === 'Dar de baja en LNS')!;
+      await button.trigger('click');
+      expect(useConfirm().state.options).toMatchObject({
+        title: 'Dar de baja en LNS',
+        danger: true,
+      });
+      useConfirm().close();
+    });
   });
 });

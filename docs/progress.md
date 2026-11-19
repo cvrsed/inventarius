@@ -460,7 +460,7 @@ Revisión manual del PR #6 contra ChirpStack 4.20.0 (2026-11-19). Cada punto va 
 - [x] P4 `chirpstack-bootstrap` crea el device profile con un ADR algorithm válido
 - [x] P5 Conflicto: el mensaje sale una sola vez
 - [ ] P6 Vincular: lee el remoto, muestra diferencias, adoptar o cancelar; la ficha muestra lo que tiene el LNS
-- [ ] P7 «Desvincular» sin estilo destructivo
+- [x] P7 «Desvincular» sin estilo destructivo
 - [x] P8 Una tabla de traducciones para historial y Auditoría, sin claves internas ni valores crudos
 - [x] P9 Confirmación con lo que se va a enviar antes de encolar el registro
 - [x] P15 El actor del worker se muestra como «Sistema» en todas las vistas

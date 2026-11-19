@@ -95,6 +95,7 @@ export const AUDIT_ACTIONS = [
   'lns.deregister',
   'lns.deregistered',
   'lns.link',
+  'lns.unlink',
   'lns.cancel',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

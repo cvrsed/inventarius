@@ -447,6 +447,13 @@ describe('registro en el LNS (RF-60 a RF-65)', () => {
     expect(chirp.calls).not.toContain('deregister');
     expect(chirp.remote.has(a.devEui)).toBe(true);
     expect((await lorawan(a.id)).registration).toBeNull();
+    // Queda como «desvinculado», no como «dado de baja»: en el LNS no se borró nada (P7).
+    const history = (await fx.reader.get(`${base}/assets/${a.id}/history`)).json().data as {
+      action: string;
+    }[];
+    const actions = history.map((h) => h.action);
+    expect(actions).toContain('lns.unlink');
+    expect(actions).not.toContain('lns.deregistered');
   });
 
   it('cancelar un conflicto deja el activo sin registro', async () => {

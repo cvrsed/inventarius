@@ -40,6 +40,7 @@ export const APP_ICONS = [
   'lucide:plus',
   'lucide:pencil',
   'lucide:trash-2',
+  'lucide:unlink',
   'lucide:copy',
   'lucide:refresh-cw',
   'lucide:eye',

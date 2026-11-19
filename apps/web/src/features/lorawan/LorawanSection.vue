@@ -105,15 +105,15 @@ function ask(
   });
 }
 
+/** Un dispositivo vinculado ya existía en el LNS: no se borra, se desvincula (P7). */
+const linked = computed(() => registration.value?.origin === 'linked');
 const askDeregister = () =>
   ask(
-    registration.value?.origin === 'linked'
-      ? t('lorawan.confirmDeregisterLinked')
-      : t('lorawan.confirmDeregister'),
-    t('lorawan.actions.deregister'),
-    true,
+    linked.value ? t('lorawan.confirmDeregisterLinked') : t('lorawan.confirmDeregister'),
+    linked.value ? t('lorawan.actions.unlink') : t('lorawan.actions.deregister'),
+    !linked.value,
     () => deregister.mutateAsync(),
-    t('lorawan.done.deregister'),
+    linked.value ? t('lorawan.done.unlink') : t('lorawan.done.deregister'),
   );
 const askResolve = (action: 'link' | 'cancel') =>
   ask(
@@ -207,9 +207,9 @@ async function doRetry(): Promise<void> {
           />
           <UButton
             v-if="actions.deregister"
-            icon="i-lucide-trash-2"
-            :label="t('lorawan.actions.deregister')"
-            color="error"
+            :icon="linked ? 'i-lucide-unlink' : 'i-lucide-trash-2'"
+            :label="linked ? t('lorawan.actions.unlink') : t('lorawan.actions.deregister')"
+            :color="linked ? 'neutral' : 'error'"
             variant="outline"
             @click="askDeregister"
           />

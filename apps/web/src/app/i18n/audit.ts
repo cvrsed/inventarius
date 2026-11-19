@@ -63,6 +63,7 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   'lns.deregister': 'Baja en LNS solicitada',
   'lns.deregistered': 'Dado de baja en LNS',
   'lns.link': 'Vinculado a un dispositivo existente en LNS',
+  'lns.unlink': 'Desvinculado del LNS (no se borró nada en el LNS)',
   'lns.cancel': 'Registro en LNS cancelado',
 };
 

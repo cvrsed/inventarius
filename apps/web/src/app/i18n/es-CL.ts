@@ -560,6 +560,7 @@ export const messages = {
     actions: {
       register: 'Registrar en LNS',
       deregister: 'Dar de baja en LNS',
+      unlink: 'Desvincular',
       retry: 'Reintentar',
       link: 'Vincular',
       cancel: 'Cancelar registro',
@@ -604,12 +605,13 @@ export const messages = {
     confirmDeregister:
       'Se borrará el dispositivo del LNS y el activo quedará «no registrado». ¿Continuar?',
     confirmDeregisterLinked:
-      'El dispositivo fue vinculado: solo se desvinculará, no se borra nada en el LNS. ¿Continuar?',
+      'El dispositivo ya existía en el LNS: solo se desvincula del activo y no se borra nada en el LNS. ¿Continuar?',
     confirmCancel: 'Se descarta el intento de registro. ¿Continuar?',
     confirmLink: 'Se tomará el dispositivo existente como registrado, sin modificarlo. ¿Continuar?',
     done: {
       retry: 'Reintento en curso',
       deregister: 'Baja en curso',
+      unlink: 'Dispositivo desvinculado',
       link: 'Dispositivo vinculado',
       cancel: 'Registro cancelado',
     },
