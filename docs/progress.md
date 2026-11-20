@@ -2,13 +2,14 @@
 
 ## Estado
 
-| Fase           | Estado      | Rama / PR              |
-| -------------- | ----------- | ---------------------- |
-| F0 Fundaciones | En curso    | `phase/f0-fundaciones` |
-| F1 Identidad   | Pendiente   | —                      |
-| F2 Inventario  | En revisión | `phase/f2-inventario`  |
-| F3 LoRaWAN     | En curso    | `phase/f3-lorawan`     |
-| F4 Cierre      | Pendiente   | —                      |
+| Fase             | Estado      | Rama / PR                |
+| ---------------- | ----------- | ------------------------ |
+| F0 Fundaciones   | En curso    | `phase/f0-fundaciones`   |
+| F1 Identidad     | Pendiente   | —                        |
+| F2 Inventario    | En revisión | `phase/f2-inventario`    |
+| F3 LoRaWAN       | En curso    | `phase/f3-lorawan`       |
+| F3.5 Consumibles | En curso    | `phase/f3.5-consumibles` |
+| F4 Cierre        | Pendiente   | —                        |
 
 ## Bitácora
 
@@ -546,3 +547,31 @@ Segunda revisión manual del PR #6 (2026-11-19). Cada punto va en su propio comm
 - El CI de GitHub no se esperó (instrucción del responsable).
 - Una instalación con series repetidas dentro de un mismo modelo hará abortar la migración 0016; el mensaje las lista.
 - TTN: las lecturas para vincular siguen sin probarse contra una aplicación real (Q48).
+
+## F3.5 — Consumibles por cantidad (rama `phase/f3.5-consumibles`, desde `main`)
+
+Alcance: RF-70 a RF-74 y las decisiones D1 a D14 del prompt de arranque. Decisiones provisionales en `docs/open-questions.md`
+(Q56 en adelante) y ADR 0008.
+
+- [x] Migraciones: unidades de medida, consumibles, mínimos por bodega, libro de movimientos (con FK de anulación y de traslado), saldos si aplica, CHECK de no negativo
+- [x] Semilla de unidades y permisos nuevos con mapeo a roles
+- [x] Esquemas Zod compartidos con validación de decimales por unidad
+- [x] Dominio y servicio de consumibles (CRUD, desactivar, borrar solo sin movimientos), TDD
+- [x] Servicio de movimientos: ingreso, entrega, ajuste, traslado, anulación, TDD
+- [x] Bloqueo por (consumible, bodega) y test de concurrencia
+- [x] Test y CLI de cuadratura libro vs saldo
+- [x] Rutas de la API con permisos y auditoría
+- [ ] Catálogo de unidades administrable (API y UI)
+- [ ] UI: listado de consumibles con stock total, filtro «Bajo mínimo» e inactivos
+- [ ] UI: ficha del consumible con stock por bodega, mínimos e historial filtrable
+- [ ] UI: ingreso a bodega
+- [ ] UI: entrega (usuario o texto libre) con tope de stock visible
+- [ ] UI: traslado entre bodegas
+- [ ] UI: ajuste con motivo y confirmación antes/después
+- [ ] UI: anular con motivo y enlace entre movimientos
+- [ ] Aviso de stock mínimo en Inicio
+- [ ] Traducciones de auditoría e historial para todos los eventos nuevos
+- [ ] Responsive 360 px y axe sin violaciones en las pantallas nuevas
+- [ ] e2e del ciclo ingreso → entrega → traslado → ajuste → anulación → aviso de mínimo, verificando que el stock mostrado cuadra con el libro
+- [ ] Documentación: requirements (si precisas algo), ficha técnica, ADR 0008 de consumibles, CHANGELOG, open-questions
+- [ ] Resumen, decisiones provisionales, cómo probar y sección de revisión manual en docs/progress.md

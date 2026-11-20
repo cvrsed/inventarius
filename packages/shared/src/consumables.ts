@@ -36,6 +36,25 @@ export function normalizeQuantity(value: string): string {
   return fromMilli(toMilli(value));
 }
 
+/** Forma canónica de una cantidad que puede llevar signo (los `delta` del libro): «-2.50» → «-2.5». */
+export function normalizeDelta(value: string): string {
+  return value.startsWith('-') ? `-${normalizeQuantity(value.slice(1))}` : normalizeQuantity(value);
+}
+
+function signedToMilli(value: string): bigint {
+  return value.startsWith('-') ? -toMilli(value.slice(1)) : toMilli(value);
+}
+
+/** Suma un `delta` con signo a un saldo: «1» + «-2.5» → «-1.5». */
+export function addDelta(balance: string, delta: string): string {
+  return fromMilli(signedToMilli(balance) + signedToMilli(delta));
+}
+
+/** Cambia el signo de un `delta` del libro. */
+export function negateDelta(delta: string): string {
+  return delta.startsWith('-') ? delta.slice(1) : `-${delta}`;
+}
+
 export function isQuantity(value: string): boolean {
   return QUANTITY_RE.test(value);
 }

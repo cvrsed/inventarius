@@ -414,6 +414,55 @@ export class CatalogService {
     return row;
   }
 
+  /** Bodega (ubicación de tipo bodega, D1) o error de validación. */
+  async requireWarehouse(
+    exec: Executor,
+    id: string,
+    field = 'locationId',
+    opts: { allowInactive?: boolean } = {},
+  ): Promise<LocationRow> {
+    const row = await this.requireLocation(exec, id, field);
+    if (row.type !== 'warehouse') {
+      const message = `«${row.path}» no es una bodega`;
+      throw new ValidationError(message, { [field]: [message] });
+    }
+    if (!row.active && !opts.allowInactive) {
+      const message = `La bodega «${row.path}» está inactiva`;
+      throw new ValidationError(message, { [field]: [message] });
+    }
+    return row;
+  }
+
+  /** Categoría del ámbito indicado (activos o consumibles), o error de validación. */
+  async requireCategory(
+    exec: Executor,
+    id: string,
+    scope: CategoryScope,
+    opts: { allowInactive?: boolean } = {},
+  ): Promise<CategoryRow> {
+    const row = await this.repo.getCategory(exec, id);
+    const field = 'categoryId';
+    const fail = (message: string): never => {
+      throw new ValidationError(message, { [field]: [message] });
+    };
+    if (!row) return fail('La categoría no existe');
+    if (row.scope !== scope) {
+      return fail(
+        scope === 'consumable'
+          ? 'Esa categoría es de activos, no de consumibles'
+          : 'Esa categoría es de consumibles, no de activos',
+      );
+    }
+    if (!row.active && !opts.allowInactive) return fail('La categoría está inactiva');
+    return row;
+  }
+
+  /** Ubicaciones por id (con su ruta completa) para armar vistas de otros módulos. */
+  async locationsByIds(exec: Executor, ids: string[]): Promise<Map<string, LocationRow>> {
+    const rows = await Promise.all([...new Set(ids)].map((id) => this.repo.getLocation(exec, id)));
+    return new Map(rows.flatMap((r) => (r ? [[r.id, r] as const] : [])));
+  }
+
   /** Estado que pone el check-out (`system_key = 'assigned'`). */
   async assignedStatus(exec: Executor): Promise<StatusLabelRow> {
     const row = await this.repo.getStatusBySystemKey(exec, 'assigned');

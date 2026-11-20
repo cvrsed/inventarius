@@ -15,6 +15,8 @@ import { AuthService } from '../modules/auth/service.js';
 import { LoginThrottle } from '../modules/auth/throttle.js';
 import { CatalogRepository } from '../modules/catalog/repository.js';
 import { CatalogService } from '../modules/catalog/service.js';
+import { ConsumablesRepository } from '../modules/consumables/repository.js';
+import { ConsumablesService } from '../modules/consumables/service.js';
 import { RbacRepository } from '../modules/rbac/repository.js';
 import { RbacService } from '../modules/rbac/service.js';
 import { LorawanImportService } from '../modules/lorawan/import-service.js';
@@ -38,6 +40,7 @@ export interface Services {
   auth: AuthService;
   catalog: CatalogService;
   assets: AssetsService;
+  consumables: ConsumablesService;
   dashboard: DashboardService;
   lorawan: LorawanService;
   lorawanImport: LorawanImportService;
@@ -169,6 +172,19 @@ export function buildServices(deps: ContainerDeps): Services {
       },
     },
   );
+  const consumables = new ConsumablesService(
+    new ConsumablesRepository(),
+    db,
+    audit,
+    catalog,
+    {
+      find: (exec, id) => users.findById(id, exec),
+      search: (q, limit) => users.searchAssignable(q, limit),
+      namesByIds: (ids) => users.namesByIds(ids),
+    },
+    () => localDate(clock.now(), config.timezone),
+    config.timezone,
+  );
   const lnsProfiles = new LnsProfilesService(
     new LnsProfilesRepository(),
     db,
@@ -216,6 +232,7 @@ export function buildServices(deps: ContainerDeps): Services {
     auth,
     catalog,
     assets,
+    consumables,
     dashboard,
     lorawan,
     lorawanImport,

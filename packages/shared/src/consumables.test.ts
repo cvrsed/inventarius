@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addDelta,
   addQuantities,
   adjustmentSchema,
   compareQuantities,
   deliverySchema,
   formatQuantity,
   isPositiveQuantity,
+  negateDelta,
+  normalizeDelta,
   normalizeQuantity,
   quantityFitsUnit,
   subtractQuantities,
@@ -18,6 +21,11 @@ describe('cantidades decimales (sin float)', () => {
     expect(normalizeQuantity('2.50')).toBe('2.5');
     expect(normalizeQuantity('007.100')).toBe('7.1');
     expect(normalizeQuantity('0.000')).toBe('0');
+  });
+
+  it('normaliza cantidades con signo del libro', () => {
+    expect(normalizeDelta('-2.50')).toBe('-2.5');
+    expect(normalizeDelta('3.000')).toBe('3');
   });
 
   it('rechaza lo que no es una cantidad', () => {
@@ -43,6 +51,13 @@ describe('cantidades decimales (sin float)', () => {
     expect(compareQuantities('1', '2')).toBe(-1);
     expect(() => subtractQuantities('1', '2')).not.toThrow();
     expect(subtractQuantities('1', '2')).toBe('-1');
+  });
+
+  it('suma deltas con signo y los invierte', () => {
+    expect(addDelta('1', '-2.5')).toBe('-1.5');
+    expect(addDelta('0.5', '0.25')).toBe('0.75');
+    expect(negateDelta('-3')).toBe('3');
+    expect(negateDelta('3')).toBe('-3');
   });
 
   it('detecta cantidades positivas', () => {

@@ -110,3 +110,13 @@ Generarla: `openssl rand -hex 32`.
   (JoinEUI y claves que el LNS tiene) o cancelar. Nunca modifica el dispositivo remoto. Un vinculado se **desvincula**: no se
   borra nada en el LNS.
 - Las API keys de los perfiles deben tener el mínimo de derechos: de **tenant** en ChirpStack y de **aplicación** en TTN.
+
+## `verify-consumables`: cuadrar los saldos de consumibles con el libro
+
+El libro de movimientos de consumibles es la fuente de verdad; el saldo por bodega es una tabla derivada que se actualiza en
+la misma transacción. Este comando comprueba que cada saldo es igual a la suma del libro (solo lee) y sale con código 1 si algo
+no cuadra, así que sirve en un cron o en un chequeo de despliegue:
+
+```bash
+docker compose exec api pnpm --filter @inventarius/api cli verify-consumables
+```

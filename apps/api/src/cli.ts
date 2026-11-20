@@ -4,6 +4,7 @@ import { loadConfig } from './core/config.js';
 import { createDb } from './core/db/client.js';
 import { ConflictError, DomainError } from './core/errors.js';
 import { createAdminInput, updateEmailInput } from './cli-args.js';
+import { describeLedgerReport } from './modules/consumables/verify.js';
 
 async function ask(question: string, hidden = false): Promise<string> {
   const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true });
@@ -23,7 +24,10 @@ async function ask(question: string, hidden = false): Promise<string> {
  *   create-admin --email <correo> --name <nombre> [--password-env VAR] [--if-missing]
  *   update-email --email-actual <correo> --email-nuevo <correo>
  *   reencrypt-secrets
+ *   verify-consumables
  * `reencrypt-secrets` recifra AppKey, NwkKey y credenciales LNS con la clave vigente (rotación de APP_ENCRYPTION_KEY).
+ * `verify-consumables` comprueba que el saldo de cada consumible y bodega es igual a la suma del libro de movimientos
+ * (sale con código 1 si algo no cuadra). Solo lee.
  * `update-email` cambia el correo de cualquier usuario (también el del único administrador): cierra sus sesiones y
  * deja la auditoría con actor `cli`.
  * La contraseña nunca va por argumentos (quedaría en el historial del shell): se lee de una variable
@@ -35,10 +39,12 @@ async function main(): Promise<number> {
   if (command === 'create-admin') return createAdmin(rest);
   if (command === 'update-email') return updateEmail(rest);
   if (command === 'reencrypt-secrets') return reencryptSecrets();
+  if (command === 'verify-consumables') return verifyConsumables();
   console.error(
     'Uso:\n  cli create-admin --email <correo> --name <nombre> [--password-env VAR] [--if-missing]\n' +
       '  cli update-email --email-actual <correo> --email-nuevo <correo>\n' +
-      '  cli reencrypt-secrets',
+      '  cli reencrypt-secrets\n' +
+      '  cli verify-consumables',
   );
   return 2;
 }
@@ -111,6 +117,14 @@ async function reencryptSecrets(): Promise<number> {
       `Recifrado con la clave vigente: ${keys} dispositivos LoRaWAN y ${credentials} perfiles LNS.`,
     );
     return 0;
+  });
+}
+
+async function verifyConsumables(): Promise<number> {
+  return withServices(async ({ consumables }) => {
+    const mismatches = await consumables.verifyLedger();
+    console.info(describeLedgerReport(mismatches));
+    return mismatches.length ? 1 : 0;
   });
 }
 
