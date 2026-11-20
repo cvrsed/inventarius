@@ -121,7 +121,7 @@ async function submit(): Promise<void> {
           :label="mode === 'checkin' ? t('assets.checkin.status') : t('assets.status.newStatus')"
           name="ac-status"
           required
-          :error="fieldError"
+          :error="fieldError || undefined"
         >
           <RemoteSelect
             id="ac-status"
@@ -136,7 +136,7 @@ async function submit(): Promise<void> {
           :label="t('assets.checkin.returnTo')"
           name="ac-location"
           required
-          :error="returnError"
+          :error="returnError || undefined"
         >
           <RemoteSelect
             id="ac-location"
@@ -150,7 +150,7 @@ async function submit(): Promise<void> {
           :label="mode === 'delete' ? t('assets.delete.reason') : t('assets.checkin.note')"
           name="ac-text"
           :required="mode === 'delete'"
-          :error="mode === 'delete' ? fieldError : undefined"
+          :error="(mode === 'delete' ? fieldError : '') || undefined"
         >
           <UTextarea id="ac-text" v-model="text" :rows="3" :maxlength="500" class="w-full" />
         </UFormField>

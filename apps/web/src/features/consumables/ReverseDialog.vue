@@ -122,7 +122,7 @@ async function submit(): Promise<void> {
           name="rv-reason"
           required
           :help="t('consumables.reverse.reasonHelp')"
-          :error="fieldError"
+          :error="fieldError || undefined"
         >
           <UTextarea id="rv-reason" v-model="reason" :rows="2" :maxlength="300" class="w-full" />
         </UFormField>

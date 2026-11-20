@@ -672,7 +672,7 @@ marca aquí junto con su commit. Cómo probar cada uno: ver «Cómo probar la re
 - [x] P12 Íconos distintos por tipo de movimiento
 - [x] P13 Selectores de bodega con nombre, ruta y stock, sin truncar
 - [x] P14 Resaltado visible de «Ir al movimiento»
-- [ ] P15 Validación de obligatorios solo tras interactuar o enviar
+- [x] P15 Validación de obligatorios solo tras interactuar o enviar
 - [ ] P16 Botones de la ficha a 360 px: grilla de dos columnas del mismo tamaño
 - [ ] P17 Subtítulo de Catálogo
 - [ ] P18 Activar/desactivar inequívoco en las tablas del catálogo
@@ -707,6 +707,7 @@ marca aquí junto con su commit. Cómo probar cada uno: ver «Cómo probar la re
 - **P12:** en la ficha de un consumible con movimientos, los botones Ingresar (caja con +), Entregar (mano), Registrar devolución (flecha de regreso), Trasladar (flechas cruzadas), Ajustar (balanza) y Anular (círculo tachado) tienen cada uno su ícono, y el historial usa el mismo ícono para cada tipo de movimiento. Todos están en `APP_ICONS` (la prueba de íconos empaquetados lo verifica).
 - **P13:** todos los selectores de bodega (ingreso, entrega, traslado origen y destino, ajuste, devolución, mínimos por bodega y filtro del historial) usan el mismo selector: nombre destacado, ruta de los padres en una segunda línea más chica y el stock de ese consumible a la derecha; los nombres largos pasan a otra línea (también el valor elegido en el campo) en escritorio y a 360 px. Abre «Trasladar» y compara origen y destino: tienen el mismo formato.
 - **P14:** anula un movimiento y, en la anulación, pulsa «Ir al movimiento»: el movimiento original se marca con borde y fondo del color primario durante unos 3,5 s y se desvanece (con «reducir movimiento» del sistema, se apaga sin fundido); el foco queda en él. El contraste del texto sobre ese fondo es AA en claro y oscuro (comprobado en `theme.test.ts`).
+- **P15:** abre «Anular» en un movimiento (y cada diálogo de consumibles: ingreso, entrega, traslado, ajuste, devolución, alta y edición): ningún campo aparece en rojo ni hay mensajes hasta que escribes o pulsas el botón; recién al enviar vacío el motivo se marca y dice «Este campo es obligatorio». Causa: Nuxt UI pinta de error cualquier `error` distinto de `undefined`, también `''`; el mismo defecto estaba en el diálogo de acciones de activos (también corregido).
 
 ### Backlog post-F3.5
 
