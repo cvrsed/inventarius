@@ -46,6 +46,13 @@ export type MovementRow = typeof consumableMovements.$inferSelect;
 /** Un movimiento con lo necesario para armar el historial (vínculos de anulación y traslado). */
 export interface MovementViewRow {
   id: string;
+  consumableId: string;
+  consumableName: string;
+  unitId: string;
+  unitName: string;
+  unitPlural: string;
+  unitAbbreviation: string;
+  unitDecimals: number;
   kind: string;
   locationId: string;
   delta: string;
@@ -476,10 +483,17 @@ export class ConsumablesRepository {
   /** Historial de un consumible, el más reciente primero. Con ids, trae esos movimientos (sin paginar). */
   async listMovements(
     exec: Executor,
-    consumableId: string,
-    f: MovementFilters & { timezone: string; limit: number; offset: number; ids?: string[] },
+    consumableId: string | undefined,
+    f: MovementFilters & {
+      timezone: string;
+      limit: number;
+      offset: number;
+      ids?: string[];
+      /** Ordena por cuándo se registró en vez de la fecha del movimiento (los últimos movimientos de Inicio). */
+      byRegistration?: boolean;
+    },
   ): Promise<{ rows: MovementViewRow[]; total: number }> {
-    const conds: SQL[] = [sql`m.consumable_id = ${consumableId}`];
+    const conds: SQL[] = consumableId ? [sql`m.consumable_id = ${consumableId}`] : [sql`TRUE`];
     if (f.ids)
       conds.push(
         sql`m.id IN (${sql.join(
@@ -523,7 +537,10 @@ export class ConsumablesRepository {
         rowTotal: string;
       }
     >(sql`
-      SELECT m.id, m.kind, m.location_id AS "locationId", m.delta, m.occurred_at AS "occurredAt",
+      SELECT m.id, m.consumable_id AS "consumableId", c.name::text AS "consumableName",
+             u.id AS "unitId", u.name::text AS "unitName", u.plural AS "unitPlural",
+             u.abbreviation AS "unitAbbreviation", u.decimals AS "unitDecimals",
+             m.kind, m.location_id AS "locationId", m.delta, m.occurred_at AS "occurredAt",
              m.created_at AS "createdAt",
              (m.occurred_at AT TIME ZONE ${f.timezone})::date <> (m.created_at AT TIME ZONE ${f.timezone})::date AS backdated,
              m.actor_id AS "actorId", m.supplier, m.note, m.reason,
@@ -539,12 +556,14 @@ export class ConsumablesRepository {
              m.returns_id AS "returnsId", ro.occurred_at AS "returnsAt",
              count(*) OVER () AS "rowTotal"
       FROM consumable_movements m
+      JOIN consumables c ON c.id = m.consumable_id
+      JOIN measure_units u ON u.id = c.unit_id
       LEFT JOIN consumable_movements cp ON m.transfer_id IS NOT NULL AND cp.transfer_id = m.transfer_id AND cp.id <> m.id
       LEFT JOIN consumable_movements rb ON rb.reverses_id = m.id
       LEFT JOIN consumable_movements orig ON orig.id = m.reverses_id
       LEFT JOIN consumable_movements ro ON ro.id = m.returns_id
       WHERE ${sql.join(conds, sql` AND `)}
-      ORDER BY m.occurred_at DESC, m.id DESC
+      ORDER BY ${f.byRegistration ? sql`m.created_at` : sql`m.occurred_at`} DESC, m.id DESC
       LIMIT ${f.limit} OFFSET ${f.offset}`);
     const first = res.rows[0];
     return {

@@ -18,6 +18,7 @@ import {
   type MovementKind,
   type MovementListQuery,
   type MovementResult,
+  type RecentMovementDto,
   type ReceiptInput,
   type ReturnInput,
   type ReversalInput,
@@ -810,6 +811,31 @@ export class ConsumablesService {
       data: await this.toMovementDtos(rows),
       meta: { page: query.page, pageSize: query.pageSize, total },
     };
+  }
+
+  /** Los últimos movimientos de todos los consumibles (Inicio, P10): un traslado cuenta como una sola entrada. */
+  async recentMovements(limit: number): Promise<RecentMovementDto[]> {
+    const { rows } = await this.repo.listMovements(this.db, undefined, {
+      timezone: this.timezone,
+      limit,
+      offset: 0,
+      byRegistration: true,
+    });
+    const dtos = await this.toMovementDtos(rows);
+    return rows.map((r, i) => ({
+      movement: dtos[i]!,
+      consumable: {
+        id: r.consumableId,
+        name: r.consumableName,
+        unit: {
+          id: r.unitId,
+          name: r.unitName,
+          plural: r.unitPlural,
+          abbreviation: r.unitAbbreviation,
+          decimals: r.unitDecimals,
+        },
+      },
+    }));
   }
 
   /** Personas del sistema a quienes se puede entregar. */

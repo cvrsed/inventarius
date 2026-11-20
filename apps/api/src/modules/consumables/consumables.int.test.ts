@@ -1304,6 +1304,67 @@ describe('traslado como una sola entrada del historial (P8)', () => {
   });
 });
 
+describe('últimos movimientos de todos los consumibles, para Inicio (P10)', () => {
+  const recent = (c: TestClient, qs = '') => c.get(`${base}/consumable-movements/recent${qs}`);
+
+  it('trae los más recientes de todos los consumibles con su nombre y unidad, un traslado una sola vez', async () => {
+    const a = await newConsumable({ name: 'Recientes A' });
+    const b = await newConsumable({ name: 'Recientes B', unitId: ids.litro });
+    await receive(a.id, ids.main, '10');
+    await move(operator, a.id, 'transfers', {
+      fromLocationId: ids.main,
+      toLocationId: ids.annex,
+      quantity: '2',
+    });
+    await receive(b.id, ids.main, '2.5');
+    const res = await recent(reader, '?limit=3');
+    expect(res.statusCode, res.body).toBe(200);
+    const rows = res.json() as Json[];
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toMatchObject({
+      consumable: { name: 'Recientes B', unit: { abbreviation: 'L' } },
+      movement: { kind: 'receipt', delta: '2.5' },
+    });
+    // El traslado de A cuenta como una sola entrada y viene con su bodega de destino.
+    expect(rows[1]!.movement).toMatchObject({
+      kind: 'transfer_out',
+      counterpartLocation: { id: ids.annex },
+    });
+    expect(rows[1]!.consumable.name).toBe('Recientes A');
+    expect(rows[2]!.movement.kind).toBe('receipt');
+    const times = rows.map((r) => new Date(r.movement.occurredAt).getTime());
+    expect([...times].sort((x, y) => y - x)).toEqual(times);
+  });
+
+  it('ordena por cuándo se registró: un ingreso con fecha pasada recién cargado sigue arriba', async () => {
+    const c = await newConsumable({ name: 'Recientes C' });
+    await receive(c.id, ids.main, '1');
+    await move(operator, c.id, 'receipts', {
+      locationId: ids.main,
+      quantity: '2',
+      receivedOn: '2026-10-01',
+    });
+    const rows = (await recent(reader, '?limit=1')).json() as Json[];
+    expect(rows[0]!.movement).toMatchObject({ delta: '2', backdated: true });
+  });
+
+  it('exige consumables:read y acota el límite', async () => {
+    const actor = { actorId: null, ip: null };
+    await env.services.rbac.createRole(actor, {
+      name: 'Solo activos P10',
+      description: 'Rol de prueba',
+      permissions: ['asset:read'],
+    });
+    await env.createUser({ email: 'solo-activos@ejemplo.cl', role: 'Solo activos P10' });
+    const c = env.client('10.60.0.1');
+    await c.login('solo-activos@ejemplo.cl');
+    expect((await recent(c)).statusCode).toBe(403);
+    expect((await recent(reader, '?limit=0')).statusCode).toBe(400);
+    expect((await recent(reader, '?limit=500')).statusCode).toBe(400);
+    expect((await recent(tech, '?limit=1')).statusCode).toBe(200);
+  });
+});
+
 describe('historial (RF-73)', () => {
   it('se filtra por bodega, tipo y fecha, y se pagina', async () => {
     const c = await newConsumable();

@@ -12,6 +12,8 @@ import {
   movementSchema,
   pageOf,
   receiptSchema,
+  recentMovementSchema,
+  recentMovementsQuerySchema,
   recipientSchema,
   returnSchema,
   reversalSchema,
@@ -175,6 +177,18 @@ export const consumablesRoutes: FastifyPluginAsyncZod<{ consumables: Consumables
       },
     },
     async (req) => consumables.movements(req.params.id, req.query),
+  );
+  app.get(
+    '/consumable-movements/recent',
+    {
+      ...read,
+      schema: {
+        tags,
+        querystring: recentMovementsQuerySchema,
+        response: { 200: z.array(recentMovementSchema) },
+      },
+    },
+    async (req) => consumables.recentMovements(req.query.limit),
   );
   app.post(
     '/consumables/:id/receipts',

@@ -12,6 +12,7 @@ import {
   movementResultSchema,
   movementSchema,
   pageOf,
+  recentMovementSchema,
   recipientSchema,
   type MovementKind,
 } from '@inventarius/shared';
@@ -213,5 +214,17 @@ export function useWarehouses() {
       }));
     },
     staleTime: 15_000,
+  });
+}
+
+/** Últimos movimientos de todos los consumibles (Inicio, P10). */
+export function useRecentConsumableMovements(enabled: Ref<boolean>, limit: number) {
+  return useQuery({
+    queryKey: ['consumables', 'recent', limit] as const,
+    queryFn: ({ signal }) =>
+      api(`/api/v1/consumable-movements/recent?limit=${limit}`, z.array(recentMovementSchema), {
+        signal,
+      }),
+    enabled,
   });
 }

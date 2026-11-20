@@ -469,3 +469,13 @@ export type MovementResult = z.infer<typeof movementResultSchema>;
 
 /** Receptor elegible de una entrega: persona del sistema (nombre e id, sin contacto). */
 export const recipientSchema = refSchema;
+
+/** Un movimiento reciente con el consumible al que pertenece (la lista de Inicio mezcla todos los consumibles). */
+export const recentMovementSchema = z.object({
+  movement: movementSchema,
+  consumable: z.object({ id: z.uuid(), name: z.string(), unit: unitRefSchema }),
+});
+export type RecentMovementDto = z.infer<typeof recentMovementSchema>;
+export const recentMovementsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(20).default(5),
+});
