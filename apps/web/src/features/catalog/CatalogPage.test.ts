@@ -98,6 +98,14 @@ describe('CatalogPage (RF-10 a RF-14)', () => {
     expect(wrapper.text()).not.toContain('Nueva categoría');
   });
 
+  it('el subtítulo menciona también los consumibles, no solo los activos (P17)', async () => {
+    const { wrapper } = await mountSection('categories', [], ['asset:read']);
+    const subtitle = wrapper.get('h1 + p').text();
+    expect(subtitle).toContain('categorías de consumibles');
+    expect(subtitle).toContain('unidades de medida');
+    expect(subtitle).not.toContain('que usan los activos');
+  });
+
   it('las categorías de consumibles se administran con consumables:manage, no con catalog:write (P4)', async () => {
     const withManage = await mountSection(
       'consumableCategories',

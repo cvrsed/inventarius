@@ -150,7 +150,8 @@ export const messages = {
   },
   catalog: {
     title: 'Catálogo',
-    description: 'Categorías, fabricantes, modelos, ubicaciones y estados que usan los activos.',
+    description:
+      'Categorías, fabricantes, modelos, ubicaciones y estados de los activos; categorías de consumibles y unidades de medida.',
     tabsLabel: 'Secciones del catálogo',
     sectionSelect: 'Sección del catálogo',
     searchLabel: 'Buscar en {section}',
