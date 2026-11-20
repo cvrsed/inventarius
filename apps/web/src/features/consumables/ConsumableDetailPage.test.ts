@@ -21,6 +21,7 @@ const ALL: Permission[] = [
   'consumables:deliver',
   'consumables:transfer',
   'consumables:adjust',
+  'consumables:reverse',
 ];
 
 async function mountPage(permissions: Permission[], detail = consumable(), history = [movement()]) {
@@ -126,14 +127,20 @@ describe('ficha del consumible (RF-73, RF-74)', () => {
     expect(button(w, 'Anular')).toBeUndefined();
   });
 
-  it('solo quien tiene consumables:adjust ve «Anular» en un movimiento vigente', async () => {
-    const withAdjust = await mountPage(ALL);
-    expect(button(withAdjust, 'Anular')).toBeDefined();
-    withAdjust.unmount();
+  it('«Ajustar» es de consumables:adjust y «Anular» de consumables:reverse, cada uno por separado (P2)', async () => {
+    const both = await mountPage(ALL);
+    expect(button(both, 'Anular')).toBeDefined();
+    expect(button(both, 'Ajustar')).toBeDefined();
+    both.unmount();
     mounted.pop();
-    const without = await mountPage(ALL.filter((p) => p !== 'consumables:adjust'));
-    expect(button(without, 'Anular')).toBeUndefined();
-    expect(button(without, 'Ajustar')).toBeUndefined();
+    const onlyAdjust = await mountPage(ALL.filter((p) => p !== 'consumables:reverse'));
+    expect(button(onlyAdjust, 'Anular')).toBeUndefined();
+    expect(button(onlyAdjust, 'Ajustar')).toBeDefined();
+    onlyAdjust.unmount();
+    mounted.pop();
+    const onlyReverse = await mountPage(ALL.filter((p) => p !== 'consumables:adjust'));
+    expect(button(onlyReverse, 'Anular')).toBeDefined();
+    expect(button(onlyReverse, 'Ajustar')).toBeUndefined();
   });
 
   it('el historial usa «Ver más» y filtros de bodega, tipo y fecha', async () => {

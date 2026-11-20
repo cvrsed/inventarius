@@ -220,7 +220,7 @@ test.describe('consumables (RF-70 a RF-74)', () => {
     await expect(dialog.getByRole('button', { name: 'Anular movimiento' })).toBeDisabled();
   });
 
-  test('un operador sin consumables:adjust no ve «Ajustar» ni «Anular»; quien solo lee no ve acciones', async ({
+  test('el operador ajusta pero no anula (P2); quien solo lee no ve acciones', async ({
     page,
     playwright,
   }) => {
@@ -247,7 +247,7 @@ test.describe('consumables (RF-70 a RF-74)', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Inicio' })).toBeVisible();
     await page.goto(`/consumibles/${f.id}`);
     await expect(page.getByRole('button', { name: 'Ingresar' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Ajustar' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Ajustar' })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Anular/ })).toHaveCount(0);
 
     await page.context().clearCookies();

@@ -249,7 +249,7 @@ export const consumablesRoutes: FastifyPluginAsyncZod<{ consumables: Consumables
   app.post(
     '/consumable-movements/:id/reversals',
     {
-      ...requirePermission('consumables:adjust'),
+      ...requirePermission('consumables:reverse'),
       schema: {
         tags,
         params: idParams,

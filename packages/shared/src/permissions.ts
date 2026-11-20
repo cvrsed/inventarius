@@ -19,6 +19,7 @@ export const PERMISSIONS = [
   'consumables:deliver',
   'consumables:transfer',
   'consumables:adjust',
+  'consumables:reverse',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -49,6 +50,7 @@ const OPERATOR: readonly Permission[] = [
   'consumables:receive',
   'consumables:deliver',
   'consumables:transfer',
+  'consumables:adjust',
 ];
 
 /** Roles semilla y su matriz (sección 3). Fuente de verdad del código; la migración la replica y un test lo verifica. */

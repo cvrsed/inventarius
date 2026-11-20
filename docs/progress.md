@@ -659,7 +659,7 @@ Revisión manual del PR #7 (decisiones de Rodrigo, mandan sobre las provisionale
 marca aquí junto con su commit. Cómo probar cada uno: ver «Cómo probar la revisión» al final de esta sección.
 
 - [x] P1 Devolución como movimiento propio (`return`)
-- [ ] P2 Permisos separados: `consumables:adjust` y `consumables:reverse`
+- [x] P2 Permisos separados: `consumables:adjust` y `consumables:reverse`
 - [ ] P3 Auditoría de la anulación con el detalle completo del movimiento anulado
 - [ ] P4 Categorías de consumibles con `consumables:manage` y unicidad por (ámbito, nombre)
 - [ ] P5 Concurrencia del primer movimiento en una bodega sin fila de saldo
@@ -682,6 +682,8 @@ marca aquí junto con su commit. Cómo probar cada uno: ver «Cómo probar la re
 - **P1:** ingresa 10, entrega 4 a una persona, «Registrar devolución» en la fila de la entrega: 1 → la entrega dice «Devuelto 1 par de
   4 pares»; intenta devolver 4 (rechaza: solo quedan 3); elige otra bodega activa; intenta anular la entrega (rechaza: primero
   anula la devolución); anula la devolución y luego la entrega. Como Lector: no aparece la acción.
+- **P2:** como Operador ves «Ajustar» pero no «Anular»; como Administrador ves ambos. En Roles crea uno con solo
+  `consumables:adjust` (ajusta, no anula) y otro con solo `consumables:reverse` (anula, no ajusta).
 
 ### Backlog post-F3.5
 

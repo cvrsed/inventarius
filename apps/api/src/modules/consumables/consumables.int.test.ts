@@ -670,7 +670,7 @@ describe('devolución (P1)', () => {
 });
 
 describe('ajuste (D6)', () => {
-  it('es solo del Administrador (consumables:adjust)', async () => {
+  it('es del Administrador y del Operador (consumables:adjust); el técnico y el lector no (P2)', async () => {
     const c = await newConsumable();
     await receive(c.id, ids.main, '5');
     const body = {
@@ -679,9 +679,10 @@ describe('ajuste (D6)', () => {
       quantity: '1',
       reason: 'physical_count',
     };
-    for (const who of [operator, tech, reader]) {
+    for (const who of [tech, reader]) {
       expect((await move(who, c.id, 'adjustments', body)).statusCode).toBe(403);
     }
+    expect((await move(operator, c.id, 'adjustments', body)).statusCode).toBe(201);
     const ok = await move(admin, c.id, 'adjustments', body);
     expect(ok.statusCode, ok.body).toBe(201);
     expect(ok.json().movements[0]).toMatchObject({
@@ -689,7 +690,7 @@ describe('ajuste (D6)', () => {
       delta: '1',
       reason: 'physical_count',
     });
-    expect((await stock(c.id))[ids.main]).toBe('6');
+    expect((await stock(c.id))[ids.main]).toBe('7');
   });
 
   it('el motivo es obligatorio y «otro» exige nota', async () => {
@@ -724,7 +725,7 @@ describe('anulación (D7)', () => {
   const reverse = (c: TestClient, movementId: string, reason = 'Registrado por error') =>
     c.post(`${base}/consumable-movements/${movementId}/reversals`, { reason });
 
-  it('solo con consumables:adjust y con motivo obligatorio', async () => {
+  it('solo con consumables:reverse (Administrador) y con motivo obligatorio', async () => {
     const c = await newConsumable();
     const rec = await receive(c.id, ids.main, '5');
     const id = rec.movements[0].id;
@@ -846,6 +847,53 @@ describe('anulación (D7)', () => {
     expect(res.statusCode, res.body).toBe(201);
     expect(res.json().movements[0].delta).toBe('2');
     expect(await stock(c.id)).toEqual({ [ids.main]: '5' });
+  });
+});
+
+describe('permisos separados: ajustar y anular (P2, cierra Q60)', () => {
+  let onlyAdjust: TestClient;
+  let onlyReverse: TestClient;
+  beforeAll(async () => {
+    const actor = { actorId: null, ip: null };
+    for (const [name, permissions, email, ip] of [
+      ['Solo ajusta', ['consumables:read', 'consumables:adjust'], 'ajusta@ejemplo.cl', '10.30.0.1'],
+      ['Solo anula', ['consumables:read', 'consumables:reverse'], 'anula@ejemplo.cl', '10.30.0.2'],
+    ] as const) {
+      await env.services.rbac.createRole(actor, {
+        name,
+        description: 'Rol de prueba',
+        permissions: [...permissions],
+      });
+      await env.createUser({ email, role: name });
+      const c = env.client(ip);
+      await c.login(email);
+      if (name === 'Solo ajusta') onlyAdjust = c;
+      else onlyReverse = c;
+    }
+  });
+
+  it('quien solo ajusta no anula, y quien solo anula no ajusta', async () => {
+    const c = await newConsumable();
+    const rec = await receive(c.id, ids.main, '5');
+    const adjustBody = { locationId: ids.main, direction: 'add', quantity: '1', reason: 'loss' };
+    expect((await move(onlyAdjust, c.id, 'adjustments', adjustBody)).statusCode).toBe(201);
+    expect((await move(onlyReverse, c.id, 'adjustments', adjustBody)).statusCode).toBe(403);
+    const reverse = (who: TestClient) =>
+      who.post(`${base}/consumable-movements/${rec.movements[0].id}/reversals`, {
+        reason: 'Error',
+      });
+    expect((await reverse(onlyAdjust)).statusCode).toBe(403);
+    expect((await reverse(onlyReverse)).statusCode).toBe(201);
+  });
+
+  it('el Administrador conserva ambos y el Operador ajusta pero no anula', async () => {
+    const me = async (who: TestClient) => (await who.get(`${base}/auth/me`)).json().permissions;
+    expect(await me(admin)).toEqual(
+      expect.arrayContaining(['consumables:adjust', 'consumables:reverse']),
+    );
+    const op = await me(operator);
+    expect(op).toContain('consumables:adjust');
+    expect(op).not.toContain('consumables:reverse');
   });
 });
 

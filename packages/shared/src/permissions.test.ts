@@ -45,8 +45,9 @@ describe('permisos de consumibles (D12)', () => {
   const holders = (p: (typeof PERMISSIONS)[number]) =>
     SEED_ROLES.filter((r) => r.permissions.includes(p)).map((r) => r.name);
 
-  it('ajustar y anular es solo del Administrador', () => {
-    expect(holders('consumables:adjust')).toEqual(['Administrador']);
+  it('ajustar es del Administrador y del Operador; anular cualquier movimiento, solo del Administrador (P2)', () => {
+    expect(holders('consumables:adjust')).toEqual(['Administrador', 'Operador']);
+    expect(holders('consumables:reverse')).toEqual(['Administrador']);
   });
 
   it('todos consultan; el técnico entrega pero no ingresa ni traslada', () => {

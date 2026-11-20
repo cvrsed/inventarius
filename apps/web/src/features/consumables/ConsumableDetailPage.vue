@@ -560,7 +560,7 @@ async function goTo(movementId: string): Promise<void> {
                   @click="returning = m"
                 />
                 <UButton
-                  v-if="m.reversible && auth.can('consumables:adjust')"
+                  v-if="m.reversible && auth.can('consumables:reverse')"
                   icon="i-lucide-ban"
                   :label="t('consumables.actions.reverse')"
                   :aria-label="`${t('consumables.actions.reverse')} ${view.title} ${view.quantity}`"

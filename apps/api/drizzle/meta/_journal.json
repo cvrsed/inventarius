@@ -134,6 +134,13 @@
       "when": 1795185684488,
       "tag": "0018_consumable_returns",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1795186149125,
+      "tag": "0019_consumables_reverse_permission",
+      "breakpoints": true
     }
   ]
 }
