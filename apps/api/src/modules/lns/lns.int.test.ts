@@ -578,6 +578,7 @@ describe('registro en el LNS (RF-60 a RF-65)', () => {
         deviceProfile: { name: 'Perfil AU915', version: 'LoRaWAN 1.0.3', region: 'AU915' },
         hasAppKey: false,
         hasNwkKey: false,
+        missingKeys: ['appKey'],
       });
       expect(body.differences.map((d: { field: string }) => d.field)).toEqual([
         'joinEui',
@@ -710,6 +711,36 @@ describe('registro en el LNS (RF-60 a RF-65)', () => {
         expect(res.statusCode, res.body).toBe(200);
         expect(res.json().remote.deviceProfile).toBeNull();
         expect(res.json().remote.deviceProfileId).toBe('dp-remoto');
+      });
+    });
+
+    describe('si al dispositivo remoto le faltan las claves de join, se advierte (R6)', () => {
+      it('sin AppKey en el LNS (1.0.x): la lectura previa y la ficha lo marcan; con ella, no', async () => {
+        const without = await conflicted({ appKey: null });
+        expect((await linkPreview(without.a.id)).json().remote.missingKeys).toEqual(['appKey']);
+        await resolve(without.a.id, 'link');
+        expect((await lorawan(without.a.id)).registration.remote.missingKeys).toEqual(['appKey']);
+
+        const withKey = await conflicted({ appKey: NWK });
+        expect((await linkPreview(withKey.a.id)).json().remote.missingKeys).toEqual([]);
+        await resolve(withKey.a.id, 'link');
+        expect((await lorawan(withKey.a.id)).registration.remote.missingKeys).toEqual([]);
+      });
+
+      it('en LoRaWAN 1.1 hacen falta las dos claves: se marca la que falta', async () => {
+        reset();
+        chirp.deviceProfile = { ...DEFAULT_DEVICE_PROFILE, version: '1.1' };
+        const p = await newProfile();
+        const a = await readyAsset();
+        await fx.operator.patch(`${base}/assets/${a.id}/lorawan`, {
+          lorawanVersion: '1.1',
+          nwkKey: NWK,
+        });
+        chirp.remote.set(a.devEui, null);
+        chirp.remoteDetails.set(a.devEui, { appKey: APP_KEY, nwkKey: null });
+        await register(a.id, p.id);
+        await drain();
+        expect((await linkPreview(a.id)).json().remote.missingKeys).toEqual(['nwkKey']);
       });
     });
 

@@ -200,6 +200,8 @@ export const remoteDeviceSchema = z.object({
   deviceProfile: deviceProfileLabelSchema.nullable().default(null),
   hasAppKey: z.boolean(),
   hasNwkKey: z.boolean(),
+  /** Claves que el dispositivo necesita para hacer join (según la versión del activo) y el LNS no tiene. */
+  missingKeys: z.array(z.enum(['appKey', 'nwkKey'])).default([]),
 });
 export type RemoteDeviceDto = z.infer<typeof remoteDeviceSchema>;
 

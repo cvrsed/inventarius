@@ -411,6 +411,8 @@ export const lnsRegistrations = pgTable(
       deviceProfile?: { name: string | null; version: string | null; region: string | null } | null;
       hasAppKey: boolean;
       hasNwkKey: boolean;
+      /** Ausente en snapshots anteriores a la revisión 2. */
+      missingKeys?: ('appKey' | 'nwkKey')[];
       readAt: string;
     }>(),
     createdAt: createdAt(),

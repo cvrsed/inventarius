@@ -242,6 +242,8 @@ test.describe('LoRaWAN (RF-21, RF-50 a RF-66) contra un ChirpStack v4 real', () 
     await expect(dialog.getByTestId('link-differences')).toContainText(
       'AppKey: es distinta en el LNS y en el activo',
     );
+    // El dispositivo ajeno sí tiene su AppKey: no hay aviso de join imposible (R6).
+    await expect(dialog).not.toContainText('no podrá hacer join');
     // El device profile se muestra con nombre, versión y región, no como UUID (R5).
     await expect(dialog).toContainText('Inventarius pruebas · LoRaWAN 1.0.3 · AU915');
     await expect(dialog).not.toContainText(chirpstack.deviceProfileId);

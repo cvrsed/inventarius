@@ -299,6 +299,7 @@ describe('LorawanSection (RF-21, RF-41, RF-60)', () => {
       deviceProfile: { name: 'Perfil EU868', version: 'LoRaWAN 1.0.2', region: 'EU868' },
       hasAppKey: false,
       hasNwkKey: false,
+      missingKeys: ['appKey'],
       readAt: '2026-11-19T12:00:00.000Z',
       ...over,
     });
@@ -320,6 +321,28 @@ describe('LorawanSection (RF-21, RF-41, RF-60)', () => {
       expect(block.text()).not.toContain('dp-remoto');
       expect(block.text()).toContain('no está en el LNS');
       expect(w.text()).toContain('Guardada (cifrada)'); // la local, en el bloque de datos del activo
+    });
+
+    it('si al dispositivo del LNS le faltan claves, la ficha advierte que no podrá hacer join', async () => {
+      const w = await mountSection(
+        ['lorawan:read'],
+        data({
+          registration: registration('registered', { origin: 'linked', remote: remote() }) as never,
+        }),
+      );
+      expect(w.get('[data-testid="lorawan-remote"]').text()).toContain(
+        'El dispositivo en el LNS no tiene AppKey: no podrá hacer join',
+      );
+      const ok = await mountSection(
+        ['lorawan:read'],
+        data({
+          registration: registration('registered', {
+            origin: 'linked',
+            remote: remote({ hasAppKey: true, missingKeys: [] }),
+          }) as never,
+        }),
+      );
+      expect(ok.get('[data-testid="lorawan-remote"]').text()).not.toContain('no podrá hacer join');
     });
 
     it('un registrado por Inventarius no tiene ese bloque', async () => {

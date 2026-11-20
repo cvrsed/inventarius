@@ -10,7 +10,7 @@ import { errorMessage } from '@/features/auth/errors';
 import ReasonButton from '@/shared/ui/ReasonButton.vue';
 import { useLorawanMutations } from './api';
 import type { LinkAdoptField } from '@inventarius/shared';
-import { describeDifference, deviceProfileText, isUnsetJoinEui } from './link';
+import { describeDifference, deviceProfileText, isUnsetJoinEui, missingKeysText } from './link';
 
 /**
  * Vincular (RF-64): lee el dispositivo que ya existe en el LNS y muestra en qué difiere del activo antes de confirmar.
@@ -136,6 +136,18 @@ async function adopt(): Promise<void> {
               </dd>
             </dl>
           </section>
+
+          <UAlert
+            v-if="preview.remote.missingKeys.length"
+            color="warning"
+            variant="subtle"
+            role="alert"
+            :description="
+              t('lorawan.linkDialog.missingKeys', {
+                keys: missingKeysText(preview.remote.missingKeys, t),
+              })
+            "
+          />
 
           <section aria-labelledby="link-diff-title">
             <h3 id="link-diff-title" class="m-0 mb-2 text-base font-semibold text-highlighted">

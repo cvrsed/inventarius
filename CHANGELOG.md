@@ -37,6 +37,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). D
 - Las pruebas contra ChirpStack real exigen la marca `CHIRPSTACK_TEST_ENDPOINT`, usan prefijo por corrida y borran lo que crean; los dispositivos «ajenos» del bootstrap solo existen en `compose.e2e.yml` [R3].
 - Vincular: el usuario elige por campo qué adoptar del LNS; un JoinEUI en ceros (sin definir) no pisa el local por defecto [R4].
 - Vincular muestra el device profile con nombre, versión y región, en el diálogo y en la ficha [R5].
+- Vincular advierte, en el diálogo y en la ficha, que un dispositivo remoto sin AppKey (o NwkKey en 1.1) no podrá hacer join [R6].
 - Serie única por (modelo, serie) sin distinguir mayúsculas, migración 0016; el CSV admite la columna opcional «Modelo» [P18b].
 - En producción la app no arranca con la clave de cifrado por defecto de `compose.yml` [P22].
 

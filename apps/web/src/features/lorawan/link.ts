@@ -1,5 +1,10 @@
 import type { DeviceProfileLabelDto, LinkDifferenceDto } from '@inventarius/shared';
 
+/** «AppKey», «NwkKey» o «AppKey y NwkKey», para el aviso de las claves que el dispositivo remoto no tiene. */
+export function missingKeysText(keys: readonly ('appKey' | 'nwkKey')[], t: T): string {
+  return keys.map((k) => t(`lorawan.fields.${k}`)).join(' y ');
+}
+
 /** ChirpStack guarda un JoinEUI en ceros cuando no se definió ninguno. */
 export const isUnsetJoinEui = (v: string | null): boolean => v !== null && /^0{16}$/.test(v);
 

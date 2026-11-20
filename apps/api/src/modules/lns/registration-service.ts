@@ -63,6 +63,7 @@ const WORKER = { actorId: null, ip: null, actorLabel: 'worker' } as const;
 function toRemoteDto(
   r: RemoteDeviceDetails,
   deviceProfile: DeviceProfileLabelDto | null = null,
+  usesNwkKey = false,
 ): RemoteDeviceDto {
   return {
     name: r.name,
@@ -71,7 +72,19 @@ function toRemoteDto(
     deviceProfile,
     hasAppKey: r.appKey !== null,
     hasNwkKey: r.nwkKey !== null,
+    missingKeys: missingJoinKeys(r, usesNwkKey),
   };
+}
+
+/**
+ * Claves sin las que el dispositivo remoto no puede hacer join: la AppKey siempre y, en LoRaWAN 1.1, también la NwkKey.
+ * En ChirpStack 1.0.x la AppKey vive en `nwk_key`; el adaptador ya la entrega como `appKey`.
+ */
+function missingJoinKeys(r: RemoteDeviceDetails, usesNwkKey: boolean): ('appKey' | 'nwkKey')[] {
+  const out: ('appKey' | 'nwkKey')[] = [];
+  if (!r.appKey) out.push('appKey');
+  if (usesNwkKey && !r.nwkKey) out.push('nwkKey');
+  return out;
 }
 
 function toDto(r: RegistrationRow): LnsRegistrationDto {
@@ -87,6 +100,7 @@ function toDto(r: RegistrationRow): LnsRegistrationDto {
     remote: r.remoteSnapshot && {
       ...r.remoteSnapshot,
       deviceProfile: r.remoteSnapshot.deviceProfile ?? null,
+      missingKeys: r.remoteSnapshot.missingKeys ?? [],
     },
     updatedAt: r.updatedAt.toISOString(),
   };
@@ -383,7 +397,7 @@ export class RegistrationService implements RegistrationReader {
     return {
       profile: view.profile,
       externalId: view.remote.externalId,
-      remote: toRemoteDto(view.remote, remoteProfile),
+      remote: toRemoteDto(view.remote, remoteProfile, view.local.usesNwkKey),
       localDeviceProfile: localProfile,
       differences: compareRemoteDevice(view.local, view.remote),
       adoptable: Object.keys(adoptable) as LinkPreviewDto['adoptable'],
@@ -508,7 +522,10 @@ export class RegistrationService implements RegistrationReader {
         stepsDone: [COMPLETE],
         registeredAt: new Date(),
         lastOperation: 'register',
-        remoteSnapshot: { ...toRemoteDto(remote, remoteProfile), readAt: new Date().toISOString() },
+        remoteSnapshot: {
+          ...toRemoteDto(remote, remoteProfile, local.usesNwkKey),
+          readAt: new Date().toISOString(),
+        },
       });
       await this.audit.record(tx, {
         ...actor,

@@ -630,6 +630,8 @@ export const messages = {
         differs: 'es distinta en el LNS y en el activo',
       },
       rows: { name: 'Nombre', deviceProfile: 'Device profile', joinEui: 'JoinEUI' },
+      missingKeys:
+        'El dispositivo en el LNS no tiene {keys}: no podrá hacer join hasta que se cargue allí. Vincular no modifica el LNS.',
       remoteSection: 'Lo que tiene el LNS (al vincular)',
       readAt: 'Leído el',
     },

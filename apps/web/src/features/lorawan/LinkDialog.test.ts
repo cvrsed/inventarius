@@ -23,6 +23,7 @@ const preview = (over: Record<string, unknown> = {}) => ({
     deviceProfile: { name: 'Perfil EU868', version: 'LoRaWAN 1.0.2', region: 'EU868' },
     hasAppKey: false,
     hasNwkKey: false,
+    missingKeys: ['appKey'],
   },
   localDeviceProfile: { name: 'Perfil AU915', version: 'LoRaWAN 1.0.3', region: 'AU915' },
   differences: [
@@ -87,6 +88,23 @@ describe('LinkDialog: vincular (P6)', () => {
     expect(text).toContain('Datos del LNS que se adoptan en el activo');
     expect(isChecked('JoinEUI')).toBe(true);
     expect(text).toContain('Vincular no modifica el dispositivo en el LNS');
+  });
+
+  it('advierte que el dispositivo remoto no podrá hacer join si le falta la AppKey (o la NwkKey)', async () => {
+    await open(preview());
+    expect(document.body.textContent).toContain(
+      'El dispositivo en el LNS no tiene AppKey: no podrá hacer join hasta que se cargue allí',
+    );
+  });
+
+  it('si faltan las dos claves las nombra', async () => {
+    await open(preview({ remote: { ...preview().remote, missingKeys: ['appKey', 'nwkKey'] } }));
+    expect(document.body.textContent).toContain('no tiene AppKey y NwkKey');
+  });
+
+  it('sin claves faltantes no hay advertencia', async () => {
+    await open(preview({ remote: { ...preview().remote, hasAppKey: true, missingKeys: [] } }));
+    expect(document.body.textContent).not.toContain('no podrá hacer join');
   });
 
   it('ofrece adoptar los datos del LNS o cancelar; cancelar cierra sin llamar a nada más', async () => {
