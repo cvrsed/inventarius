@@ -63,6 +63,27 @@ describe('WarehouseSelect (P13)', () => {
     }
   });
 
+  it('lo elegido en el campo tampoco se recorta: envuelve en vez de truncar', async () => {
+    const w = mount(WarehouseSelect, {
+      props: { items, placeholder: 'Elige una bodega', id: 'ws2', modelValue: 'a' },
+      global: pagePlugins(),
+      attachTo: document.body,
+    });
+    mounted.push(w);
+    await flushPromises();
+    const value = w.get('#ws2 [data-slot="value"]');
+    expect(value.text()).toBe('Bodega central');
+    expect(value.classes()).toContain('whitespace-normal');
+    expect(value.classes()).not.toContain('truncate');
+    const empty = mount(WarehouseSelect, {
+      props: { items, placeholder: 'Elige una bodega', id: 'ws3', modelValue: '' },
+      global: pagePlugins(),
+      attachTo: document.body,
+    });
+    mounted.push(empty);
+    expect(empty.get('#ws3 [data-slot="placeholder"]').classes()).not.toContain('truncate');
+  });
+
   it('elegir una opción actualiza el valor', async () => {
     const w = await open();
     options()

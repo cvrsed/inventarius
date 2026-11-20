@@ -35,6 +35,7 @@ import { lowStockLabel } from './lowStock';
 import { ACTION_ICONS, MOVEMENT_ICONS, describeMovement } from './movements';
 import ReturnDialog from './ReturnDialog.vue';
 import ReverseDialog from './ReverseDialog.vue';
+import WarehouseSelect, { type WarehouseOption } from './WarehouseSelect.vue';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -147,13 +148,16 @@ const views = computed(() =>
   unit.value ? movements.value.map((m) => ({ m, view: describeMovement(m, unit.value!, t) })) : [],
 );
 const filtered = computed(() => Object.values(filters.value).some((v) => v !== ''));
-const warehouseItems = computed(() => [
-  { value: '', label: t('consumables.history.allWarehouses') },
-  ...(consumable.value?.stockByWarehouse ?? []).map((s: WarehouseStockDto) => ({
-    value: s.location.id,
-    label: s.location.path,
+/** Bodegas del filtro del historial: las que tienen o tuvieron stock de este consumible, con su stock a la derecha. */
+const warehouseItems = computed<WarehouseOption[]>(() =>
+  (consumable.value?.stockByWarehouse ?? []).map((s: WarehouseStockDto) => ({
+    id: s.location.id,
+    name: s.location.name,
+    parents: s.location.path.split(' > ').slice(0, -1).join(' › '),
+    stock: qty(s.quantity),
+    ...(s.location.active ? {} : { note: t('consumables.stock.inactiveWarehouse') }),
   })),
-]);
+);
 const kindItems = computed(() => [
   { value: '', label: t('consumables.history.allKinds') },
   ...HISTORY_KINDS.map((k) => ({ value: k, label: t(`consumables.kinds.${k}`) })),
@@ -407,11 +411,13 @@ async function goTo(movementId: string): Promise<void> {
         <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
           <label class="flex flex-col gap-1 text-sm">
             <span class="text-muted">{{ t('consumables.history.filterWarehouse') }}</span>
-            <AppSelect
+            <WarehouseSelect
+              id="hs-warehouse"
               :model-value="filters.locationId"
               :items="warehouseItems"
-              class="w-full"
-              @update:model-value="(v: string | number) => setFilter('locationId', v)"
+              :all-label="t('consumables.history.allWarehouses')"
+              :placeholder="t('consumables.history.allWarehouses')"
+              @update:model-value="(v: string) => setFilter('locationId', v)"
             />
           </label>
           <label class="flex flex-col gap-1 text-sm">

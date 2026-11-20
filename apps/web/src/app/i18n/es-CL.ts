@@ -421,6 +421,8 @@ export const messages = {
       inactiveEntry: 'Bodega inactiva: solo admite salidas',
       inactiveExit: 'Bodega inactiva: solo se puede sacar stock',
       sameAsOrigin: 'Es la bodega de origen',
+      hasMinimum: 'Ya tiene un mínimo en este formulario',
+      inactiveMinimum: 'Bodega inactiva: no se le agregan mínimos nuevos',
     },
     returnDialog: {
       title: 'Registrar devolución',

@@ -2,7 +2,7 @@ import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { jsonResponse, mockApi, pagePlugins } from '@/test-utils';
 import ConsumableFormDialog from './ConsumableFormDialog.vue';
-import { consumable, ids } from './fixtures';
+import { consumable, ids, warehouses } from './fixtures';
 
 const mounted: VueWrapper[] = [];
 afterEach(() => {
@@ -63,9 +63,7 @@ describe('formulario de consumible (RF-70, D4, D9)', () => {
     await type('#cs-name', 'Alcohol gel');
     state['category'] = { id: ids.cat, name: 'EPP' };
     state['unit'] = { id: ids.unit, name: 'litro', decimals: 3 };
-    state['minimums'] = [
-      { key: 1, warehouse: { id: ids.main, name: 'Bodega central' }, quantity: '0,5' },
-    ];
+    state['minimums'] = [{ key: 1, warehouse: ids.main, quantity: '0,5' }];
     await flushPromises();
     await type('#cs-min', '2,5');
     await submit();
@@ -87,5 +85,28 @@ describe('formulario de consumible (RF-70, D4, D9)', () => {
     await open(consumable({ hasMovements: true }));
     expect(document.body.textContent).toContain('La unidad no se puede cambiar');
     expect(document.body.querySelector<HTMLButtonElement>('#cs-unit')!.disabled).toBe(true);
+  });
+});
+
+describe('selector de bodega de los mínimos (P13)', () => {
+  it('muestra nombre, ruta y stock; apaga la inactiva y la que ya tiene un mínimo', async () => {
+    mockApi({ 'GET /api/v1/locations': () => warehouses() });
+    const item = consumable();
+    const { state } = await open(item);
+    state['minimums'] = [
+      { key: 1, warehouse: ids.main, quantity: '5' },
+      { key: 2, warehouse: '', quantity: '' },
+    ];
+    await flushPromises();
+    (document.body.querySelector('#cs-mw-2') as HTMLElement).click();
+    await flushPromises();
+    const options = [...document.body.querySelectorAll<HTMLElement>('[role="option"]')];
+    const by = (name: string) => options.find((o) => o.textContent?.includes(name))!;
+    expect(by('Bodega anexo').textContent).toContain('Zensi Chile');
+    expect(by('Bodega anexo').textContent).toContain('2 pares');
+    expect(by('Bodega central').getAttribute('data-disabled')).not.toBeNull();
+    expect(by('Bodega central').textContent).toContain('Ya tiene un mínimo');
+    expect(by('Bodega cerrada').getAttribute('data-disabled')).not.toBeNull();
+    expect(by('Bodega cerrada').textContent).toContain('Bodega inactiva');
   });
 });

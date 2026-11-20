@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import USelectMenu from '@nuxt/ui/components/SelectMenu.vue';
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { MENU_CONTENT, WRAPPED_MENU_UI } from '@/shared/ui/menuUi';
 import { useInertWhileOpen } from '@/shared/ui/useInertWhileOpen';
@@ -22,8 +23,34 @@ export interface WarehouseOption {
  * Selector de bodega de los movimientos de consumibles (P13): nombre destacado, ruta en una segunda línea más chica y el
  * stock a la derecha. Nunca recorta: los textos largos pasan a otra línea, igual en escritorio que a 360 px.
  */
-defineProps<{ items: WarehouseOption[]; placeholder: string; id?: string; disabled?: boolean }>();
+const props = defineProps<{
+  items: WarehouseOption[];
+  placeholder: string;
+  id?: string;
+  disabled?: boolean;
+  /** Si viene, la primera opción es «todas» (valor vacío): para filtros. */
+  allLabel?: string;
+}>();
 const model = defineModel<string>({ default: '' });
+
+/** reka-ui no admite opciones con valor vacío: «todas» usa un centinela interno. */
+const ALL = '__all__';
+const menuItems = computed(() => {
+  const list = props.items.map((i) => ({ ...i, disabled: !!i.disabledReason }));
+  return props.allLabel
+    ? [{ id: ALL, name: props.allLabel, parents: '', disabled: false }, ...list]
+    : list;
+});
+const shown = computed(() =>
+  model.value === '' ? (props.allLabel ? ALL : undefined) : model.value,
+);
+
+/** Nada se recorta con «…»: ni las opciones ni lo elegido en el campo pasan de largo; envuelven a otra línea. */
+const WAREHOUSE_UI = {
+  ...WRAPPED_MENU_UI,
+  value: 'text-clip whitespace-normal break-words text-left',
+  placeholder: 'text-clip whitespace-normal break-words text-left',
+} as const;
 
 const { t } = useI18n();
 const onOpen = useInertWhileOpen();
@@ -32,8 +59,8 @@ const onOpen = useInertWhileOpen();
 <template>
   <USelectMenu
     :id="id"
-    :model-value="model === '' ? undefined : model"
-    :items="items.map((i) => ({ ...i, disabled: !!i.disabledReason }))"
+    :model-value="shown"
+    :items="menuItems"
     value-key="id"
     label-key="name"
     :filter-fields="['name', 'parents']"
@@ -45,9 +72,9 @@ const onOpen = useInertWhileOpen();
       name: `${id ?? 'warehouse'}-search`,
     }"
     class="w-full"
-    :ui="WRAPPED_MENU_UI"
+    :ui="WAREHOUSE_UI"
     :content="MENU_CONTENT"
-    @update:model-value="(v: string | null | undefined) => (model = v ?? '')"
+    @update:model-value="(v: string | null | undefined) => (model = !v || v === ALL ? '' : v)"
     @update:open="onOpen"
   >
     <template #item="{ item }">

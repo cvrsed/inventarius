@@ -299,4 +299,24 @@ describe('ficha del consumible (RF-73, RF-74)', () => {
       expect(new Set(drawings).size).toBe(labels.length);
     });
   });
+
+  describe('selector de bodega del filtro del historial (P13)', () => {
+    it('lista las bodegas con su stock a la derecha y filtra el historial al elegir una', async () => {
+      const w = await mountPage(['consumables:read']);
+      (document.body.querySelector('#hs-warehouse') as HTMLElement).click();
+      await flushPromises();
+      const options = [...document.body.querySelectorAll<HTMLElement>('[role="option"]')];
+      expect(options.map((o) => o.textContent)).toEqual([
+        expect.stringContaining('Todas las bodegas'),
+        expect.stringContaining('Bodega central'),
+        expect.stringContaining('Bodega anexo'),
+      ]);
+      expect(options[1]!.querySelector('[data-testid="warehouse-stock"]')?.textContent).toBe(
+        '10 pares',
+      );
+      options[2]!.click();
+      await flushPromises();
+      expect(w.text()).toContain('Limpiar filtros');
+    });
+  });
 });

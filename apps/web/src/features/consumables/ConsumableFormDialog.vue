@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ConsumableDetailDto } from '@inventarius/shared';
+import { formatQuantity, type ConsumableDetailDto } from '@inventarius/shared';
 import UAlert from '@nuxt/ui/components/Alert.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
 import UFormField from '@nuxt/ui/components/FormField.vue';
@@ -13,8 +13,9 @@ import { errorMessage } from '@/features/auth/errors';
 import { fetchOptions } from '@/features/catalog/api';
 import { ApiError } from '@/shared/api/http';
 import RemoteSelect, { type RemoteOption } from '@/shared/ui/RemoteSelect.vue';
+import WarehouseSelect, { type WarehouseOption } from './WarehouseSelect.vue';
 import { useUnsavedChanges } from '@/shared/ui/useUnsavedChanges';
-import { useConsumableMutations } from './api';
+import { useConsumableMutations, useWarehouses } from './api';
 import { quantityProblem, toApiQuantity } from './quantity';
 
 const props = defineProps<{ item: ConsumableDetailDto | null }>();
@@ -26,7 +27,8 @@ const { create, update } = useConsumableMutations();
 
 interface MinimumRow {
   key: number;
-  warehouse: RemoteOption | null;
+  /** Id de la bodega elegida (vacío = sin elegir). */
+  warehouse: string;
   quantity: string;
 }
 
@@ -65,7 +67,7 @@ watch(
       .filter((s) => s.minQuantity !== null)
       .map((s) => ({
         key: nextKey++,
-        warehouse: { id: s.location.id, name: s.location.name },
+        warehouse: s.location.id,
         quantity: (s.minQuantity ?? '').replace('.', ','),
       }));
   },
@@ -119,7 +121,7 @@ async function submit(): Promise<void> {
     notes: notes.value.trim() || null,
     minStock: minStock.value.trim() ? toApiQuantity(minStock.value) : null,
     warehouseMinimums: minimums.value.map((m) => ({
-      locationId: m.warehouse!.id,
+      locationId: m.warehouse,
       minQuantity: toApiQuantity(m.quantity),
     })),
   };
@@ -152,13 +154,29 @@ async function submit(): Promise<void> {
   }
 }
 
-const addMinimum = () => minimums.value.push({ key: nextKey++, warehouse: null, quantity: '' });
+const addMinimum = () => minimums.value.push({ key: nextKey++, warehouse: '', quantity: '' });
 const removeMinimum = (key: number) =>
   (minimums.value = minimums.value.filter((m) => m.key !== key));
 
 const categories = (q: string) => fetchOptions('consumableCategories', q);
 const units = (q: string) => fetchOptions('units', q);
-const warehouses = (q: string) => fetchOptions('locations', q, { extra: { type: 'warehouse' } });
+
+const { data: allWarehouses } = useWarehouses();
+const warehouseName = (id: string) => allWarehouses.value?.find((w) => w.id === id)?.name ?? '';
+/** Bodegas para un mínimo: la ya elegida en la fila siempre cabe; las inactivas y las ya usadas en otra fila se apagan. */
+function minimumItems(row: MinimumRow): WarehouseOption[] {
+  const taken = new Set(minimums.value.filter((m) => m.key !== row.key).map((m) => m.warehouse));
+  return (allWarehouses.value ?? []).map((w) => {
+    const stock = props.item?.stockByWarehouse.find((s) => s.location.id === w.id)?.quantity;
+    const option: WarehouseOption = { id: w.id, name: w.name, parents: w.parents };
+    if (stock !== undefined && props.item) option.stock = formatQuantity(stock, props.item.unit);
+    if (taken.has(w.id)) option.disabledReason = t('consumables.picker.hasMinimum');
+    else if (!w.active && row.warehouse !== w.id) {
+      option.disabledReason = t('consumables.picker.inactiveMinimum');
+    }
+    return option;
+  });
+}
 
 const { requestClose } = useUnsavedChanges(
   () => [name.value, category.value, unit.value, notes.value, minStock.value, minimums.value],
@@ -253,11 +271,10 @@ const onOpenChange = (open: boolean) => {
               :error="errors[`min-${m.key}-warehouse`]"
               class="flex-1"
             >
-              <RemoteSelect
+              <WarehouseSelect
                 :id="`cs-mw-${m.key}`"
                 v-model="m.warehouse"
-                source="warehouses-form"
-                :fetcher="warehouses"
+                :items="minimumItems(m)"
                 :placeholder="t('consumables.form.warehousePlaceholder')"
               />
             </UFormField>
@@ -281,7 +298,9 @@ const onOpenChange = (open: boolean) => {
               variant="ghost"
               class="self-end sm:mt-6"
               :aria-label="
-                t('consumables.form.removeMinimum', { name: m.warehouse?.name ?? String(i + 1) })
+                t('consumables.form.removeMinimum', {
+                  name: warehouseName(m.warehouse) || String(i + 1),
+                })
               "
               @click="removeMinimum(m.key)"
             />
