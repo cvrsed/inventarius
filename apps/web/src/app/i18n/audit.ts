@@ -205,6 +205,7 @@ export const AUDIT_FIELD_LABELS: Record<string, string> = {
   movementDate: 'Fecha del movimiento',
   registeredAt: 'Registrado el',
   receivedOn: 'Fecha del ingreso',
+  returned: 'Devuelto',
 };
 
 /**
@@ -213,6 +214,8 @@ export const AUDIT_FIELD_LABELS: Record<string, string> = {
  */
 const ENTITY_FIELD_LABELS: Partial<Record<AuditEntity, Record<string, string>>> = {
   lns_profile: { kind: 'Tipo de LNS' },
+  // En consumibles el lugar es siempre una bodega (P11).
+  consumable: { location: 'Bodega' },
 };
 
 export const auditFieldLabel = (field: string, entity?: string): string =>

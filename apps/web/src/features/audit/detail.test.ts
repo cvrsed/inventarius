@@ -330,3 +330,69 @@ describe('consumibles: anulación con el detalle del movimiento anulado (P3)', (
     expect(by['Registrado el']).toBe('20-11-2026 12:30');
   });
 });
+
+describe('consumibles: orden fijo de campos y «Bodega» (P11)', () => {
+  const labels = (diff: Record<string, unknown>) =>
+    describeAuditDetail(diff, text, { entity: 'consumable' }).map((r) => r.label);
+
+  it('muestra tipo, cantidad, unidad, bodega, saldos, receptor, motivo, nota y fechas, aunque lleguen desordenados', () => {
+    // Postgres devuelve el jsonb con las claves en otro orden: el orden de lectura lo pone la web.
+    expect(
+      labels({
+        registeredAt: '2026-11-20T15:30:00.000Z',
+        note: 'Cambio de turno',
+        stockAfter: '6',
+        unit: 'par',
+        recipient: 'Persona Inventada',
+        stockBefore: '10',
+        location: 'Bodega central',
+        quantity: '4',
+        receivedOn: '2026-11-18',
+      }),
+    ).toEqual([
+      'Cantidad',
+      'Unidad',
+      'Bodega',
+      'Saldo antes',
+      'Saldo después',
+      'Recibe',
+      'Nota',
+      'Fecha del ingreso',
+      'Registrado el',
+    ]);
+  });
+
+  it('un traslado usa origen y destino con sus saldos, y una anulación pone el tipo primero', () => {
+    expect(
+      labels({
+        toStockAfter: '4',
+        reversalReason: 'Error',
+        fromLocation: 'Bodega central',
+        quantity: '4',
+        toStockBefore: '0',
+        originalKind: 'transfer_out',
+        fromStockAfter: '10',
+        toLocation: 'Bodega anexo',
+        fromStockBefore: '6',
+        unit: 'par',
+      }),
+    ).toEqual([
+      'Movimiento anulado',
+      'Cantidad',
+      'Unidad',
+      'Bodega de origen',
+      'Bodega de destino',
+      'Saldo del origen antes',
+      'Saldo del origen después',
+      'Saldo del destino antes',
+      'Saldo del destino después',
+      'Motivo de la anulación',
+    ]);
+  });
+
+  it('en los eventos de consumibles la ubicación se llama «Bodega»; en el resto, no', () => {
+    expect(labels({ location: 'Bodega central' })).toEqual(['Bodega']);
+    const other = describeAuditDetail({ location: 'Sala 1' }, text, { entity: 'asset' });
+    expect(other[0]!.label).not.toBe('Bodega');
+  });
+});

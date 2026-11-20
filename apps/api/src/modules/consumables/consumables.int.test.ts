@@ -1720,6 +1720,47 @@ describe('auditoría (D13)', () => {
     });
   });
 
+  it('un traslado audita el saldo antes y después de las dos bodegas, y una devolución lo devuelto (P11)', async () => {
+    const c = await newConsumable({ name: 'Auditoría de traslado' });
+    await receive(c.id, ids.main, '10');
+    await receive(c.id, ids.annex, '1');
+    await move(operator, c.id, 'transfers', {
+      fromLocationId: ids.main,
+      toLocationId: ids.annex,
+      quantity: '4',
+    });
+    const del = await move(operator, c.id, 'deliveries', {
+      locationId: ids.main,
+      quantity: '3',
+      recipientName: 'Persona Inventada',
+    });
+    await operator.post(`${base}/consumable-movements/${del.json().movements[0].id}/returns`, {
+      quantity: '1',
+    });
+    const events = (
+      (await admin.get(`${base}/audit?entity=consumable&pageSize=100`)).json().data as Json[]
+    ).filter((e) => e.entityId === c.id);
+    const by = (action: string) => events.find((e) => e.action === action)!.diff;
+    expect(by('consumable.transfer')).toMatchObject({
+      quantity: '4',
+      unit: 'par',
+      fromLocation: 'Bodega central',
+      toLocation: 'Bodega anexo',
+      fromStockBefore: '10',
+      fromStockAfter: '6',
+      toStockBefore: '1',
+      toStockAfter: '5',
+    });
+    expect(by('consumable.return')).toMatchObject({
+      quantity: '1',
+      location: 'Bodega central',
+      stockBefore: '3',
+      stockAfter: '4',
+      recipient: 'Persona Inventada',
+      returned: '1 par de 3 pares',
+    });
+  });
+
   it('una anulación que falla no deja rastro; los cambios de catálogo se auditan', async () => {
     const u = await create(operator, 'measure-units', {
       name: 'bidón',

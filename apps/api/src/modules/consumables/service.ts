@@ -586,14 +586,15 @@ export class ConsumablesService {
         entityId: consumableId,
         entityLabel: consumable.name,
         diff: {
-          fromLocation: from.path,
-          toLocation: to.path,
           quantity: input.quantity,
           unit: unit.name,
-          note: input.note,
-          stockBefore: normalizeQuantity(fromBefore),
+          fromLocation: from.path,
+          toLocation: to.path,
+          fromStockBefore: normalizeQuantity(fromBefore),
           fromStockAfter: normalizeQuantity(fromAfter),
+          toStockBefore: normalizeQuantity(locked.get(to.id)!),
           toStockAfter: normalizeQuantity(toAfter),
+          note: input.note,
         },
       });
       return {
