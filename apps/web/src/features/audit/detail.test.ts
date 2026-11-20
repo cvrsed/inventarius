@@ -272,3 +272,27 @@ describe('describeAuditDetail (RF-31)', () => {
     });
   });
 });
+
+describe('consumibles: movimientos sin claves crudas', () => {
+  it('muestra cantidades con coma decimal y el motivo del ajuste traducido', () => {
+    const rows = describeAuditDetail(
+      {
+        location: 'Bodega central',
+        direction: 'subtract',
+        quantity: '2.5',
+        unit: 'litro',
+        reason: 'waste_damage',
+        stockBefore: '1234.5',
+        stockAfter: '1232',
+      },
+      text,
+      { entity: 'consumable' },
+    );
+    const by = Object.fromEntries(rows.map((r) => [r.field, r.value]));
+    expect(by['quantity']).toBe('2,5');
+    expect(by['stockBefore']).toBe('1.234,5');
+    expect(by['direction']).toBe('Resta');
+    expect(by['reason']).toBe('Merma o daño');
+    expect(by['location']).toBe('Bodega central');
+  });
+});

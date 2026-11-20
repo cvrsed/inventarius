@@ -13,6 +13,12 @@ export const PERMISSIONS = [
   'user:manage',
   'role:manage',
   'audit:read',
+  'consumables:read',
+  'consumables:manage',
+  'consumables:receive',
+  'consumables:deliver',
+  'consumables:transfer',
+  'consumables:adjust',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -38,6 +44,11 @@ const OPERATOR: readonly Permission[] = [
   'lorawan:read',
   'lorawan:register',
   'audit:read',
+  'consumables:read',
+  'consumables:manage',
+  'consumables:receive',
+  'consumables:deliver',
+  'consumables:transfer',
 ];
 
 /** Roles semilla y su matriz (sección 3). Fuente de verdad del código; la migración la replica y un test lo verifica. */
@@ -58,13 +69,20 @@ export const SEED_ROLES: readonly SeedRole[] = [
     name: 'Técnico de campo',
     description: 'Asigna activos y registra dispositivos en LNS desde terreno.',
     isProtected: false,
-    permissions: ['asset:read', 'asset:checkout', 'lorawan:read', 'lorawan:register'],
+    permissions: [
+      'asset:read',
+      'asset:checkout',
+      'lorawan:read',
+      'lorawan:register',
+      'consumables:read',
+      'consumables:deliver',
+    ],
   },
   {
     name: 'Lector',
     description: 'Solo consulta.',
     isProtected: false,
-    permissions: ['asset:read', 'lorawan:read'],
+    permissions: ['asset:read', 'lorawan:read', 'consumables:read'],
   },
 ];
 

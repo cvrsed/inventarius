@@ -1,4 +1,5 @@
 import { auditFieldLabel, auditValueLabel } from '@/app/i18n/audit';
+import { formatDecimal } from '@inventarius/shared';
 import { formatDateOnly } from '@/shared/format/format';
 
 /** Una línea del detalle: un valor, o un antes/después cuando el campo cambió. */
@@ -77,6 +78,31 @@ export const EVENT_FIELDS: ReadonlySet<string> = new Set([
   'returnedTo',
   'assignedTo',
   'assignedToType',
+  'quantity',
+  'unit',
+  'stockBefore',
+  'stockAfter',
+  'fromStockAfter',
+  'toStockAfter',
+  'recipient',
+  'recipientRef',
+  'direction',
+  'fromLocation',
+  'toLocation',
+  'originalKind',
+  'receivedOn',
+  'supplier',
+  'location',
+]);
+
+/** Campos de cantidad: llegan como texto con punto decimal y se muestran en es-CL (coma decimal). */
+const QUANTITY_FIELDS: ReadonlySet<string> = new Set([
+  'quantity',
+  'minStock',
+  'stockBefore',
+  'stockAfter',
+  'fromStockAfter',
+  'toStockAfter',
 ]);
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
@@ -113,6 +139,8 @@ export function formatDetailValue(
   if (typeof value === 'string') {
     const enumerated = auditValueLabel(field, value, entity);
     if (enumerated !== undefined) return enumerated;
+    if (QUANTITY_FIELDS.has(field) && /^\d+(\.\d+)?$/.test(value)) return formatDecimal(value);
+    if (field === 'receivedOn' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return formatDateOnly(value);
     if (
       (field === 'purchaseDate' || field === 'expectedReturnOn') &&
       /^\d{4}-\d{2}-\d{2}$/.test(value)

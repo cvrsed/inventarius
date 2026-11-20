@@ -3,6 +3,7 @@ import type {
   CatalogListQuery,
   CategoryDto,
   CategoryExtension,
+  CategoryScope,
   LocationDto,
   LocationType,
   ManufacturerDto,
@@ -73,9 +74,9 @@ export class CatalogService {
   readonly categories: CatalogEntity<
     CategoryRow,
     CategoryDto,
-    { name: string; extension: string },
+    { name: string; extension: string; scope: string },
     { name?: string | undefined; extension?: string | undefined; active?: boolean | undefined },
-    ListQuery
+    ListQuery & { scope?: string | undefined }
   >;
   readonly manufacturers: CatalogEntity<
     ManufacturerRow,
@@ -120,16 +121,30 @@ export class CatalogService {
           id: r.id,
           name: r.name,
           extension: r.extension as CategoryExtension,
+          scope: r.scope as CategoryScope,
           active: r.active,
           updatedAt: iso(r.updatedAt),
         }),
-        snapshot: (r) => ({ name: r.name, extension: r.extension, active: r.active }),
-        list: (e, q) => repo.listCategories(e, listOpts(q)),
+        snapshot: (r) => ({
+          name: r.name,
+          extension: r.extension,
+          scope: r.scope,
+          active: r.active,
+        }),
+        list: (e, q) => repo.listCategories(e, { ...listOpts(q), scope: q.scope }),
         get: (e, id) => repo.getCategory(e, id),
         insert: (e, v) => repo.insertCategory(e, v),
         update: (e, id, v) => repo.updateCategory(e, id, compact(v)),
         remove: (e, id) => repo.deleteCategory(e, id),
         inUse: (e, id) => repo.categoryInUse(e, id),
+        beforeUpdate: async (_tx, current, patch) => {
+          if (current.scope === 'consumable' && patch.extension && patch.extension !== 'none') {
+            throw new ValidationError('Las categorías de consumibles no tienen extensión', {
+              extension: ['Las categorías de consumibles no tienen extensión'],
+            });
+          }
+          return patch;
+        },
       },
       db,
       audit,
@@ -313,6 +328,8 @@ export class CatalogService {
       else {
         extension = c.extension;
         if (!c.active) errors['categoryId'] = ['La categoría está inactiva'];
+        else if (c.scope !== 'asset')
+          errors['categoryId'] = ['Esa categoría es de consumibles, no de activos'];
       }
     }
     let out = input;

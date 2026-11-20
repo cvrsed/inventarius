@@ -153,6 +153,8 @@ export const categories = pgTable('categories', {
   name: citext('name').notNull().unique(),
   /** `none` | `lorawan`: con `lorawan` la ficha del activo suma la sección LoRaWAN (F3). */
   extension: text('extension').notNull().default('none'),
+  /** `asset` (modelos de activos) | `consumable` (consumibles, F3.5). No cambia después de creada. */
+  scope: text('scope').notNull().default('asset'),
   active: boolean('active').notNull().default(true),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
@@ -427,5 +429,162 @@ export const lnsRegistrations = pgTable(
     ),
     check('lns_registrations_origin_chk', sql`${t.origin} IN ('created', 'linked')`),
     check('lns_registrations_operation_chk', sql`${t.lastOperation} IN ('register', 'deregister')`),
+  ],
+);
+
+// --- Consumibles (RF-70 a RF-74, ADR 0008) ---
+
+/** Unidades de medida administrables (D4): cuántos decimales admite una cantidad en cada una. */
+export const measureUnits = pgTable(
+  'measure_units',
+  {
+    id: pk(),
+    name: citext('name').notNull().unique(),
+    plural: text('plural').notNull(),
+    abbreviation: text('abbreviation').notNull(),
+    decimals: integer('decimals').notNull().default(0),
+    active: boolean('active').notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [check('measure_units_decimals_chk', sql`${t.decimals} BETWEEN 0 AND 3`)],
+);
+
+export const consumables = pgTable(
+  'consumables',
+  {
+    id: pk(),
+    name: citext('name').notNull().unique(),
+    categoryId: uuid('category_id')
+      .notNull()
+      .references(() => categories.id, { onDelete: 'restrict' }),
+    unitId: uuid('unit_id')
+      .notNull()
+      .references(() => measureUnits.id, { onDelete: 'restrict' }),
+    notes: text('notes'),
+    /** Mínimo global (contra el total de todas las bodegas). Nulo = sin mínimo. */
+    minStock: numeric('min_stock', { precision: 14, scale: 3 }),
+    active: boolean('active').notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index('consumables_category_idx').on(t.categoryId),
+    index('consumables_unit_idx').on(t.unitId),
+    check('consumables_min_stock_chk', sql`${t.minStock} IS NULL OR ${t.minStock} > 0`),
+  ],
+);
+
+/** Mínimo de un consumible en una bodega concreta (se compara con el saldo de esa bodega). */
+export const consumableWarehouseMinimums = pgTable(
+  'consumable_warehouse_minimums',
+  {
+    consumableId: uuid('consumable_id')
+      .notNull()
+      .references(() => consumables.id, { onDelete: 'cascade' }),
+    locationId: uuid('location_id')
+      .notNull()
+      .references(() => locations.id, { onDelete: 'restrict' }),
+    minQuantity: numeric('min_quantity', { precision: 14, scale: 3 }).notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.consumableId, t.locationId] }),
+    index('consumable_minimums_location_idx').on(t.locationId),
+    check('consumable_minimums_qty_chk', sql`${t.minQuantity} > 0`),
+  ],
+);
+
+/**
+ * Libro de movimientos: append-only (la app no tiene UPDATE ni DELETE, D2) y fuente de verdad del stock.
+ * `delta` lleva el signo respecto de la bodega; el saldo de una bodega es la suma de sus `delta`.
+ */
+export const consumableMovements = pgTable(
+  'consumable_movements',
+  {
+    id: pk(),
+    consumableId: uuid('consumable_id')
+      .notNull()
+      .references(() => consumables.id, { onDelete: 'restrict' }),
+    locationId: uuid('location_id')
+      .notNull()
+      .references(() => locations.id, { onDelete: 'restrict' }),
+    /** `receipt` | `delivery` | `adjustment` | `transfer_out` | `transfer_in` | `reversal`. */
+    kind: text('kind').notNull(),
+    delta: numeric('delta', { precision: 14, scale: 3 }).notNull(),
+    /** Cuándo ocurrió (en un ingreso puede ser una fecha pasada); `created_at` es cuándo se registró. */
+    occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
+    actorId: uuid('actor_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'restrict' }),
+    supplier: text('supplier'),
+    /** Nota libre; en una anulación es el motivo (obligatorio). */
+    note: text('note'),
+    /** Solo en ajustes: `physical_count` | `waste_damage` | `loss` | `other`. */
+    reason: text('reason'),
+    recipientUserId: uuid('recipient_user_id').references(() => users.id, { onDelete: 'restrict' }),
+    recipientName: text('recipient_name'),
+    recipientRef: text('recipient_ref'),
+    /** Une la salida y la entrada de un traslado (y las dos de su anulación). */
+    transferId: uuid('transfer_id'),
+    /** En una anulación, el movimiento que anula; único: un movimiento se anula una sola vez. */
+    reversesId: uuid('reverses_id')
+      .unique()
+      .references((): AnyPgColumn => consumableMovements.id, { onDelete: 'restrict' }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index('consumable_movements_consumable_idx').on(t.consumableId, t.occurredAt, t.id),
+    index('consumable_movements_location_idx').on(t.locationId),
+    index('consumable_movements_transfer_idx').on(t.transferId),
+    index('consumable_movements_recipient_idx').on(t.recipientUserId),
+    check(
+      'consumable_movements_kind_chk',
+      sql`${t.kind} IN ('receipt', 'delivery', 'adjustment', 'transfer_out', 'transfer_in', 'reversal')`,
+    ),
+    check('consumable_movements_delta_chk', sql`${t.delta} <> 0`),
+    check(
+      'consumable_movements_sign_chk',
+      sql`(${t.kind} IN ('receipt', 'transfer_in') AND ${t.delta} > 0) OR (${t.kind} IN ('delivery', 'transfer_out') AND ${t.delta} < 0) OR ${t.kind} IN ('adjustment', 'reversal')`,
+    ),
+    check(
+      'consumable_movements_recipient_chk',
+      sql`(${t.kind} = 'delivery' AND ((${t.recipientUserId} IS NULL) <> (${t.recipientName} IS NULL)) AND (${t.recipientRef} IS NULL OR ${t.recipientName} IS NOT NULL)) OR (${t.kind} <> 'delivery' AND ${t.recipientUserId} IS NULL AND ${t.recipientName} IS NULL AND ${t.recipientRef} IS NULL)`,
+    ),
+    check(
+      'consumable_movements_reversal_chk',
+      sql`(${t.kind} = 'reversal') = (${t.reversesId} IS NOT NULL) AND (${t.kind} <> 'reversal' OR ${t.note} IS NOT NULL)`,
+    ),
+    check(
+      'consumable_movements_transfer_chk',
+      sql`${t.kind} NOT IN ('transfer_out', 'transfer_in') OR ${t.transferId} IS NOT NULL`,
+    ),
+    check(
+      'consumable_movements_reason_chk',
+      sql`(${t.kind} = 'adjustment' AND ${t.reason} IN ('physical_count', 'waste_damage', 'loss', 'other') AND (${t.reason} <> 'other' OR ${t.note} IS NOT NULL)) OR (${t.kind} <> 'adjustment' AND ${t.reason} IS NULL)`,
+    ),
+  ],
+);
+
+/**
+ * Saldo materializado por (consumible, bodega). Se actualiza en la misma transacción que el movimiento, con la fila
+ * bloqueada (`FOR UPDATE`), y el CHECK impide que quede negativo aunque falle una regla de la app (D3).
+ * `consumables:verify` compara cada saldo con la suma del libro (D2).
+ */
+export const consumableStock = pgTable(
+  'consumable_stock',
+  {
+    consumableId: uuid('consumable_id')
+      .notNull()
+      .references(() => consumables.id, { onDelete: 'restrict' }),
+    locationId: uuid('location_id')
+      .notNull()
+      .references(() => locations.id, { onDelete: 'restrict' }),
+    quantity: numeric('quantity', { precision: 14, scale: 3 }).notNull().default('0'),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.consumableId, t.locationId] }),
+    index('consumable_stock_location_idx').on(t.locationId),
+    check('consumable_stock_non_negative_chk', sql`${t.quantity} >= 0`),
   ],
 );

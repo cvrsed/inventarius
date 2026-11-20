@@ -1,4 +1,5 @@
-import { CATEGORY_EXTENSIONS, LOCATION_TYPES, STATUS_KINDS } from './catalog.js';
+import { CATEGORY_EXTENSIONS, CATEGORY_SCOPES, LOCATION_TYPES, STATUS_KINDS } from './catalog.js';
+import { ADJUSTMENT_DIRECTIONS, ADJUSTMENT_REASONS, MOVEMENT_KINDS } from './consumables.js';
 import {
   LORAWAN_CLASSES,
   LORAWAN_REGIONAL_PARAMETERS,
@@ -40,6 +41,11 @@ export const AUDIT_ENUM_FIELDS = {
   origin: LNS_ORIGINS,
   orphans: LNS_COMPONENTS,
   keys: LORAWAN_KEY_NAMES,
+  scope: CATEGORY_SCOPES,
+  direction: ADJUSTMENT_DIRECTIONS,
+  /** El motivo de una baja o de una anulación es texto libre; solo los del ajuste se traducen. */
+  reason: ADJUSTMENT_REASONS,
+  originalKind: MOVEMENT_KINDS,
 } as const;
 export type AuditEnumField = keyof typeof AUDIT_ENUM_FIELDS;
 
@@ -97,6 +103,17 @@ export const AUDIT_ACTIONS = [
   'lns.link',
   'lns.unlink',
   'lns.cancel',
+  'measure_unit.create',
+  'measure_unit.update',
+  'measure_unit.delete',
+  'consumable.create',
+  'consumable.update',
+  'consumable.delete',
+  'consumable.receive',
+  'consumable.deliver',
+  'consumable.adjust',
+  'consumable.transfer',
+  'consumable.reverse',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -112,5 +129,7 @@ export const AUDIT_ENTITIES = [
   'status_label',
   'lns_profile',
   'lorawan_import',
+  'measure_unit',
+  'consumable',
 ] as const;
 export type AuditEntity = (typeof AUDIT_ENTITIES)[number];

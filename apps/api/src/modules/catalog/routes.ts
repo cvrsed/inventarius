@@ -1,6 +1,7 @@
 import {
   assetModelSchema,
   catalogListQuerySchema,
+  categoryListQuerySchema,
   categorySchema,
   createCategorySchema,
   createLocationSchema,
@@ -48,14 +49,14 @@ interface CrudSpec<Dto, Create, Patch, Query> {
 }
 
 /**
- * Monta GET/POST/PATCH/DELETE de una entidad del catálogo. Leer exige `asset:read` (los formularios de
+ * Monta GET/POST/PATCH/DELETE de una entidad del catálogo. Leer exige `asset:read` o `consumables:read` (los formularios de
  * activos necesitan el catálogo); escribir exige `catalog:write` (sección 3).
  */
 function crud<Dto extends { updatedAt: string }, Create, Patch, Query>(
   app: FastifyInstance,
   spec: CrudSpec<Dto, Create, Patch, Query>,
 ): void {
-  const read = requirePermission('asset:read');
+  const read = requirePermission('asset:read', 'consumables:read');
   const write = requirePermission('catalog:write');
   const { path, service } = spec;
   const tags = ['catalog'];
@@ -125,7 +126,7 @@ export const catalogRoutes: FastifyPluginAsyncZod<{ catalog: CatalogService }> =
     dto: categorySchema,
     createSchema: createCategorySchema,
     patchSchema: updateCategorySchema,
-    querySchema: catalogListQuerySchema,
+    querySchema: categoryListQuerySchema,
   });
   crud(app, {
     path: 'manufacturers',

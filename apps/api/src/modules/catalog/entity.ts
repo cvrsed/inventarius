@@ -30,7 +30,7 @@ export function violatedConstraint(e: unknown): string | undefined {
 export interface EntityDef<Row extends Versioned, Dto, Create, Patch, Query> {
   /** Nombre de la entidad en auditoría (`category`, `status_label`...). */
   /** Entidad de auditoría; sus acciones (`<entity>.create|update|delete`) están en `AUDIT_ACTIONS`. */
-  entity: 'category' | 'manufacturer' | 'model' | 'location' | 'status_label';
+  entity: 'category' | 'manufacturer' | 'model' | 'location' | 'status_label' | 'measure_unit';
   notFound: string;
   duplicate: string;
   toDto(row: Row): Dto;
