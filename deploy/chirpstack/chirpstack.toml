@@ -1,0 +1,34 @@
+# ChirpStack v4 SOLO PARA PRUEBAS (compose de desarrollo y e2e). Credenciales y secretos ficticios; no usar en producción.
+[logging]
+level = "warn"
+
+[postgresql]
+dsn = "postgres://chirpstack:chirpstack-prueba@chirpstack-postgres/chirpstack?sslmode=disable"
+
+[redis]
+servers = ["redis://chirpstack-redis/"]
+
+[network]
+net_id = "000000"
+enabled_regions = ["au915_0"]
+
+[api]
+bind = "0.0.0.0:8080"
+secret = "secreto-de-prueba-de-chirpstack-no-usar-en-produccion"
+
+[integration]
+enabled = ["mqtt"]
+
+[integration.mqtt]
+server = "tcp://chirpstack-mqtt:1883/"
+
+[[regions]]
+id = "au915_0"
+description = "AU915 (pruebas)"
+common_name = "AU915"
+
+  [regions.gateway.backend]
+  enabled = "mqtt"
+
+    [regions.gateway.backend.mqtt]
+    server = "tcp://chirpstack-mqtt:1883"

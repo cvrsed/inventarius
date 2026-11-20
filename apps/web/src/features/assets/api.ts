@@ -37,6 +37,8 @@ export const ASSET_LIST_DEFAULTS = {
   assigned: '',
   /** `true`: devolución esperada vencida. */
   overdue: '',
+  /** Estado del registro LNS (`none`, `registered`...). */
+  lnsStatus: '',
   deleted: 'exclude',
 };
 export type AssetListState = typeof ASSET_LIST_DEFAULTS;
@@ -60,6 +62,7 @@ export function listParams(s: AssetListState, includePaging = true): URLSearchPa
     'statusKind',
     'assigned',
     'overdue',
+    'lnsStatus',
   ] as const) {
     if (s[key]) p.set(key, s[key]);
   }

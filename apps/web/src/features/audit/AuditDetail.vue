@@ -7,7 +7,11 @@ import { describeAuditDetail } from './detail';
 /** Detalle legible de una auditoría: campo → valor, o antes → después cuando algo cambió (RF-31). */
 const props = defineProps<{ entry: AuditEntryDto }>();
 const { t, te } = useI18n();
-const rows = computed(() => describeAuditDetail(props.entry.diff, { t, te }));
+const rows = computed(() => [
+  ...describeAuditDetail(props.entry.diff, { t, te }, { entity: props.entry.entity }),
+  // La IP no tiene columna propia (la tabla no debe desbordar): va aquí, al final del detalle.
+  ...(props.entry.ip ? [{ field: 'ip', label: t('audit.ip'), value: props.entry.ip }] : []),
+]);
 </script>
 
 <template>

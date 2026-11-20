@@ -7,7 +7,7 @@
 | F0 Fundaciones | En curso    | `phase/f0-fundaciones` |
 | F1 Identidad   | Pendiente   | —                      |
 | F2 Inventario  | En revisión | `phase/f2-inventario`  |
-| F3 LoRaWAN     | Pendiente   | —                      |
+| F3 LoRaWAN     | En curso    | `phase/f3-lorawan`     |
 | F4 Cierre      | Pendiente   | —                      |
 
 ## Bitácora
@@ -350,3 +350,199 @@ Marcas `[P20]` a `[P26]` al final del asunto de cada commit.
 - **Verificación**: lint, typecheck, 250 pruebas web, 103 unitarias y 165 de integración del API, e2e completo en escritorio y 360 px.
   En una corrida el axe de «alta por la UI» falló una vez por el `aria-hidden` del enlace de salto con un select abierto (el patrón
   ya conocido de `useInertWhileOpen`) y pasó al reintentar y en 6 repeticiones.
+
+## F3 — LoRaWAN (rama `phase/f3-lorawan`, desde `main`)
+
+**Checklist**
+
+- [x] Dependencias del cliente gRPC de ChirpStack (`@chirpstack/chirpstack-api`, `@grpc/grpc-js`), versiones exactas
+- [x] Dominio compartido: formatos EUI/clave, esquemas Zod, estados de registro, acciones de auditoría (RF-21, 5.2)
+- [x] Cifrado AES-256-GCM con `APP_ENCRYPTION_KEY` + `key_id` y rotación (RNF, 10.1)
+- [x] Migración: `asset_lorawan`, `lns_profiles`, `lns_registrations`
+- [x] Extensión LoRaWAN del activo: alta/edición, validación y unicidad de DevEUI, defaults desde el modelo (RF-21)
+- [x] Reveal de claves con `lorawan:keys:reveal`, auditado (RF-30)
+- [x] Perfiles LNS: CRUD, credencial enmascarada, «Probar conexión» (RF-50 a RF-52)
+- [x] Contrato `LnsAdapter` y adaptador ChirpStack v4 (gRPC)
+- [x] Adaptador TTN v3 (REST) con compensación AS → NS → JS → IS
+- [x] Cola pg-boss y worker: registro, baja, reintento, idempotencia, conflicto/vincular (RF-60 a RF-65)
+- [x] Compensación probada simulando fallo en cada paso (a nivel de adaptador; el flujo completo se prueba con el worker)
+- [x] Importación CSV por número de serie (RF-66)
+- [x] Filtros «estado LNS» y búsqueda por DevEUI en el listado (RF-22)
+- [x] UI: sección LoRaWAN de la ficha, registrar/baja/reintentar/vincular, perfiles LNS, importación CSV (360 px, i18n)
+- [x] ChirpStack de prueba en `compose.yml` y `compose.e2e.yml` + e2e
+- [x] Job manual contra TTN real (sin credenciales)
+- [x] `.env.example`, docs, ADR, CHANGELOG, resumen y PR
+
+**Resumen**
+
+- **Datos LoRaWAN (RF-21):** extensión 1:1 del activo con DevEUI único, JoinEUI, AppKey/NwkKey cifradas, clase, versión y región;
+  opcional al crear (también por API en el alta) y obligatoria solo al registrar. Defaults desde el modelo.
+- **Secretos:** AES-256-GCM con `APP_ENCRYPTION_KEY` + `key_id`, rotación con `cli reencrypt-secrets`, reveal auditado con
+  `lorawan:keys:reveal`. Ninguna clave en respuestas, historial, auditoría ni logs (las pruebas revisan `audit_log` completo).
+- **Perfiles LNS (RF-50 a RF-52):** ChirpStack v4 (gRPC) y TTN v3 (REST), credencial `•••• últimos4`, Probar conexión con latencia.
+- **Registro (RF-60 a RF-65):** estados `registrando → registrado | error | parcial | conflicto`, baja, reintento (automático solo
+  para errores transitorios), idempotencia, Vincular/Cancelar y compensación por pasos; cola pg-boss y worker.
+- **Importación CSV (RF-66):** vista previa con errores por fila y aplicación todo o nada; probada con 100 series.
+- **Listado (RF-22):** filtro por estado LNS y búsqueda por DevEUI; un activo registrado en un LNS no se da de baja.
+
+**Criterio de aceptación de F3 (sección 13)**
+
+| Criterio                                                                   | Cómo se probó                                                                                                                                                                         |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Registro y baja OK contra ChirpStack de prueba en Docker                   | `e2e/tests/lorawan.spec.ts` (ChirpStack 4.20.0 real en `compose.e2e.yml`, cola y worker reales, desktop y 360 px) y `chirpstack.real.int.test.ts`                                     |
+| TTN con mock en CI                                                         | `ttn.test.ts` (servidor HTTP de prueba, 17 casos)                                                                                                                                     |
+| TTN con una aplicación real en el job manual                               | Preparado: `.github/workflows/ttn-real.yml` + `ttn.real.int.test.ts`; **sin credenciales** (secretos `TTN_TEST_*`, Q48)                                                               |
+| Compensación simulando fallo en cada paso                                  | TTN: fallo en IS, JS, NS y AS (con y sin fallo del borrado anterior, 409, 5xx, timeout); ChirpStack: fallo en `CreateKeys`; flujo completo (parcial → reintento) en `lns.int.test.ts` |
+| CSV de 100 series asocia a los activos correctos y rechaza filas inválidas | `import.int.test.ts` (100 series; filas inexistentes, repetidas, formato, DevEUI ajeno, baja, categoría; nada se aplica con errores) y e2e                                            |
+
+**Pruebas**
+
+- Shared 42, API 166 unitarias + 222 de integración con Postgres 18 (+5 opt-in contra ChirpStack/TTN reales), Web 300.
+- e2e (Playwright + axe, escritorio y 360 px, claro y oscuro): 14 nuevos de LoRaWAN; suite completa en verde.
+- Cobertura de la API sobre los umbrales (líneas 91,7 %, ramas 82,5 %).
+
+**Hallazgos de las pruebas contra un ChirpStack real** (corregidos, con su prueba; detalle en el ADR 0007)
+
+- Con una API key de tenant, `Get`/`Delete` de un dispositivo inexistente responden `UNAUTHENTICATED`, no `NOT_FOUND`.
+- Un DevEUI repetido responde `INTERNAL` («duplicate key»), no `ALREADY_EXISTS`: es conflicto, no un error a reintentar.
+- En LoRaWAN 1.0.x la AppKey queda en `nwk_key` (verificado leyendo las claves de vuelta); `DeviceService.List` no busca por DevEUI.
+- El e2e detectó íconos Lucide fuera del bundle (se habrían pedido a un dominio externo): ahora hay una prueba que lo impide y
+  se corrigieron tres de F2 que ya estaban en ese caso.
+
+**Decisiones provisionales** (detalle en `docs/open-questions.md`, Q40 a Q50): `asset:write` edita datos y claves (de solo
+escritura), sin permiso nuevo; clase/versión/región se copian del modelo; un perfil con dispositivos no cambia de destino;
+dar de baja un vinculado solo lo desvincula; 5 intentos con 30 s de espera creciente; la ficha consulta cada 2 s; el alta en
+lote y el formulario de alta individual no llevan campos LoRaWAN (se completan en la ficha o por CSV); formato del CSV;
+ChirpStack de prueba fijado por digest; sin barrido de registros atascados.
+
+**Pendiente / no verificado**
+
+- **TTN contra una aplicación real:** los `field_mask` y atributos siguen la documentación, no se pudieron verificar sin
+  credenciales. El responsable del proyecto debe agregar los secretos `TTN_TEST_*` y ejecutar el workflow «TTN real (manual)»
+  (ver `docs/development.md`).
+- El workflow de CI no se ha ejecutado en GitHub todavía con los cambios de F3 (job `e2e` ahora levanta ChirpStack; la primera
+  corrida real es la del PR).
+- Dependencias nuevas a revisar (justificadas en el PR): `@chirpstack/chirpstack-api` 4.20.0, `@grpc/grpc-js` 1.14.7,
+  `google-protobuf` 3.21.4 y `@types/google-protobuf` 3.15.12 (dev).
+
+**Cómo probarlo**
+
+```bash
+pnpm install
+pnpm lint && pnpm typecheck && pnpm test
+pnpm --filter @inventarius/api test:int                      # Postgres 18 en contenedor
+docker compose -f compose.e2e.yml up -d --build --wait web worker
+docker compose -f compose.e2e.yml run --rm --build e2e       # incluye LoRaWAN contra ChirpStack real
+docker compose -f compose.e2e.yml down --volumes
+```
+
+Desarrollo manual con ChirpStack: ver `docs/development.md` (perfil `chirpstack` de `compose.yml`).
+
+**Corrección del CI del PR #6 (2026-11-19)**
+
+- **Causa:** el job «Integración» fallaba con `ERR_RESOLVE_PACKAGE_ENTRY_FAIL` para `@inventarius/shared`. El `globalSetup` del
+  proyecto `int` importa `migrator.ts` y, con él, `@inventarius/shared`; Vitest no le aplica la condición `inventarius-source`
+  declarada dentro de cada proyecto, así que resolvía el export `default` (`./dist/index.js`), que en CI no existe. En local
+  funcionaba por un `packages/shared/dist` viejo.
+- **Arreglo:** la condición se declara también a nivel raíz de `apps/api/vitest.config.ts` (con el porqué en un comentario), y
+  `migrator.ts` ya no importa módulos de negocio: los nombres de colas viven en `core/queues.ts`. Sin paso de build de `shared` en CI.
+- **Verificado** con `packages/shared/dist` borrado: `test:coverage` de la API verde (388 pruebas, umbrales cumplidos). El workflow
+  `ttn-real.yml` ejecuta la misma configuración de Vitest, así que queda cubierto.
+- Regla nueva en `CLAUDE.md`: no se cierra un PR con checks en rojo.
+
+## F3 revisión
+
+Revisión manual del PR #6 contra ChirpStack 4.20.0 (2026-11-19). Cada punto va en su propio commit.
+
+- [x] P1 «Probar conexión»: un solo mensaje cuando todas las verificaciones fallan por la misma causa
+- [x] P2 Registro valida versión, clase y región contra el device profile; identidad bloqueada si registrado o vinculado; aviso al editar
+- [x] P3 El adaptador de ChirpStack envía el JoinEUI; test que compara campo por campo contra el LNS
+- [x] P4 `chirpstack-bootstrap` crea el device profile con un ADR algorithm válido
+- [x] P5 Conflicto: el mensaje sale una sola vez
+- [x] P6 Vincular: lee el remoto, muestra diferencias, adoptar o cancelar; la ficha muestra lo que tiene el LNS
+- [x] P7 «Desvincular» sin estilo destructivo
+- [x] P8 Una tabla de traducciones para historial y Auditoría, sin claves internas ni valores crudos
+- [x] P9 Confirmación con lo que se va a enviar antes de encolar el registro
+- [x] P15 El actor del worker se muestra como «Sistema» en todas las vistas
+- [x] P16 Pluralización «Importar 1 dispositivo»
+- [x] P17 Botones desactivados se ven desactivados y con tooltip del motivo
+- [x] P18 Número de serie único sin distinguir mayúsculas
+- [x] P19 Los eventos de auditoría por activo de una importación CSV referencian el id del lote
+- [x] P20 La importación aplica los defaults del modelo (clase, versión, región)
+- [x] P21 Auditoría sin scroll horizontal en escritorio; tarjetas en 360 px
+- [x] P22 En producción la app no arranca sin `APP_ENCRYPTION_KEY` o con el valor por defecto de `compose.yml`
+- [x] P23 Informe: TLS con CA propia en el adaptador de ChirpStack (`docs/open-questions.md`)
+
+**Resumen de la revisión (2026-11-19)**
+
+- Todos los puntos P1 a P9, P15 a P23 quedaron hechos (P10 a P14 no se pidieron). Un commit por punto, salvo P16 y P17 (mismo
+  commit: tocan los mismos archivos) y P2/P6, que llevan un commit de API y otro de la interfaz.
+- **Verificado contra ChirpStack 4.20.0 real** (`chirpstack.real.int.test.ts`, 7 pruebas): el JoinEUI llega al LNS y se lee de
+  vuelta campo por campo, el device profile del bootstrap lleva ADR algorithm, `readDevice` y `describeDeviceProfile`.
+- **e2e** (Playwright, escritorio y 360 px, sobre un stack limpio): 127 pasaron y 3 se omiten (los mismos de antes); nuevos: Auditoría sin
+  desborde a 1280, 1024, 800, 768 y 360 px, y el flujo de vincular contra un dispositivo ajeno real de ChirpStack
+  (`chirpstack-bootstrap` crea dos, uno por proyecto) con lectura, diferencias, adopción, ficha y «Desvincular».
+- Migraciones nuevas: 0014 (serie única sin distinguir mayúsculas; se detiene y lista los duplicados si los hay) y 0015
+  (`lns_registrations.remote_snapshot`).
+- Decisiones provisionales nuevas en `docs/open-questions.md`: Q51 (informe TLS con CA propia, P23), Q52 (serie única),
+  Q53 (máscara de la AppKey), Q54 (qué se adopta al vincular).
+
+**Pendiente / no verificado**
+
+- **TTN:** la lectura para vincular (`readDevice`) y la región por plan de frecuencias siguen la documentación; no se probaron
+  contra una aplicación real (mismo límite que Q48, requiere los secretos `TTN_TEST_*`).
+- El CI de GitHub no se esperó (instrucción del responsable): los checks del PR #6 los revisa el responsable.
+- La migración 0014 puede abortar si la base ya tiene números de serie repetidos sin distinguir mayúsculas; el mensaje los lista.
+
+### Backlog post-F3
+
+Para una fase de endurecimiento; **no se implementa en F3**.
+
+- **Bajas con aprobación (decidido).** Solicitar una baja deja el activo en «baja solicitada» y el dispositivo sigue en el
+  LNS. La ejecuta otra persona con el rol aprobador: mínimo dos personas con ese rol y sin autoaprobación. Se puede rechazar
+  con motivo o cancelar; hay bandeja de pendientes con antigüedad y aviso; una baja masiva es una sola solicitud; los
+  permisos `lorawan:deregister:request` y `lorawan:deregister:approve` van separados. Lo vinculado nunca se borra del LNS.
+- Solo borrar en el LNS dispositivos que Inventarius registró (validado contra `lns_registrations` y el tag
+  `inventarius_asset_id`).
+- Progreso por paso del registro (`stepsDone`) visible en la ficha cuando queda parcial o falla.
+- Última actividad del LNS (`last_seen`) en la ficha y filtro «registrado sin actividad».
+- Plantilla de nombre y descripción por perfil LNS, con el límite de largo de cada LNS y bloqueo si la descripción contiene
+  una clave.
+- Registro por lote desde el listado, por la cola y con progreso.
+- Defaults de modelo con plan de frecuencia y sub-banda (por ejemplo AU915 FSB2). En ChirpStack corresponde a la
+  «region configuration» del device profile.
+- **Prefijo de etiqueta configurable en el primer arranque** (asistente o CLI `init`): de 2 a 6 caracteres alfanuméricos,
+  guardado en la base (la variable de entorno queda solo como sugerencia), en mayúsculas en la etiqueta y en minúsculas en
+  los IDs del LNS, y bloqueado al crear el primer activo. Los ejemplos del repo siguen usando `INV`.
+- **Plantilla de nombre en el LNS por perfil**, por defecto `<iniciales-modelo>-<serie>-<etiqueta>`. En TTN, el device ID
+  se basa en la etiqueta (minúsculas, máximo 36 caracteres).
+- **TLS con CA propia por perfil LNS** (cierra Q51): requisito antes de conectar un ChirpStack que no sea de desarrollo.
+
+## F3 revisión 2
+
+Segunda revisión manual del PR #6 (2026-11-19). Cada punto va en su propio commit.
+
+- [x] P18b Serie única por (modelo, serie) sin distinguir mayúsculas; el CSV empareja por serie y desempata con la columna «modelo»
+- [x] R1 Versión LoRaWAN y región faltantes en el activo se toman del device profile al registrar
+- [x] R2 AppKey enmascarada de la confirmación sin partirse en dos líneas
+- [x] R3 Las pruebas contra ChirpStack real borran lo que crean, usan prefijo por corrida y exigen endpoint marcado como de prueba
+- [x] R4 Vincular: un JoinEUI en ceros no pisa el local; el usuario elige por campo qué adoptar
+- [x] R5 Vincular muestra el device profile con nombre, versión y región
+- [x] R6 Vincular advierte si el dispositivo remoto no tiene AppKey/NwkKey (no podrá hacer join)
+
+**Resumen de la revisión 2 (2026-11-19)**
+
+- Todos los puntos (P18b, R1 a R6) quedaron hechos, un commit por punto. Migración nueva: 0016 (serie única por
+  `(model_id, lower(serial))`; se detiene y lista los duplicados dentro de un mismo modelo). Q52 y Q54 actualizadas; Q55 nueva (R1).
+- **Pruebas:** shared 42, API 200 unitarias + 249 de integración con Postgres 18 (+8 opt-in), Web 355. e2e sobre un stack
+  limpio (escritorio y 360 px): 127 pasaron y 3 se omiten (los mismos de antes); el e2e de LoRaWAN comprueba que la máscara
+  de la AppKey cabe en una línea, el device profile con nombre y que no queda nada registrado al terminar.
+- **ChirpStack de desarrollo:** se borraron de él los dos dispositivos «ajenos» del bootstrap y los dos «Sensor de prueba» que
+  dejó `chirpstack.real.int`. Quedan «creado a mano» y «INV-000016 pruebaCSV1» (registrado desde la app de
+  desarrollo, no era de las pruebas).
+
+**Pendiente / no verificado**
+
+- El CI de GitHub no se esperó (instrucción del responsable).
+- Una instalación con series repetidas dentro de un mismo modelo hará abortar la migración 0016; el mensaje las lista.
+- TTN: las lecturas para vincular siguen sin probarse contra una aplicación real (Q48).

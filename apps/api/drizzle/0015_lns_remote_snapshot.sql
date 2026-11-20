@@ -1,0 +1,1 @@
+ALTER TABLE "lns_registrations" ADD COLUMN "remote_snapshot" jsonb;

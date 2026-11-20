@@ -30,6 +30,12 @@ export const router = createRouter({
       meta: { permissions: ['asset:write'] },
     },
     {
+      path: '/activos/importar-lorawan',
+      name: 'lorawan-import',
+      component: () => import('@/features/lorawan/LorawanImportPage.vue'),
+      meta: { permissions: ['asset:write'] },
+    },
+    {
       path: '/activos/nuevo',
       name: 'asset-new',
       component: () => import('@/features/assets/AssetFormPage.vue'),
@@ -69,6 +75,12 @@ export const router = createRouter({
       name: 'roles',
       component: () => import('@/features/roles/RolesPage.vue'),
       meta: { permissions: ['role:manage'] },
+    },
+    {
+      path: '/perfiles-lns',
+      name: 'lns-profiles',
+      component: () => import('@/features/lns/LnsProfilesPage.vue'),
+      meta: { permissions: ['lns_profile:manage'] },
     },
     {
       path: '/auditoria',

@@ -85,6 +85,41 @@
       "when": 1794965305394,
       "tag": "0011_audit_entity_label",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795055311355,
+      "tag": "0012_lorawan",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1795055828189,
+      "tag": "0013_lns_registration_operation",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1795118759983,
+      "tag": "0014_asset_serial_unique",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1795121498547,
+      "tag": "0015_lns_remote_snapshot",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1795136916483,
+      "tag": "0016_asset_serial_per_model",
+      "breakpoints": true
     }
   ]
 }

@@ -40,6 +40,7 @@ export const APP_ICONS = [
   'lucide:plus',
   'lucide:pencil',
   'lucide:trash-2',
+  'lucide:unlink',
   'lucide:copy',
   'lucide:refresh-cw',
   'lucide:eye',
@@ -63,4 +64,13 @@ export const APP_ICONS = [
   'lucide:list-filter',
   'lucide:wifi-off',
   'lucide:map-pin',
+  'lucide:radio-tower',
+  'lucide:plug-zap',
+  'lucide:file-up',
+  'lucide:file-check',
+  'lucide:link',
+  // Ya se usaban (orden del listado y buscador) pero no estaban empaquetados: se pedirían a un dominio externo.
+  'lucide:arrow-down-wide-narrow',
+  'lucide:arrow-up-narrow-wide',
+  'lucide:search',
 ] as const;

@@ -341,7 +341,7 @@ test.describe('activos: CRUD completo (RF-20 a RF-25)', () => {
     await page.getByLabel('Cantidad').fill('1');
     await page.getByLabel('Números de serie').fill(`L-${stamp}-2`);
     await page.getByRole('button', { name: 'Crear activos' }).click();
-    await expect(page.getByText(/Ya existen activos con estas series/)).toBeVisible();
+    await expect(page.getByText(/Ya existen activos de ese modelo con estas series/)).toBeVisible();
   });
 
   test('las acciones principales se ven sin hacer scroll (RF-41)', async ({ page }) => {

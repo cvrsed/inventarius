@@ -52,6 +52,7 @@ export class DashboardService {
         at: r.at.toISOString(),
         action: r.action,
         actorName: r.actorId ? (names.get(r.actorId) ?? null) : null,
+        actorLabel: r.actorLabel,
         assetId: r.assetId,
         assetTag: r.assetTag,
         assetName: r.assetName,

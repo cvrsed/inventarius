@@ -49,7 +49,8 @@ describe('AssetHistory (RF-24)', () => {
     expect(text).toContain('por Olga');
     expect(text).toContain('Disponible');
     expect(text).toContain('sale a terreno');
-    expect(text).toContain('(vacío)'); // serie: de nada a S1
+    expect(text).toContain('Número de serie'); // serie: de nada a S1
+    expect(text).toContain('— → aS1');
     expect(w.findAll('ol > li')).toHaveLength(3);
   });
 
@@ -100,5 +101,18 @@ describe('AssetHistory (RF-24)', () => {
     const w = mountHistory([entry(1, 'asset.create', null)], 35);
     await flushPromises();
     expect(w.findAll('button').length).toBeGreaterThan(0);
+  });
+
+  it('un evento del worker del LNS se muestra como «Sistema», no como «worker»', async () => {
+    const w = mountHistory([
+      {
+        ...entry(5, 'lns.registered', { after: { profile: 'ChirpStack de prueba' } }),
+        actorName: null,
+        actorLabel: 'worker',
+      },
+    ]);
+    await flushPromises();
+    expect(w.text()).toContain('Sistema');
+    expect(w.text()).not.toContain('worker');
   });
 });

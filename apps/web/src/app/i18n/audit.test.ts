@@ -79,6 +79,24 @@ describe('traducción de la auditoría (RNF-05)', () => {
       'lorawanRegion',
       'lorawanVersion',
       'lorawanRegionalParameters',
+      'devEui',
+      'joinEui',
+      'region',
+      'deviceClass',
+      'profile',
+      'externalId',
+      'error',
+      'origin',
+      'serials',
+      'target',
+      'deviceDefaults',
+      'orphans',
+      'keys',
+      'tenantId',
+      'applicationId',
+      'deviceProfileId',
+      'appKey',
+      'nwkKey',
     ];
     for (const f of fields) expect(auditFieldLabel(f), f).not.toBe(f);
   });
@@ -92,12 +110,22 @@ describe('traducción de la auditoría (RNF-05)', () => {
           field === 'assignedToType' ||
           field === 'kind' ||
           field === 'type' ||
-          field === 'extension'
+          field === 'extension' ||
+          field === 'origin' ||
+          field === 'orphans'
         ) {
           expect(label).not.toBe(value);
         }
       }
     }
+  });
+
+  it('«Tipo de LNS» y sus valores dependen de la entidad: un perfil LNS no es un estado del catálogo', () => {
+    expect(auditFieldLabel('kind', 'lns_profile')).toBe('Tipo de LNS');
+    expect(auditFieldLabel('kind', 'status_label')).toBe('Tipo de estado');
+    expect(auditValueLabel('kind', 'chirpstack', 'lns_profile')).toBe('ChirpStack');
+    expect(auditValueLabel('kind', 'ttn', 'lns_profile')).toBe('TTN');
+    expect(auditValueLabel('kind', 'ttn')).toBeUndefined();
   });
 
   it('un valor desconocido no tiene traducción (se mostrará tal cual)', () => {

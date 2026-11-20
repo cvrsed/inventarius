@@ -2,7 +2,9 @@
 import type { AuditEntryDto } from '@inventarius/shared';
 import UAlert from '@nuxt/ui/components/Alert.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
+import UTooltip from '@nuxt/ui/components/Tooltip.vue';
 import { computed, ref } from 'vue';
+import { actorDisplay } from './actor';
 import ResponsiveTable from '@/shared/ui/ResponsiveTable.vue';
 import IconAction from '@/shared/ui/IconAction.vue';
 import { useI18n } from 'vue-i18n';
@@ -37,15 +39,12 @@ const columns = computed(() => [
   { id: 'action', header: t('audit.action') },
   { id: 'entity', header: t('audit.entity') },
   { id: 'record', header: t('audit.record') },
-  { accessorKey: 'ip', header: t('audit.ip') },
 ]);
 
 const actionLabel = auditActionLabel;
 const entityLabel = auditEntityLabel;
 
-/** Usuario; si no hubo (`cli`) la operación por línea de comandos; si no, el sistema. */
-const who = (e: AuditEntryDto): string =>
-  e.actorName ?? (e.actorLabel === 'cli' ? t('audit.cli') : t('audit.system'));
+const who = (e: AuditEntryDto): string => actorDisplay(e, t);
 
 /** Detalle abierto en el modo tarjeta (en la tabla lo maneja `expanded`). */
 const openCards = ref(new Set<string>());
@@ -87,6 +86,10 @@ function toggleCard(id: string): void {
       :columns="columns"
       :loading="isPending || isFetching"
       :get-row-id="(e: AuditEntryDto) => e.id"
+      :ui="{
+        td: 'whitespace-normal align-top px-2 xl:px-4',
+        th: 'whitespace-nowrap px-2 xl:px-4',
+      }"
       class="rounded-lg border border-default"
     >
       <template #empty>{{ t('audit.empty') }}</template>
@@ -103,7 +106,14 @@ function toggleCard(id: string): void {
       <template #who-cell="{ row }">{{ who(row.original) }}</template>
       <template #action-cell="{ row }">{{ actionLabel(row.original.action) }}</template>
       <template #entity-cell="{ row }">{{ entityLabel(row.original.entity) }}</template>
-      <template #record-cell="{ row }"><AuditRecord :entry="row.original" /></template>
+      <template #record-cell="{ row }">
+        <!-- El rótulo se trunca para que la tabla no desborde; completo en el tooltip y en el detalle. -->
+        <UTooltip :text="row.original.entityLabel ?? ''" :disabled="!row.original.entityLabel">
+          <span class="block max-w-28 truncate lg:max-w-48 xl:max-w-72" data-testid="audit-record">
+            <AuditRecord :entry="row.original" />
+          </span>
+        </UTooltip>
+      </template>
       <template #expanded="{ row }">
         <AuditDetail :entry="row.original" />
       </template>
@@ -118,7 +128,7 @@ function toggleCard(id: string): void {
         </p>
         <p class="m-0 text-sm text-muted">{{ who(item) }}</p>
         <UButton
-          v-if="item.diff"
+          v-if="item.diff || item.ip"
           :label="t('audit.detail')"
           :aria-label="`${t('audit.detail')}: ${actionLabel(item.action)}`"
           :icon="openCards.has(item.id) ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'"
@@ -129,7 +139,7 @@ function toggleCard(id: string): void {
           class="self-start"
           @click="toggleCard(item.id)"
         />
-        <AuditDetail v-if="item.diff && openCards.has(item.id)" :entry="item" />
+        <AuditDetail v-if="(item.diff || item.ip) && openCards.has(item.id)" :entry="item" />
       </template>
     </ResponsiveTable>
 

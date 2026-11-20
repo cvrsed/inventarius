@@ -277,6 +277,10 @@ export const assets = pgTable(
     index('assets_tag_trgm_idx').using('gin', sql`(${t.assetTag}::text) gin_trgm_ops`),
     index('assets_name_trgm_idx').using('gin', sql`${t.name} gin_trgm_ops`),
     index('assets_serial_trgm_idx').using('gin', sql`${t.serial} gin_trgm_ops`),
+    // La serie es única por modelo y sin distinguir mayúsculas (marcas distintas pueden repetirla); bajas incluidas.
+    uniqueIndex('assets_model_serial_lower_uq')
+      .on(t.modelId, sql`lower(${t.serial})`)
+      .where(sql`${t.serial} IS NOT NULL`),
     check(
       'assets_one_assignee_chk',
       sql`${t.assignedUserId} IS NULL OR ${t.assignedLocationId} IS NULL`,
@@ -313,5 +317,115 @@ export const assetAssignments = pgTable(
       'asset_assignments_one_target_chk',
       sql`(${t.userId} IS NULL) <> (${t.locationId} IS NULL)`,
     ),
+  ],
+);
+
+// --- LoRaWAN (RF-21, RF-50 a RF-66) ---
+
+const bytea = customType<{ data: Buffer }>({ dataType: () => 'bytea' });
+
+/** Extensión 1:1 del activo (sección 5.2). AppKey y NwkKey se guardan cifradas (AES-256-GCM, `key_id`). */
+export const assetLorawan = pgTable(
+  'asset_lorawan',
+  {
+    assetId: uuid('asset_id')
+      .primaryKey()
+      .references(() => assets.id, { onDelete: 'restrict' }),
+    devEui: text('dev_eui').unique(),
+    joinEui: text('join_eui'),
+    appKeyEnc: bytea('app_key_enc'),
+    nwkKeyEnc: bytea('nwk_key_enc'),
+    /** Clave maestra con que se cifraron `app_key_enc` y `nwk_key_enc`. */
+    keyId: text('key_id'),
+    activation: text('activation').notNull().default('OTAA'),
+    deviceClass: text('device_class'),
+    lorawanVersion: text('lorawan_version'),
+    region: text('region'),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    check('asset_lorawan_dev_eui_chk', sql`${t.devEui} IS NULL OR ${t.devEui} ~ '^[0-9A-F]{16}$'`),
+    check(
+      'asset_lorawan_join_eui_chk',
+      sql`${t.joinEui} IS NULL OR ${t.joinEui} ~ '^[0-9A-F]{16}$'`,
+    ),
+  ],
+);
+
+/** Conexión guardada a un Network Server (RF-50). La credencial va cifrada y no vuelve al frontend. */
+export const lnsProfiles = pgTable(
+  'lns_profiles',
+  {
+    id: pk(),
+    /** `chirpstack` | `ttn`. */
+    kind: text('kind').notNull(),
+    name: citext('name').notNull().unique(),
+    description: text('description'),
+    endpoint: text('endpoint').notNull(),
+    tls: boolean('tls').notNull().default(false),
+    credentialEnc: bytea('credential_enc').notNull(),
+    credentialHint: text('credential_hint').notNull(),
+    keyId: text('key_id').notNull(),
+    target: jsonb('target').$type<Record<string, string>>().notNull(),
+    deviceDefaults: jsonb('device_defaults').$type<Record<string, string>>().notNull(),
+    active: boolean('active').notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [check('lns_profiles_kind_chk', sql`${t.kind} IN ('chirpstack', 'ttn')`)],
+);
+
+/** Registro de un activo en un LNS (RF-61, RF-65: uno por activo). */
+export const lnsRegistrations = pgTable(
+  'lns_registrations',
+  {
+    id: pk(),
+    assetId: uuid('asset_id')
+      .notNull()
+      .unique()
+      .references(() => assets.id, { onDelete: 'restrict' }),
+    profileId: uuid('profile_id')
+      .notNull()
+      .references(() => lnsProfiles.id, { onDelete: 'restrict' }),
+    /** `registering` | `registered` | `error` | `partial` | `conflict` | `deregistering`. */
+    status: text('status').notNull(),
+    externalId: text('external_id'),
+    /** `created` (lo creó Inventarius) | `linked` (existía y se vinculó sin tocarlo, RF-64). */
+    origin: text('origin').notNull().default('created'),
+    stepsDone: jsonb('steps_done').$type<string[]>().notNull().default([]),
+    /** Componentes que quedaron en el LNS cuando la compensación falló (`partial`). */
+    orphans: jsonb('orphans').$type<string[]>().notNull().default([]),
+    /** Qué operación dejó el estado actual (`register` | `deregister`); el reintento retoma esa. */
+    lastOperation: text('last_operation').notNull().default('register'),
+    lastError: text('last_error'),
+    attempts: integer('attempts').notNull().default(0),
+    requestedBy: uuid('requested_by').references(() => users.id, { onDelete: 'restrict' }),
+    registeredAt: timestamp('registered_at', { withTimezone: true }),
+    /** Lo que el LNS tenía del dispositivo al vincularlo (sin claves, solo si están): se muestra en la ficha. */
+    remoteSnapshot: jsonb('remote_snapshot').$type<{
+      name: string;
+      joinEui: string | null;
+      deviceProfileId: string | null;
+      /** Ausente en snapshots anteriores a la revisión 2. */
+      deviceProfile?: { name: string | null; version: string | null; region: string | null } | null;
+      hasAppKey: boolean;
+      hasNwkKey: boolean;
+      /** Ausente en snapshots anteriores a la revisión 2. */
+      missingKeys?: ('appKey' | 'nwkKey')[];
+      readAt: string;
+    }>(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index('lns_registrations_profile_idx').on(t.profileId),
+    index('lns_registrations_status_idx').on(t.status),
+    check(
+      'lns_registrations_status_chk',
+      sql`${t.status} IN ('registering', 'registered', 'error', 'partial', 'conflict', 'deregistering')`,
+    ),
+    check('lns_registrations_origin_chk', sql`${t.origin} IN ('created', 'linked')`),
+    check('lns_registrations_operation_chk', sql`${t.lastOperation} IN ('register', 'deregister')`),
   ],
 );

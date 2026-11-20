@@ -1,5 +1,6 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { loadConfig } from './config.js';
+import { COMPOSE_DEV_ENCRYPTION_KEY, loadConfig } from './config.js';
 
 const valid = {
   DATABASE_URL: 'postgres://app:pw@localhost:5432/inventarius',
@@ -60,9 +61,14 @@ describe('loadConfig', () => {
     const secret = 's'.repeat(32);
     expect(loadConfig({ ...valid, CSRF_SECRET: secret }).csrfSecret).toBe(secret);
     expect(() => loadConfig({ ...valid, NODE_ENV: 'production' })).toThrowError(/CSRF_SECRET/);
-    expect(loadConfig({ ...valid, NODE_ENV: 'production', CSRF_SECRET: secret }).csrfSecret).toBe(
-      secret,
-    );
+    expect(
+      loadConfig({
+        ...valid,
+        NODE_ENV: 'production',
+        CSRF_SECRET: secret,
+        APP_ENCRYPTION_KEY: 'a'.repeat(64),
+      }).csrfSecret,
+    ).toBe(secret);
     expect(() => loadConfig({ ...valid, CSRF_SECRET: 'corto' })).toThrowError(/CSRF_SECRET/);
     expect(loadConfig({ ...valid, CSRF_SECRET: '' }).csrfSecret).toHaveLength(64); // vacío = sin definir
     const a = loadConfig(valid).csrfSecret;
@@ -106,7 +112,12 @@ describe('loadConfig', () => {
 
   it('marca isProduction según NODE_ENV', () => {
     expect(
-      loadConfig({ ...valid, NODE_ENV: 'production', CSRF_SECRET: 'c'.repeat(32) }).isProduction,
+      loadConfig({
+        ...valid,
+        NODE_ENV: 'production',
+        CSRF_SECRET: 'c'.repeat(32),
+        APP_ENCRYPTION_KEY: 'a'.repeat(64),
+      }).isProduction,
     ).toBe(true);
   });
 
@@ -126,14 +137,19 @@ describe('loadConfig', () => {
 
   it('la cookie es Secure por defecto en producción y se puede forzar', () => {
     expect(
-      loadConfig({ ...valid, NODE_ENV: 'production', CSRF_SECRET: 'c'.repeat(32) }).session
-        .cookieSecure,
+      loadConfig({
+        ...valid,
+        NODE_ENV: 'production',
+        CSRF_SECRET: 'c'.repeat(32),
+        APP_ENCRYPTION_KEY: 'a'.repeat(64),
+      }).session.cookieSecure,
     ).toBe(true);
     expect(
       loadConfig({
         ...valid,
         NODE_ENV: 'production',
         CSRF_SECRET: 'c'.repeat(32),
+        APP_ENCRYPTION_KEY: 'a'.repeat(64),
         SESSION_COOKIE_SECURE: 'false',
       }).session.cookieSecure,
     ).toBe(false);
@@ -143,5 +159,53 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ ...valid, SESSION_IDLE_TIMEOUT_SECONDS: '0' })).toThrowError(
       /SESSION_IDLE_TIMEOUT_SECONDS/,
     );
+  });
+});
+
+describe('cifrado de secretos', () => {
+  const hex = 'ab'.repeat(32);
+  it('sin clave: secretBox indefinido fuera de producción, error en producción', () => {
+    expect(loadConfig(valid).secretBox).toBeUndefined();
+    expect(() =>
+      loadConfig({ ...valid, NODE_ENV: 'production', CSRF_SECRET: 'c'.repeat(32) }),
+    ).toThrowError(/APP_ENCRYPTION_KEY/);
+  });
+  it('en producción rechaza la clave por defecto de compose.yml (pública en el repositorio)', () => {
+    const compose = readFileSync(new URL('../../../../compose.yml', import.meta.url), 'utf8');
+    const inCompose = /APP_ENCRYPTION_KEY: \$\{APP_ENCRYPTION_KEY:-([0-9a-f]+)\}/.exec(compose)![1];
+    expect(COMPOSE_DEV_ENCRYPTION_KEY).toBe(inCompose);
+    const prod = { ...valid, NODE_ENV: 'production', CSRF_SECRET: 'c'.repeat(32) };
+    expect(() => loadConfig({ ...prod, APP_ENCRYPTION_KEY: inCompose })).toThrowError(
+      /clave de desarrollo/,
+    );
+    expect(() => loadConfig({ ...prod, APP_ENCRYPTION_KEY: hex })).not.toThrow();
+    // Fuera de producción sigue valiendo para desarrollar.
+    expect(() => loadConfig({ ...valid, APP_ENCRYPTION_KEY: inCompose })).not.toThrow();
+  });
+  it('construye el SecretBox con la clave vigente y las anteriores', () => {
+    const box = loadConfig({
+      ...valid,
+      APP_ENCRYPTION_KEY: hex,
+      APP_ENCRYPTION_KEY_ID: 'k2',
+      APP_ENCRYPTION_KEYS_PREVIOUS: `k1=${'cd'.repeat(32)}`,
+    }).secretBox!;
+    expect(box.currentKeyId).toBe('k2');
+    expect(box.needsRotation('k1')).toBe(true);
+  });
+  it('rechaza claves mal formadas o ids repetidos', () => {
+    expect(() => loadConfig({ ...valid, APP_ENCRYPTION_KEY: 'corta' })).toThrowError(/32 bytes/);
+    expect(() =>
+      loadConfig({ ...valid, APP_ENCRYPTION_KEY: hex, APP_ENCRYPTION_KEYS_PREVIOUS: `k1=${hex}` }),
+    ).toThrowError(/repetido/);
+    expect(() =>
+      loadConfig({ ...valid, APP_ENCRYPTION_KEY: hex, APP_ENCRYPTION_KEYS_PREVIOUS: 'k0' }),
+    ).toThrowError(/id=clave/);
+  });
+  it('parámetros de reintento LNS con valores por defecto', () => {
+    expect(loadConfig(valid).lns).toEqual({
+      maxAttempts: 5,
+      retryDelaySeconds: 30,
+      requestTimeoutMs: 15000,
+    });
   });
 });

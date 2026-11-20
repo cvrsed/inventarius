@@ -6,6 +6,10 @@ const common = {
 };
 
 export default defineConfig({
+  // La condición `inventarius-source` también debe aplicar al nivel raíz: el `globalSetup` del proyecto `int` (que importa
+  // `migrator.ts` y, con él, `@inventarius/shared`) no hereda lo que se declara dentro de cada proyecto y, sin esto, resuelve
+  // el export `default` (`./dist/index.js`), que solo existe si alguien compiló `shared` antes. Así los tests no dependen de un build.
+  ...common,
   test: {
     // El paquete workspace exporta TS fuente bajo la condición `source`; Vite debe transformarlo, no Node.
     server: { deps: { inline: ['@inventarius/shared'] } },

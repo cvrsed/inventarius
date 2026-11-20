@@ -16,6 +16,7 @@ import FilterToolbar from '@/shared/filters/FilterToolbar.vue';
 import { assetFilterDefs } from './assetFilters';
 import { ASSET_LIST_DEFAULTS, exportUrl, useAssetsList, type AssetListState } from './api';
 import { statusColor } from './status';
+import { lnsStatusColor, lnsStatusKey } from '@/features/lorawan/status';
 
 const { t } = useI18n();
 const auth = useAuthStore();
@@ -100,6 +101,7 @@ const filtered = computed(
     query.value.statusKind !== '' ||
     query.value.assigned !== '' ||
     query.value.overdue !== '' ||
+    query.value.lnsStatus !== '' ||
     query.value.deleted !== 'exclude',
 );
 const filterDefs = computed(() => assetFilterDefs(t));
@@ -117,6 +119,14 @@ const filterDefs = computed(() => assetFilterDefs(t));
           color="neutral"
           variant="outline"
           external
+        />
+        <UButton
+          v-if="auth.can('asset:write')"
+          :to="{ name: 'lorawan-import' }"
+          icon="i-lucide-file-up"
+          :label="t('lorawan.link')"
+          color="neutral"
+          variant="outline"
         />
         <UButton
           v-if="auth.can('asset:write')"
@@ -201,6 +211,16 @@ const filterDefs = computed(() => assetFilterDefs(t));
         </template>
         <template #name-cell="{ row }">
           {{ row.original.name }}
+          <span v-if="row.original.devEui" class="mt-0.5 flex flex-wrap items-center gap-2">
+            <span class="font-mono text-xs text-muted">{{ row.original.devEui }}</span>
+            <UBadge
+              v-if="row.original.lnsStatus"
+              :label="t(lnsStatusKey(row.original.lnsStatus))"
+              :color="lnsStatusColor(row.original.lnsStatus)"
+              variant="subtle"
+              size="sm"
+            />
+          </span>
           <UBadge
             v-if="row.original.deleted"
             :label="t('assets.deletedBadge')"
@@ -242,6 +262,16 @@ const filterDefs = computed(() => assetFilterDefs(t));
           </span>
           <span class="text-default">{{ a.name }}</span>
           <span class="text-sm text-muted">{{ a.model.name }}</span>
+          <span v-if="a.devEui" class="flex flex-wrap items-center gap-2">
+            <span class="font-mono text-xs text-muted">{{ a.devEui }}</span>
+            <UBadge
+              v-if="a.lnsStatus"
+              :label="t(lnsStatusKey(a.lnsStatus))"
+              :color="lnsStatusColor(a.lnsStatus)"
+              variant="subtle"
+              size="sm"
+            />
+          </span>
           <span class="flex items-center gap-1 text-sm text-muted">
             <UIcon name="i-lucide-map-pin" class="size-4" aria-hidden="true" />
             {{ currentPlace(a, t) }} ·

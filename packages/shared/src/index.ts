@@ -5,6 +5,7 @@ export * from './currency.js';
 export * from './dashboard.js';
 export * from './health.js';
 export * from './identity.js';
+export * from './lns.js';
 export * from './lorawan.js';
 export * from './permissions.js';
 export * from './problem.js';

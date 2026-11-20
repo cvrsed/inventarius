@@ -5,6 +5,42 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). D
 
 ## [Sin publicar]
 
+### F3 — LoRaWAN
+
+- Datos LoRaWAN del activo (DevEUI, JoinEUI, AppKey, NwkKey, clase, versión, región): opcionales al crear, obligatorios solo al
+  registrar en el LNS; formato normalizado, DevEUI único y valores por defecto del modelo (RF-21).
+- Cifrado AES-256-GCM de AppKey, NwkKey y credenciales LNS con `APP_ENCRYPTION_KEY` y `key_id` para rotar; `cli reencrypt-secrets`.
+- Reveal de claves con `lorawan:keys:reveal`, auditado y sin caché (RF-30).
+- Perfiles LNS para ChirpStack v4 (gRPC) y TTN v3 (REST) con credencial enmascarada y «Probar conexión» (RF-50 a RF-52).
+- Registro, baja, reintento, idempotencia, conflicto/vincular y compensación por pasos con cola pg-boss y worker (RF-60 a RF-65).
+- Importación CSV de datos LoRaWAN por número de serie, con vista previa, errores por fila y aplicación todo o nada (RF-66).
+- Listado: filtro por estado LNS y búsqueda por DevEUI (RF-22). La ficha no deja dar de baja un activo registrado en un LNS.
+- ChirpStack v4 real en el compose de desarrollo (perfil `chirpstack`) y en el de e2e; job manual `ttn-real` sin credenciales.
+- ADR 0007.
+
+#### Revisión manual del PR #6 contra ChirpStack 4.20.0
+
+- «Probar conexión»: un solo mensaje si todo falla por lo mismo [P1].
+- El registro valida versión, clase y región contra el device profile del LNS y explica qué difiere; la identidad queda
+  bloqueada con el dispositivo registrado o vinculado y la edición avisa que el LNS no se actualiza [P2].
+- Corregido: el adaptador de ChirpStack no enviaba el JoinEUI; test campo por campo contra ChirpStack real [P3].
+- `chirpstack-bootstrap` crea el device profile con ADR algorithm [P4].
+- Vincular lee el dispositivo remoto, muestra diferencias y adopta sus datos sin modificarlo; la ficha muestra lo que el LNS
+  tiene; «Desvincular» sin estilo destructivo; migración 0015 [P5, P6, P7].
+- Una sola tabla de traducciones para el historial y la Auditoría; actor del worker como «Sistema» [P8, P15].
+- Confirmación previa con exactamente lo que se enviará al LNS, con las claves enmascaradas [P9].
+- Importación: «Importar 1 dispositivo», defaults del modelo, id de lote en la auditoría por activo [P16, P19, P20].
+- Botones desactivados con motivo [P17]. Serie única sin distinguir mayúsculas, migración 0014 [P18].
+- Auditoría sin scroll horizontal en escritorio; la IP va al detalle [P21].
+- Registrar toma del device profile la versión y la región que el activo no tiene, y la confirmación lo indica [R1].
+- La AppKey enmascarada de la confirmación se muestra «•••• (32 hex)» en una sola línea [R2].
+- Las pruebas contra ChirpStack real exigen la marca `CHIRPSTACK_TEST_ENDPOINT`, usan prefijo por corrida y borran lo que crean; los dispositivos «ajenos» del bootstrap solo existen en `compose.e2e.yml` [R3].
+- Vincular: el usuario elige por campo qué adoptar del LNS; un JoinEUI en ceros (sin definir) no pisa el local por defecto [R4].
+- Vincular muestra el device profile con nombre, versión y región, en el diálogo y en la ficha [R5].
+- Vincular advierte, en el diálogo y en la ficha, que un dispositivo remoto sin AppKey (o NwkKey en 1.1) no podrá hacer join [R6].
+- Serie única por (modelo, serie) sin distinguir mayúsculas, migración 0016; el CSV admite la columna opcional «Modelo» [P18b].
+- En producción la app no arranca con la clave de cifrado por defecto de `compose.yml` [P22].
+
 ### F2 — Inventario
 
 #### Sexta tanda de revisión (PR #5)

@@ -17,7 +17,9 @@ import { alias } from 'drizzle-orm/pg-core';
 import type { Executor } from '../../core/db/executor.js';
 import {
   assetAssignments,
+  assetLorawan,
   assets,
+  lnsRegistrations,
   categories,
   locations,
   manufacturers,
@@ -67,6 +69,8 @@ export interface AssetRow {
   assignmentSince: Date | null;
   assignmentExpectedReturnOn: string | null;
   assignmentNote: string | null;
+  devEui: string | null;
+  lnsStatus: string | null;
 }
 
 export type NewAsset = Omit<typeof assets.$inferInsert, 'id' | 'createdAt' | 'updatedAt'>;
@@ -147,6 +151,8 @@ export class AssetsRepository {
         assignmentSince: openAssignment.checkedOutAt,
         assignmentExpectedReturnOn: openAssignment.expectedReturnOn,
         assignmentNote: openAssignment.checkoutNote,
+        devEui: assetLorawan.devEui,
+        lnsStatus: lnsRegistrations.status,
       })
       .from(assets)
       .innerJoin(models, eq(models.id, assets.modelId))
@@ -160,7 +166,9 @@ export class AssetsRepository {
       .leftJoin(
         openAssignment,
         and(eq(openAssignment.assetId, assets.id), isNull(openAssignment.checkedInAt)),
-      );
+      )
+      .leftJoin(assetLorawan, eq(assetLorawan.assetId, assets.id))
+      .leftJoin(lnsRegistrations, eq(lnsRegistrations.assetId, assets.id));
   }
 
   private where(f: AssetFilters, today: string): SQL | undefined {
@@ -171,6 +179,7 @@ export class AssetsRepository {
             sql`${assets.assetTag}::text ILIKE ${term}`,
             ilike(assets.name, term),
             ilike(assets.serial, term),
+            ilike(assetLorawan.devEui, term),
           )
         : undefined,
       f.categoryId ? eq(models.categoryId, f.categoryId) : undefined,
@@ -186,6 +195,8 @@ export class AssetsRepository {
       f.assigned === 'no'
         ? and(isNull(assets.assignedUserId), isNull(assets.assignedLocationId))
         : undefined,
+      f.lnsStatus === 'none' ? isNull(lnsRegistrations.status) : undefined,
+      f.lnsStatus && f.lnsStatus !== 'none' ? eq(lnsRegistrations.status, f.lnsStatus) : undefined,
       f.overdue ? sql`${openAssignment.expectedReturnOn} < ${today}::date` : undefined,
       f.deleted === 'exclude' ? isNull(assets.deletedAt) : undefined,
       f.deleted === 'only' ? isNotNull(assets.deletedAt) : undefined,
@@ -216,6 +227,8 @@ export class AssetsRepository {
           openAssignment,
           and(eq(openAssignment.assetId, assets.id), isNull(openAssignment.checkedInAt)),
         )
+        .leftJoin(assetLorawan, eq(assetLorawan.assetId, assets.id))
+        .leftJoin(lnsRegistrations, eq(lnsRegistrations.assetId, assets.id))
         .where(where),
     ]);
     return { rows, total: totals[0]?.n ?? 0 };
@@ -223,6 +236,52 @@ export class AssetsRepository {
 
   async getById(exec: Executor, id: string): Promise<AssetRow | undefined> {
     return (await this.select(exec).where(eq(assets.id, id)).limit(1))[0];
+  }
+
+  /** Activos con alguno de esos números de serie (sin distinguir mayúsculas), para la importación CSV (RF-66). */
+  async bySerials(
+    exec: Executor,
+    serials: string[],
+  ): Promise<
+    {
+      id: string;
+      assetTag: string;
+      serial: string;
+      deleted: boolean;
+      categoryExtension: string;
+      modelName: string;
+      modelNumber: string | null;
+    }[]
+  > {
+    if (!serials.length) return [];
+    const rows = await exec
+      .select({
+        id: assets.id,
+        assetTag: sql<string>`${assets.assetTag}::text`,
+        serial: assets.serial,
+        deletedAt: assets.deletedAt,
+        categoryExtension: categories.extension,
+        modelName: models.name,
+        modelNumber: models.modelNumber,
+      })
+      .from(assets)
+      .innerJoin(models, eq(models.id, assets.modelId))
+      .innerJoin(categories, eq(categories.id, models.categoryId))
+      .where(
+        inArray(
+          sql`lower(${assets.serial})`,
+          serials.map((x) => x.toLowerCase()),
+        ),
+      );
+    return rows.map((r) => ({
+      id: r.id,
+      assetTag: r.assetTag,
+      serial: r.serial ?? '',
+      deleted: r.deletedAt !== null,
+      categoryExtension: r.categoryExtension,
+      modelName: r.modelName,
+      modelNumber: r.modelNumber,
+    }));
   }
 
   /** Bloquea la fila hasta el fin de la transacción: serializa asignaciones y ediciones simultáneas. */
@@ -256,14 +315,20 @@ export class AssetsRepository {
     return out;
   }
 
-  /** Series de la lista que ya tiene algún activo (vigente o dado de baja), sin distinguir mayúsculas. */
-  async existingSerials(exec: Executor, serials: readonly string[]): Promise<string[]> {
+  /** Series de la lista que ya tiene algún activo de ese modelo (vigente o dado de baja), sin distinguir mayúsculas. */
+  async existingSerials(
+    exec: Executor,
+    modelId: string,
+    serials: readonly string[],
+  ): Promise<string[]> {
     if (!serials.length) return [];
     const lowered = serials.map((s) => s.trim().toLowerCase());
     const rows = await exec
       .select({ serial: assets.serial })
       .from(assets)
-      .where(inArray(sql<string>`lower(${assets.serial})`, lowered));
+      .where(
+        and(eq(assets.modelId, modelId), inArray(sql<string>`lower(${assets.serial})`, lowered)),
+      );
     return rows.flatMap((r) => (r.serial ? [r.serial] : []));
   }
 

@@ -107,3 +107,184 @@ export const LORAWAN_REGIONAL_PARAMETERS_OPTIONS = options(
   LORAWAN_REGIONAL_PARAMETERS,
   REGIONAL_PARAMETERS_LABELS,
 );
+
+// --- Datos LoRaWAN del activo (RF-21, sección 5.2) ---
+
+/** Quita separadores (`:`, `-`, espacios) y pasa a mayúsculas: forma canónica de EUI y claves. */
+export function normalizeHex(value: string): string {
+  return value.replace(/[\s:-]/g, '').toUpperCase();
+}
+
+const hexOf = (length: number, label: string) =>
+  z
+    .string()
+    .transform(normalizeHex)
+    .refine((v) => new RegExp(`^[0-9A-F]{${length}}$`).test(v), {
+      message: `${label} debe tener ${length} caracteres hexadecimales`,
+    });
+
+/** DevEUI / JoinEUI: 8 bytes (16 hex). */
+export const devEuiSchema = hexOf(16, 'El DevEUI');
+export const joinEuiSchema = hexOf(16, 'El JoinEUI');
+/** AppKey / NwkKey: 16 bytes (32 hex). */
+export const appKeySchema = hexOf(32, 'La AppKey');
+export const nwkKeySchema = hexOf(32, 'La NwkKey');
+
+export const LORAWAN_ACTIVATIONS = ['OTAA'] as const;
+
+/** Estado del registro en el LNS (RF-61); la ausencia de registro es «no registrado». */
+export const LNS_REGISTRATION_STATUSES = [
+  'registering',
+  'registered',
+  'error',
+  'partial',
+  'conflict',
+  'deregistering',
+] as const;
+export type LnsRegistrationStatus = (typeof LNS_REGISTRATION_STATUSES)[number];
+export const lnsRegistrationStatusSchema = z.enum(LNS_REGISTRATION_STATUSES);
+
+/** Valor del filtro «estado LNS»: incluye `none` (sin registro). */
+export const lnsStatusFilterSchema = z.enum(['none', ...LNS_REGISTRATION_STATUSES]);
+
+const nullable = <T extends z.ZodType>(schema: T) => schema.nullable();
+
+/**
+ * Cambio parcial de los datos LoRaWAN: un campo omitido no se toca; `null` lo borra. Las claves nunca vuelven
+ * en las respuestas (solo si existen).
+ */
+export const updateLorawanSchema = z.object({
+  devEui: nullable(devEuiSchema).optional(),
+  joinEui: nullable(joinEuiSchema).optional(),
+  appKey: nullable(appKeySchema).optional(),
+  nwkKey: nullable(nwkKeySchema).optional(),
+  deviceClass: nullable(lorawanClassSchema).optional(),
+  lorawanVersion: nullable(lorawanVersionSchema).optional(),
+  region: nullable(lorawanRegionSchema).optional(),
+});
+export type UpdateLorawanInput = z.infer<typeof updateLorawanSchema>;
+
+/** Datos mínimos para evaluar si un activo se puede registrar en el LNS. */
+export interface LorawanReadinessInput {
+  devEui: string | null;
+  joinEui: string | null;
+  hasAppKey: boolean;
+  hasNwkKey: boolean;
+  lorawanVersion: string | null;
+}
+
+/** Campos que faltan para registrar (RF-60): DevEUI, JoinEUI, AppKey, y NwkKey en LoRaWAN 1.1. */
+export function missingForRegistration(d: LorawanReadinessInput): string[] {
+  const missing: string[] = [];
+  if (!d.devEui) missing.push('devEui');
+  if (!d.joinEui) missing.push('joinEui');
+  if (!d.hasAppKey) missing.push('appKey');
+  if (d.lorawanVersion === '1.1' && !d.hasNwkKey) missing.push('nwkKey');
+  return missing;
+}
+
+/** Un device profile del LNS en lenguaje de persona: nombre, versión y región tal como los tiene el LNS. */
+export const deviceProfileLabelSchema = z.object({
+  name: z.string().nullable(),
+  version: z.string().nullable(),
+  region: z.string().nullable(),
+});
+export type DeviceProfileLabelDto = z.infer<typeof deviceProfileLabelSchema>;
+
+/** Lo que el LNS tiene de un dispositivo, sin claves: solo si están o no (vincular, RF-64). */
+export const remoteDeviceSchema = z.object({
+  name: z.string(),
+  joinEui: z.string().nullable(),
+  deviceProfileId: z.string().nullable(),
+  /** Nombre, versión y región de ese device profile; `null` si el LNS no lo tiene o no se pudo leer. */
+  deviceProfile: deviceProfileLabelSchema.nullable().default(null),
+  hasAppKey: z.boolean(),
+  hasNwkKey: z.boolean(),
+  /** Claves que el dispositivo necesita para hacer join (según la versión del activo) y el LNS no tiene. */
+  missingKeys: z.array(z.enum(['appKey', 'nwkKey'])).default([]),
+});
+export type RemoteDeviceDto = z.infer<typeof remoteDeviceSchema>;
+
+export const lnsRegistrationSchema = z.object({
+  status: lnsRegistrationStatusSchema,
+  profile: z.object({ id: z.uuid(), name: z.string(), kind: z.enum(['chirpstack', 'ttn']) }),
+  externalId: z.string().nullable(),
+  origin: z.enum(['created', 'linked']),
+  lastError: z.string().nullable(),
+  /** Componentes que quedaron huérfanos en el LNS cuando la compensación también falló (`partial`). */
+  orphans: z.array(z.string()),
+  attempts: z.number().int(),
+  registeredAt: z.iso.datetime().nullable(),
+  /** Lo que el LNS tenía de un dispositivo vinculado en el momento de vincularlo; `null` si no es vinculado. */
+  remote: remoteDeviceSchema.extend({ readAt: z.iso.datetime() }).nullable(),
+  updatedAt: z.iso.datetime(),
+});
+export type LnsRegistrationDto = z.infer<typeof lnsRegistrationSchema>;
+
+export const lorawanSchema = z.object({
+  devEui: z.string().nullable(),
+  joinEui: z.string().nullable(),
+  hasAppKey: z.boolean(),
+  hasNwkKey: z.boolean(),
+  activation: z.enum(LORAWAN_ACTIVATIONS),
+  deviceClass: lorawanClassSchema.nullable(),
+  lorawanVersion: lorawanVersionSchema.nullable(),
+  region: lorawanRegionSchema.nullable(),
+  /** Valores del modelo con los que se completan los campos vacíos al editar. */
+  modelDefaults: z.object({
+    deviceClass: lorawanClassSchema.nullable(),
+    lorawanVersion: lorawanVersionSchema.nullable(),
+    region: lorawanRegionSchema.nullable(),
+  }),
+  /** Campos que faltan para poder registrar en el LNS. */
+  missingForRegistration: z.array(z.string()),
+  registration: lnsRegistrationSchema.nullable(),
+});
+export type LorawanDto = z.infer<typeof lorawanSchema>;
+
+export const revealKeysResultSchema = z.object({
+  appKey: z.string().nullable(),
+  nwkKey: z.string().nullable(),
+});
+export type RevealKeysResult = z.infer<typeof revealKeysResultSchema>;
+
+export const registerInLnsSchema = z.object({ profileId: z.uuid() });
+/** Datos del activo que se pueden reemplazar con los del LNS al vincular. */
+export const linkAdoptFieldSchema = z.enum(['joinEui', 'appKey', 'nwkKey']);
+export type LinkAdoptField = z.infer<typeof linkAdoptFieldSchema>;
+
+/**
+ * `adopt` (solo con `link`): qué campos adoptar del LNS. Sin él se adopta lo que la lectura previa propone por defecto
+ * (`adopts`); con `[]` no se adopta nada.
+ */
+export const resolveConflictSchema = z.object({
+  action: z.enum(['link', 'cancel']),
+  adopt: z.array(linkAdoptFieldSchema).optional(),
+});
+
+// --- Importación CSV (RF-66) ---
+
+/** Fila ya interpretada del CSV, tal como la valida el servidor. */
+export const lorawanImportRowSchema = z.object({
+  line: z.number().int(),
+  serial: z.string(),
+  assetId: z.uuid().nullable(),
+  assetTag: z.string().nullable(),
+  devEui: z.string().nullable(),
+  errors: z.array(z.string()),
+});
+export const lorawanImportPreviewSchema = z.object({
+  rows: z.array(lorawanImportRowSchema),
+  total: z.number().int(),
+  valid: z.number().int(),
+  invalid: z.number().int(),
+  /** Errores del archivo completo (cabecera, tamaño). */
+  fileErrors: z.array(z.string()),
+});
+export type LorawanImportPreview = z.infer<typeof lorawanImportPreviewSchema>;
+
+export const lorawanImportRequestSchema = z.object({
+  /** Contenido del CSV como texto UTF-8. */
+  csv: z.string().min(1).max(2_000_000),
+});
+export const lorawanImportResultSchema = z.object({ applied: z.number().int() });

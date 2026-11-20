@@ -22,6 +22,8 @@ async function ask(question: string, hidden = false): Promise<string> {
  * CLI de operación. Comandos:
  *   create-admin --email <correo> --name <nombre> [--password-env VAR] [--if-missing]
  *   update-email --email-actual <correo> --email-nuevo <correo>
+ *   reencrypt-secrets
+ * `reencrypt-secrets` recifra AppKey, NwkKey y credenciales LNS con la clave vigente (rotación de APP_ENCRYPTION_KEY).
  * `update-email` cambia el correo de cualquier usuario (también el del único administrador): cierra sus sesiones y
  * deja la auditoría con actor `cli`.
  * La contraseña nunca va por argumentos (quedaría en el historial del shell): se lee de una variable
@@ -32,9 +34,11 @@ async function main(): Promise<number> {
   const [command, ...rest] = process.argv.slice(2);
   if (command === 'create-admin') return createAdmin(rest);
   if (command === 'update-email') return updateEmail(rest);
+  if (command === 'reencrypt-secrets') return reencryptSecrets();
   console.error(
     'Uso:\n  cli create-admin --email <correo> --name <nombre> [--password-env VAR] [--if-missing]\n' +
-      '  cli update-email --email-actual <correo> --email-nuevo <correo>',
+      '  cli update-email --email-actual <correo> --email-nuevo <correo>\n' +
+      '  cli reencrypt-secrets',
   );
   return 2;
 }
@@ -94,6 +98,17 @@ async function updateEmail(rest: string[]): Promise<number> {
     const updated = await users.changeEmailByCli(input.currentEmail, input.newEmail);
     console.info(
       `Correo actualizado: ${input.currentEmail} → ${updated.email}. Se cerraron las sesiones de esa persona.`,
+    );
+    return 0;
+  });
+}
+
+async function reencryptSecrets(): Promise<number> {
+  return withServices(async ({ lorawan, lnsProfiles }) => {
+    const keys = await lorawan.reencryptAll();
+    const credentials = await lnsProfiles.reencryptAll();
+    console.info(
+      `Recifrado con la clave vigente: ${keys} dispositivos LoRaWAN y ${credentials} perfiles LNS.`,
     );
     return 0;
   });

@@ -208,6 +208,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@chirpstack/chirpstack-api':
+        specifier: 4.20.0
+        version: 4.20.0(@types/google-protobuf@3.15.12)(google-protobuf@3.21.4)
       '@fastify/cookie':
         specifier: 11.1.5
         version: 11.1.5
@@ -223,6 +226,9 @@ importers:
       '@fastify/under-pressure':
         specifier: 9.2.1
         version: 9.2.1
+      '@grpc/grpc-js':
+        specifier: 1.14.7
+        version: 1.14.7
       '@inventarius/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -241,6 +247,9 @@ importers:
       fastify-type-provider-zod:
         specifier: 7.0.0
         version: 7.0.0(@fastify/swagger@9.9.4)(fastify@5.12.8)(openapi-types@12.1.3)(zod@4.6.7)
+      google-protobuf:
+        specifier: 3.21.4
+        version: 3.21.4
       pg:
         specifier: 8.23.1
         version: 8.23.1
@@ -257,6 +266,9 @@ importers:
       '@testcontainers/postgresql':
         specifier: 12.2.1
         version: 12.2.1(bare-buffer@3.7.2)
+      '@types/google-protobuf':
+        specifier: 3.15.12
+        version: 3.15.12
       '@types/node':
         specifier: 26.6.6
         version: 26.6.6
@@ -446,6 +458,17 @@ packages:
   '@capsizecss/unpack@4.0.1':
     resolution: {integrity: sha512-CuNiSqg7+e1cO/GjffyMOm5Tt2jUF9CWHHnvQ/UkqvtkGfHdgwEC0wpmq7fkN3gxwpRnrAN0WzO3vREKmNolMQ==}
     engines: {node: '>=18'}
+
+  '@chirpstack/chirpstack-api@4.20.0':
+    resolution: {integrity: sha512-14dDfW4sslWUruRtn5xJVkEtZFp5Fnm/KvrJ/ilW6qmSLcOWnUQBDMzz8RedctnX0GWyRz9tseM2sXsB4F9F0Q==}
+    peerDependencies:
+      '@types/google-protobuf': ^3.15.12
+      google-protobuf: ^3.21.4
+    peerDependenciesMeta:
+      '@types/google-protobuf':
+        optional: true
+      google-protobuf:
+        optional: true
 
   '@commitlint/cli@21.2.4':
     resolution: {integrity: sha512-g3M/wrQdElqGH5vROIeL2QiYIxrzqUkhCgsDyDlWfKEyQdCt10OyMB28W2cJtpZ+VNGMvmaN923infr1hOfyrg==}
@@ -2034,6 +2057,9 @@ packages:
   '@types/estree@1.0.10':
     resolution: {integrity: sha512-lTyOMnOcmRBzdCv6/4zUZCrEhV0xrqQiUZBZtVcbmLHBXKLnN8q89v/wKRF/Q0HbwVsqbIG3o5HDoFl9sduM+g==}
 
+  '@types/google-protobuf@3.15.12':
+    resolution: {integrity: sha512-40um9QqwHjRS92qnOaDpL7RmDK15NuZYo9HihiJRbYkMQZlWnuH8AdvbMy8/o6lgLmKbDUKa+OALCltHdbOTpQ==}
+
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
 
@@ -3225,6 +3251,9 @@ packages:
   globals@17.14.0:
     resolution: {integrity: sha512-UtdkTVyAJePQv0J2M9Xe4L0ruNSDV314XiIJsADI2Zf40bcdAonE/D/OhAU8AT99oij9mhLByb+NvA3QWZYgCg==}
     engines: {node: '>=18'}
+
+  google-protobuf@3.21.4:
+    resolution: {integrity: sha512-MnG7N936zcKTco4Jd2PX2U96Kf9PxygAPKBug+74LHzmHXmceN16MmRcdgZv+DGef/S9YvQAfRsNCn4cjf9yyQ==}
 
   graceful-fs@4.2.12:
     resolution: {integrity: sha512-iuyGF2E4oafQfPsRrG2wtY2ILupMhvtdrhzrxB+0VcjsPpSPttpfYdjnGFGsTi5MaJFjI1jOKHPQ6UTbTj9TAw==}
@@ -4941,6 +4970,13 @@ snapshots:
     dependencies:
       fontkitten: 1.0.3
 
+  '@chirpstack/chirpstack-api@4.20.0(@types/google-protobuf@3.15.12)(google-protobuf@3.21.4)':
+    dependencies:
+      '@grpc/grpc-js': 1.14.7
+    optionalDependencies:
+      '@types/google-protobuf': 3.15.12
+      google-protobuf: 3.21.4
+
   '@commitlint/cli@21.2.4(conventional-commits-parser@7.1.4)(typescript@6.0.3)':
     dependencies:
       '@commitlint/config-conventional': 21.2.4
@@ -6400,6 +6436,8 @@ snapshots:
 
   '@types/estree@1.0.10': {}
 
+  '@types/google-protobuf@3.15.12': {}
+
   '@types/json-schema@7.0.15': {}
 
   '@types/node@18.19.130':
@@ -7685,6 +7723,8 @@ snapshots:
       ini: 6.0.0
 
   globals@17.14.0: {}
+
+  google-protobuf@3.21.4: {}
 
   graceful-fs@4.2.12: {}
 

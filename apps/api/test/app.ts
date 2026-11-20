@@ -5,7 +5,33 @@ import { loadConfig, type AppConfig } from '../src/core/config.js';
 import { pingDatabase, pingQueue } from '../src/core/db/client.js';
 import { buildServices, type Services } from '../src/core/container.js';
 import type { PasswordHasher } from '../src/modules/auth/password.js';
+import type { JobQueue, SendOptions } from '../src/core/queue.js';
+import type { AdapterRegistry } from '../src/modules/lns/adapter.js';
 import { createIsolatedDb, type IsolatedDb } from './db.js';
+
+/** Clave maestra de pruebas (inventada). */
+export const TEST_ENCRYPTION_KEY = 'ab'.repeat(32);
+
+/** Cola en memoria: guarda los jobs enviados y deja que el test los ejecute cuando quiera. */
+export class MemoryQueue implements JobQueue {
+  jobs: { queue: string; data: Record<string, unknown>; options: SendOptions | undefined }[] = [];
+  /** Si se pone, el siguiente `send` falla con este error. */
+  failNext: Error | null = null;
+  async send(queue: string, data: Record<string, unknown>, options?: SendOptions): Promise<void> {
+    if (this.failNext) {
+      const e = this.failNext;
+      this.failNext = null;
+      throw e;
+    }
+    this.jobs.push({ queue, data, options });
+  }
+  /** Saca y devuelve los jobs pendientes de una cola. */
+  take(queue: string): string[] {
+    const mine = this.jobs.filter((j) => j.queue === queue);
+    this.jobs = this.jobs.filter((j) => j.queue !== queue);
+    return mine.map((j) => String(j.data.registrationId));
+  }
+}
 
 /** Hasher rápido: los tests que no prueban argon2 no deben pagar su costo. */
 export class FastHasher implements PasswordHasher {
@@ -122,6 +148,7 @@ export interface TestEnv {
   services: Services;
   config: AppConfig;
   clock: FakeClock;
+  queue: MemoryQueue;
   client(ip?: string): TestClient;
   /** Crea un usuario con el rol dado (por nombre), listo para iniciar sesión (sin cambio de contraseña pendiente). */
   createUser(opts: {
@@ -136,7 +163,7 @@ export interface TestEnv {
 
 export async function createTestEnv(
   overrides: Record<string, string> = {},
-  opts: { realHasher?: boolean } = {},
+  opts: { realHasher?: boolean; adapters?: AdapterRegistry } = {},
 ): Promise<TestEnv> {
   const db = await createIsolatedDb();
   const config = loadConfig({
@@ -144,18 +171,29 @@ export async function createTestEnv(
     NODE_ENV: 'test',
     LOG_LEVEL: 'silent',
     SESSION_COOKIE_SECURE: 'false',
+    APP_ENCRYPTION_KEY: TEST_ENCRYPTION_KEY,
     ...overrides,
   });
   const clock = new FakeClock();
+  const queue = new MemoryQueue();
   const hasher = opts.realHasher ? undefined : new FastHasher();
   const app = await buildApp({
     config,
     db: db.db,
     clock,
+    queue,
+    ...(opts.adapters ? { adapters: opts.adapters } : {}),
     ...(hasher ? { hasher } : {}),
     health: { database: () => pingDatabase(db.pool), queue: () => pingQueue(db.pool) },
   });
-  const services = buildServices({ db: db.db, config, clock, ...(hasher ? { hasher } : {}) });
+  const services = buildServices({
+    db: db.db,
+    config,
+    clock,
+    queue,
+    ...(opts.adapters ? { adapters: opts.adapters } : {}),
+    ...(hasher ? { hasher } : {}),
+  });
 
   return {
     app,
@@ -163,6 +201,7 @@ export async function createTestEnv(
     services,
     config,
     clock,
+    queue,
     client: (ip) => new TestClient(app, ip),
     async createUser({
       email,

@@ -14,6 +14,13 @@ export type AssigneeType = (typeof ASSIGNEE_TYPES)[number];
 export const ASSET_SITUATIONS = ['vigente', 'baja'] as const;
 export type AssetSituation = (typeof ASSET_SITUATIONS)[number];
 
+/** Origen de un dispositivo en el LNS: lo creó Inventarius o ya existía y se vinculó. */
+export const LNS_ORIGINS = ['created', 'linked'] as const;
+/** Componentes de un LNS que pueden quedar huérfanos tras un registro fallido (`device` en ChirpStack; IS/JS/NS/AS en TTN). */
+export const LNS_COMPONENTS = ['device', 'is', 'js', 'ns', 'as'] as const;
+/** Claves de un dispositivo LoRaWAN (campo `keys` al revelarlas). */
+export const LORAWAN_KEY_NAMES = ['appKey', 'nwkKey'] as const;
+
 /**
  * Campos del diff de auditoría cuyo valor es una enumeración, con todos sus valores posibles. La web traduce cada
  * uno (mapa `AUDIT_VALUE_LABELS`) y un test falla si falta alguna traducción.
@@ -28,6 +35,11 @@ export const AUDIT_ENUM_FIELDS = {
   lorawanRegion: LORAWAN_REGIONS,
   lorawanVersion: LORAWAN_VERSIONS,
   lorawanRegionalParameters: LORAWAN_REGIONAL_PARAMETERS,
+  deviceClass: LORAWAN_CLASSES,
+  region: LORAWAN_REGIONS,
+  origin: LNS_ORIGINS,
+  orphans: LNS_COMPONENTS,
+  keys: LORAWAN_KEY_NAMES,
 } as const;
 export type AuditEnumField = keyof typeof AUDIT_ENUM_FIELDS;
 
@@ -71,6 +83,20 @@ export const AUDIT_ACTIONS = [
   'asset.checkin',
   'asset.delete',
   'asset.restore',
+  'lorawan.update',
+  'lorawan.reveal_keys',
+  'lorawan.import',
+  'lns_profile.create',
+  'lns_profile.update',
+  'lns_profile.delete',
+  'lns.register',
+  'lns.registered',
+  'lns.register_failed',
+  'lns.deregister',
+  'lns.deregistered',
+  'lns.link',
+  'lns.unlink',
+  'lns.cancel',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -84,5 +110,7 @@ export const AUDIT_ENTITIES = [
   'model',
   'location',
   'status_label',
+  'lns_profile',
+  'lorawan_import',
 ] as const;
 export type AuditEntity = (typeof AUDIT_ENTITIES)[number];

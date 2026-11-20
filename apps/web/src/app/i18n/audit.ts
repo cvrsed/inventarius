@@ -51,6 +51,20 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   'asset.checkin': 'Devolución',
   'asset.delete': 'Baja',
   'asset.restore': 'Restauración',
+  'lorawan.update': 'Edición de datos LoRaWAN',
+  'lorawan.reveal_keys': 'Revelado de claves LoRaWAN',
+  'lorawan.import': 'Importación de datos LoRaWAN',
+  'lns_profile.create': 'Alta de perfil LNS',
+  'lns_profile.update': 'Edición de perfil LNS',
+  'lns_profile.delete': 'Eliminación de perfil LNS',
+  'lns.register': 'Registro en LNS solicitado',
+  'lns.registered': 'Registrado en LNS',
+  'lns.register_failed': 'Registro en LNS fallido',
+  'lns.deregister': 'Baja en LNS solicitada',
+  'lns.deregistered': 'Dado de baja en LNS',
+  'lns.link': 'Vinculado a un dispositivo existente en LNS',
+  'lns.unlink': 'Desvinculado del LNS (no se borró nada en el LNS)',
+  'lns.cancel': 'Registro en LNS cancelado',
 };
 
 export const AUDIT_ENTITY_LABELS: Record<AuditEntity, string> = {
@@ -63,6 +77,8 @@ export const AUDIT_ENTITY_LABELS: Record<AuditEntity, string> = {
   model: 'Modelo',
   location: 'Ubicación',
   status_label: 'Estado',
+  lns_profile: 'Perfil LNS',
+  lorawan_import: 'Importación LoRaWAN',
 };
 
 /** Texto de una acción; un código desconocido (p. ej. de una versión futura) se muestra tal cual. */
@@ -116,9 +132,53 @@ export const AUDIT_FIELD_LABELS: Record<string, string> = {
   lorawanRegion: 'Región / plan de frecuencias',
   lorawanVersion: 'Versión de LoRaWAN',
   lorawanRegionalParameters: 'Versión de parámetros regionales',
+  devEui: 'DevEUI',
+  joinEui: 'JoinEUI',
+  appKeyChanged: 'AppKey modificada',
+  nwkKeyChanged: 'NwkKey modificada',
+  region: 'Región',
+  deviceClass: 'Clase',
+  profile: 'Perfil LNS',
+  externalId: 'Id en el LNS',
+  error: 'Error',
+  orphans: 'Componentes huérfanos',
+  origin: 'Origen',
+  keys: 'Claves reveladas',
+  endpoint: 'Endpoint',
+  credentialChanged: 'Credencial reemplazada',
+  tls: 'TLS',
+  serials: 'Números de serie',
+  target: 'Destino',
+  deviceDefaults: 'Valores por defecto del dispositivo',
+  // Dentro de `target` y `deviceDefaults`.
+  tenantId: 'Tenant',
+  applicationId: 'Aplicación',
+  deviceProfileId: 'Device profile',
+  frequencyPlanId: 'Plan de frecuencias',
+  macVersion: 'Versión MAC',
+  phyVersion: 'Versión PHY',
+  joinServerAddress: 'Join Server',
+  networkServerAddress: 'Network Server',
+  applicationServerAddress: 'Application Server',
+  // `hasAppKey`/`appKeyChanged` (y sus pares de NwkKey) se muestran como una línea «AppKey: cargada/actualizada».
+  appKey: 'AppKey',
+  nwkKey: 'NwkKey',
 };
 
-export const auditFieldLabel = (field: string): string => AUDIT_FIELD_LABELS[field] ?? field;
+/**
+ * Rótulos que dependen de la entidad: un mismo campo significa cosas distintas (`kind` es el tipo de un estado del
+ * catálogo y el proveedor de un perfil LNS).
+ */
+const ENTITY_FIELD_LABELS: Partial<Record<AuditEntity, Record<string, string>>> = {
+  lns_profile: { kind: 'Tipo de LNS' },
+};
+
+export const auditFieldLabel = (field: string, entity?: string): string =>
+  (entity
+    ? (ENTITY_FIELD_LABELS as Record<string, Record<string, string> | undefined>)[entity]?.[field]
+    : undefined) ??
+  AUDIT_FIELD_LABELS[field] ??
+  field;
 
 const fromOptions = (options: readonly { value: string; label: string }[]) =>
   Object.fromEntries(options.map((o) => [o.value, o.label]));
@@ -142,10 +202,32 @@ export const AUDIT_VALUE_LABELS: {
   lorawanRegion: fromOptions(LORAWAN_REGION_OPTIONS) as never,
   lorawanVersion: fromOptions(LORAWAN_VERSION_OPTIONS) as never,
   lorawanRegionalParameters: fromOptions(LORAWAN_REGIONAL_PARAMETERS_OPTIONS) as never,
+  deviceClass: fromOptions(LORAWAN_CLASS_OPTIONS) as Record<'A' | 'B' | 'C', string>,
+  region: fromOptions(LORAWAN_REGION_OPTIONS) as never,
+  origin: { created: 'Creado por Inventarius', linked: 'Vinculado (ya existía en el LNS)' },
+  orphans: {
+    device: 'Dispositivo',
+    is: 'Identity Server',
+    js: 'Join Server',
+    ns: 'Network Server',
+    as: 'Application Server',
+  },
+  keys: { appKey: 'AppKey', nwkKey: 'NwkKey' },
+};
+
+/** Valores que dependen de la entidad (ver `ENTITY_FIELD_LABELS`). */
+const ENTITY_VALUE_LABELS: Partial<Record<AuditEntity, Record<string, Record<string, string>>>> = {
+  lns_profile: { kind: { chirpstack: 'ChirpStack', ttn: 'TTN' } },
 };
 
 /** Traducción de un valor enumerado, o `undefined` si el campo no es enumerado o el valor es desconocido. */
-export function auditValueLabel(field: string, value: string): string | undefined {
+export function auditValueLabel(field: string, value: string, entity?: string): string | undefined {
+  const byEntity = entity
+    ? (ENTITY_VALUE_LABELS as Record<string, Record<string, Record<string, string>> | undefined>)[
+        entity
+      ]?.[field]
+    : undefined;
+  if (byEntity) return byEntity[value];
   const map = (AUDIT_VALUE_LABELS as Record<string, Record<string, string>>)[field];
   return map?.[value];
 }

@@ -110,6 +110,27 @@ Cómo repetirlo: `pnpm gitleaks` (historial completo), `scripts/gitleaks.sh stag
 - **Datos personales:** `GET /assignees` entrega solo id y nombre (no correo) de usuarios activos, a quien puede asignar.
 - **Auditoría:** toda escritura de catálogo y activos queda en `audit_log` dentro de la misma transacción (RF-30).
 
+## LoRaWAN y secretos (F3)
+
+- **Cifrado en reposo:** AppKey, NwkKey y credenciales de LNS con AES-256-GCM (`SecretBox`), IV aleatorio por valor, AAD
+  `tabla:id:columna` y `key_id` por fila para rotar. La clave maestra `APP_ENCRYPTION_KEY` solo vive en el entorno del
+  servidor (obligatoria en producción) y no se respalda junto a la base. Rotación: agregar la nueva como vigente, dejar la
+  anterior en `APP_ENCRYPTION_KEYS_PREVIOUS` y ejecutar `cli reencrypt-secrets` (ver `docs/operations.md`).
+- **Reveal (RF-30):** solo con `lorawan:keys:reveal`, por `POST` con `Cache-Control: no-store`, auditado con quién, IP y qué
+  claves (nunca el valor). La web guarda las claves solo mientras el diálogo está abierto.
+- **Las claves y credenciales no aparecen** en respuestas de la API, exportaciones CSV, auditoría, historial ni logs: las
+  respuestas traen `hasAppKey`/`hasNwkKey` y `•••• últimos4`. Las pruebas de integración revisan la tabla `audit_log` completa
+  tras operar con claves reales de prueba. El mensaje de un error del LNS nunca incluye la credencial.
+- **Permisos:** `asset:write` edita los datos (las claves son de solo escritura); `lorawan:register` registra y da de baja;
+  `lns_profile:manage` administra perfiles (el diálogo de registro usa `/lns-profiles/options`, que no expone destino ni
+  credencial). El test de permisos por rol recorre las rutas nuevas.
+- **Importación CSV:** el archivo viaja en el cuerpo de la petición (tope de 3 MB), se valida entero antes de escribir y la
+  auditoría guarda solo cantidad y series; los valores de claves no se registran.
+- **Llamadas salientes:** solo a los endpoints de los perfiles que administra un administrador (RF-50); cada llamada tiene tope
+  de tiempo. La API key de ChirpStack debe ser de tenant (mínimo derecho) y la de TTN, de una aplicación.
+- **Pruebas:** todo identificador de prueba es inventado; el ChirpStack de prueba usa credenciales ficticias (`deploy/chirpstack/`)
+  y no debe exponerse fuera de la red de Compose.
+
 ## Excepciones de vulnerabilidades
 
 Cada hallazgo que el CI ignora está aquí, con motivo y fecha de revisión. Al vencer la fecha el CI vuelve a fallar

@@ -33,6 +33,8 @@ const baseAsset = {
   assignedUser: null,
   assignedLocation: null,
   deleted: false,
+  devEui: null,
+  lnsStatus: null,
   purchaseDate: '2026-01-31',
   purchaseCost: 499990,
   purchaseCurrency: 'CLP',

@@ -1,0 +1,2 @@
+ALTER TABLE "lns_registrations" ADD COLUMN "last_operation" text DEFAULT 'register' NOT NULL;--> statement-breakpoint
+ALTER TABLE "lns_registrations" ADD CONSTRAINT "lns_registrations_operation_chk" CHECK ("lns_registrations"."last_operation" IN ('register', 'deregister'));

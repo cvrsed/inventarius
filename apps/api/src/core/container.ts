@@ -17,6 +17,17 @@ import { CatalogRepository } from '../modules/catalog/repository.js';
 import { CatalogService } from '../modules/catalog/service.js';
 import { RbacRepository } from '../modules/rbac/repository.js';
 import { RbacService } from '../modules/rbac/service.js';
+import { LorawanImportService } from '../modules/lorawan/import-service.js';
+import { LorawanRepository } from '../modules/lorawan/repository.js';
+import { LorawanService } from '../modules/lorawan/service.js';
+import type { AdapterRegistry } from '../modules/lns/adapter.js';
+import { ChirpstackAdapter } from '../modules/lns/chirpstack.js';
+import { LnsProfilesRepository } from '../modules/lns/profiles-repository.js';
+import { LnsProfilesService } from '../modules/lns/profiles-service.js';
+import { RegistrationService } from '../modules/lns/registration-service.js';
+import { RegistrationsRepository } from '../modules/lns/registrations-repository.js';
+import { TtnAdapter } from '../modules/lns/ttn.js';
+import type { JobQueue } from './queue.js';
 import { UsersRepository } from '../modules/users/repository.js';
 import { UsersService, type SessionRevoker } from '../modules/users/service.js';
 
@@ -28,6 +39,10 @@ export interface Services {
   catalog: CatalogService;
   assets: AssetsService;
   dashboard: DashboardService;
+  lorawan: LorawanService;
+  lorawanImport: LorawanImportService;
+  lnsProfiles: LnsProfilesService;
+  registrations: RegistrationService;
 }
 
 export interface ContainerDeps {
@@ -35,6 +50,11 @@ export interface ContainerDeps {
   config: AppConfig;
   hasher?: PasswordHasher;
   clock?: Clock;
+  /** Cola de trabajos; sin ella no se puede encolar (los tests de la API usan una en memoria). */
+  queue?: JobQueue;
+  /** Adaptadores de LNS; por defecto los reales (los tests inyectan dobles). */
+  adapters?: AdapterRegistry;
+  log?: { error: (obj: object, msg: string) => void };
 }
 
 /**
@@ -83,9 +103,54 @@ export function buildServices(deps: ContainerDeps): Services {
     config.session,
     clock,
   ));
-  const catalog = new CatalogService(new CatalogRepository(), db, audit);
+  const catalogRepo = new CatalogRepository();
+  const catalog = new CatalogService(catalogRepo, db, audit);
+  const assetsRepo = new AssetsRepository();
+  const lorawanRepo = new LorawanRepository();
+  const adapters: AdapterRegistry = deps.adapters ?? {
+    chirpstack: new ChirpstackAdapter(config.lns.requestTimeoutMs),
+    ttn: new TtnAdapter(config.lns.requestTimeoutMs),
+  };
+  const queue: JobQueue = deps.queue ?? {
+    send: () => Promise.reject(new Error('La cola de trabajos no está configurada')),
+  };
+
+  // El registro LNS y los datos LoRaWAN se necesitan mutuamente (y con activos); se enlazan con puertos diferidos.
+  const lateLns: { registrations?: RegistrationService; lorawan?: LorawanService } = {};
+  const lorawan = (lateLns.lorawan = new LorawanService(
+    lorawanRepo,
+    db,
+    audit,
+    {
+      lock: async (exec, id) => {
+        if (!(await assetsRepo.lock(exec, id))) return undefined;
+        const row = await assetsRepo.getById(exec, id);
+        if (!row) return undefined;
+        const model = await catalog.requireModel(exec, row.modelId, { allowInactive: true });
+        return {
+          id: row.id,
+          assetTag: row.assetTag,
+          name: row.name,
+          deleted: row.deletedAt !== null,
+          categoryExtension: row.categoryExtension,
+          modelDefaults: {
+            deviceClass: model.lorawanClass,
+            lorawanVersion: model.lorawanVersion,
+            region: model.lorawanRegion,
+          },
+        };
+      },
+    },
+    {
+      find: (exec, id) => {
+        if (!lateLns.registrations) throw new Error('RegistrationService no inicializado');
+        return lateLns.registrations.find(exec, id);
+      },
+    },
+    config.secretBox,
+  ));
   const assets = new AssetsService(
-    new AssetsRepository(),
+    assetsRepo,
     db,
     audit,
     catalog,
@@ -96,6 +161,47 @@ export function buildServices(deps: ContainerDeps): Services {
     config.assetTagPrefix,
     config.defaultCurrency,
     () => localDate(clock.now(), config.timezone),
+    {
+      apply: (tx, actor, assetId, input) => lorawan.apply(tx, actor, assetId, input),
+      hasRemoteFootprint: (exec, assetId) => {
+        if (!lateLns.registrations) throw new Error('RegistrationService no inicializado');
+        return lateLns.registrations.hasRemoteFootprint(exec, assetId);
+      },
+    },
+  );
+  const lnsProfiles = new LnsProfilesService(
+    new LnsProfilesRepository(),
+    db,
+    audit,
+    config.secretBox,
+    adapters,
+  );
+  const registrations = (lateLns.registrations = new RegistrationService(
+    new RegistrationsRepository(),
+    db,
+    audit,
+    lorawan,
+    lnsProfiles,
+    {
+      get: async (exec, id) => {
+        const row = await assetsRepo.getById(exec, id);
+        return row
+          ? { id: row.id, assetTag: row.assetTag, name: row.name, deleted: row.deletedAt !== null }
+          : undefined;
+      },
+    },
+    adapters,
+    queue,
+    config.lns,
+    deps.log,
+  ));
+  const lorawanImport = new LorawanImportService(
+    db,
+    lorawanRepo,
+    lorawan,
+    { bySerials: (exec, serials) => assetsRepo.bySerials(exec, serials) },
+    registrations,
+    audit,
   );
   const dashboard = new DashboardService(
     new DashboardRepository(),
@@ -103,5 +209,17 @@ export function buildServices(deps: ContainerDeps): Services {
     { namesByIds: (ids) => users.namesByIds(ids) },
     () => localDate(clock.now(), config.timezone),
   );
-  return { audit, rbac, users, auth, catalog, assets, dashboard };
+  return {
+    audit,
+    rbac,
+    users,
+    auth,
+    catalog,
+    assets,
+    dashboard,
+    lorawan,
+    lorawanImport,
+    lnsProfiles,
+    registrations,
+  };
 }

@@ -109,3 +109,52 @@ otro valor (`.env.example` no se puede editar desde la sesión: ver Q32).
 `pnpm --filter @inventarius/api exec vitest run --project int assets.perf --disableConsoleIntercept` siembra 10.000 activos
 en un Postgres 18 temporal, mide ocho consultas típicas del listado y falla si algún p95 supera 300 ms. Imprime la tabla de
 tiempos al terminar.
+
+## LoRaWAN (F3)
+
+Variables nuevas (en `.env.example`): `APP_ENCRYPTION_KEY` (32 bytes; el compose de desarrollo trae una ficticia solo para
+desarrollo), `APP_ENCRYPTION_KEY_ID`, `APP_ENCRYPTION_KEYS_PREVIOUS`, `LNS_MAX_ATTEMPTS`, `LNS_RETRY_DELAY_SECONDS` y
+`LNS_REQUEST_TIMEOUT_MS`. Sin `APP_ENCRYPTION_KEY` fuera de producción la app arranca, pero guardar o leer claves responde 409.
+
+### ChirpStack de prueba en desarrollo
+
+```bash
+docker compose --profile chirpstack up -d chirpstack-bootstrap          # ChirpStack v4 + Postgres + Redis + MQTT
+docker compose --profile chirpstack run --rm --entrypoint cat chirpstack-bootstrap /out/chirpstack.json
+```
+
+El JSON trae `tenantId`, `applicationId`, `deviceProfileId` y una API key de tenant (de pruebas). Con eso se crea un perfil LNS
+en la web (Perfiles LNS): endpoint `chirpstack:8080`, sin TLS. La interfaz de ChirpStack queda en http://localhost:8081
+(`admin` / `admin`, solo de pruebas). Para correr la prueba del adaptador contra ese ChirpStack real:
+
+```bash
+CHIRPSTACK_TEST_CONFIG=/ruta/a/chirpstack.json CHIRPSTACK_TEST_ENDPOINT=<el endpoint del JSON> \
+  pnpm --filter @inventarius/api test:int src/modules/lns/chirpstack.real.int.test.ts
+```
+
+(sin `CHIRPSTACK_TEST_CONFIG` esa prueba se omite). `CHIRPSTACK_TEST_ENDPOINT` es la marca explícita de que ese ChirpStack es de
+prueba: la prueba crea y borra dispositivos y, sin la marca o con otro endpoint, se niega a correr. Cada corrida usa un prefijo
+aleatorio propio y su `afterAll` borra lo que creó. El script `chirpstack-bootstrap` solo crea dos dispositivos «ajenos»
+de prueba (sin la etiqueta de Inventarius; DevEUI con prefijo `70B3D5FF` y un contador) si se le pasa `--foreign-devices`, que
+solo hace `compose.e2e.yml` para probar «Vincular» (salen en `foreignDevices` del JSON): el ChirpStack de desarrollo no los tiene. El e2e de LoRaWAN (`e2e/tests/lorawan.spec.ts`) levanta su propio ChirpStack en
+`compose.e2e.yml`, exige la misma marca (`CHIRPSTACK_TEST_ENDPOINT`, ya definida ahí) y da de baja al terminar lo que registró.
+
+### Prueba manual contra TTN real
+
+El adaptador de TTN se prueba en CI con un servidor HTTP de prueba. Para probarlo contra una aplicación real, ejecutar el
+workflow **TTN real (manual)** (`.github/workflows/ttn-real.yml`, «Run workflow»). Necesita estos secretos del repositorio, de
+una aplicación de pruebas dedicada: `TTN_TEST_ENDPOINT`, `TTN_TEST_API_KEY` (derechos de lectura/escritura de dispositivos y
+escritura de claves), `TTN_TEST_APPLICATION_ID`, `TTN_TEST_FREQUENCY_PLAN_ID`, `TTN_TEST_JOIN_SERVER`,
+`TTN_TEST_NETWORK_SERVER`, `TTN_TEST_APPLICATION_SERVER` y, opcionales, `TTN_TEST_MAC_VERSION` y `TTN_TEST_PHY_VERSION`.
+Mientras falten, el job falla con un mensaje claro. La prueba crea y borra solo dispositivos con DevEUI aleatorio.
+
+### Importación CSV (RF-66)
+
+Columnas: `serial`, `DevEUI` (16 hex), `JoinEUI` (16 hex), `AppKey` (32 hex) y, opcionales, `NwkKey`, `Clase`, `Versión`, `Región`, `Modelo`.
+La serie es única por modelo: si existe en más de uno, la fila se rechaza como ambigua salvo que `Modelo` (nombre o código) la desempate.
+Los valores de ejemplo van entre `<…>` a propósito: gitleaks bloquea hex con forma de DevEUI o clave fuera de los tests.
+
+```csv
+serial,DevEUI,JoinEUI,AppKey,Clase,Región
+SN-0001,<DevEUI>,<JoinEUI>,<AppKey>,A,AU915
+```

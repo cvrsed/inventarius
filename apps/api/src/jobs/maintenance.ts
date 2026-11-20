@@ -1,9 +1,7 @@
 import type { PgBoss } from 'pg-boss';
 
-/** Cola del job que purga sesiones vencidas. Su nombre es parte del contrato con la tabla `pgboss.schedule`. */
-export const PURGE_SESSIONS_QUEUE = 'maintenance-purge-sessions';
-/** Todas las colas de mantenimiento; el migrador las crea (DDL) para que el worker solo necesite DML. */
-export const MAINTENANCE_QUEUES = [PURGE_SESSIONS_QUEUE] as const;
+import { PURGE_SESSIONS_QUEUE } from '../core/queues.js';
+
 /** Cada hora, en punto. */
 export const PURGE_SESSIONS_CRON = '0 * * * *';
 

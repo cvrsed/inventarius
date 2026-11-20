@@ -1,7 +1,7 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { PgBoss } from 'pg-boss';
-import { MAINTENANCE_QUEUES } from '../../jobs/maintenance.js';
+import { ALL_QUEUES } from '../queues.js';
 import { Pool } from 'pg';
 import { fileURLToPath } from 'node:url';
 
@@ -22,7 +22,7 @@ export async function runMigrations(migrationUrl: string): Promise<void> {
   const boss = new PgBoss({ connectionString: migrationUrl, supervise: false, schedule: false });
   boss.on('error', () => undefined);
   await boss.start();
-  for (const queue of MAINTENANCE_QUEUES) await boss.createQueue(queue);
+  for (const queue of ALL_QUEUES) await boss.createQueue(queue);
   await boss.stop({ graceful: false });
 
   await grantAppAccess(migrationUrl);

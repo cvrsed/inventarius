@@ -79,3 +79,34 @@ El **worker** (`node dist/worker.js`, servicio `worker` de Compose) ejecuta con 
 (`0 * * * *`), la purga de sesiones vencidas (absolutas de 24 h o inactivas de 8 h). No necesita configuración. Los
 registros del worker dicen `sesiones vencidas purgadas` con el número borrado. La cola se crea al aplicar las
 migraciones (`node dist/migrate.js`); si el worker falla al arrancar con «queue does not exist», faltó migrar.
+
+## `APP_ENCRYPTION_KEY`: clave de cifrado de secretos (F3)
+
+AppKey, NwkKey y las credenciales de los perfiles LNS se guardan cifradas con `APP_ENCRYPTION_KEY` (32 bytes: 64 caracteres
+hex o base64). Es obligatoria en producción y **si se pierde, esas claves son irrecuperables**: guárdala en un gestor de
+La API y el worker no arrancan en producción si falta o si es la clave de desarrollo que `compose.yml` usa por defecto (está en el repositorio, así que no protege nada).
+secretos, aparte de los respaldos de la base (un respaldo de la base sin la clave no revela nada).
+
+Generarla: `openssl rand -hex 32`.
+
+### Rotarla
+
+1. Elegir un nuevo identificador (p. ej. `k2`) y una clave nueva.
+2. En el entorno de la API y del worker: `APP_ENCRYPTION_KEY=<nueva>`, `APP_ENCRYPTION_KEY_ID=k2` y
+   `APP_ENCRYPTION_KEYS_PREVIOUS=k1=<anterior>` (varias se separan con coma). Reiniciar la API y el worker.
+3. Recifrar: `docker compose exec api node dist/cli.js reencrypt-secrets`. Imprime cuántos dispositivos y perfiles recifró.
+4. Cuando el comando ya no recifra nada, quitar la clave anterior de `APP_ENCRYPTION_KEYS_PREVIOUS`.
+
+## Registro en el LNS: operación
+
+- El **worker** debe estar corriendo: sin él los registros quedan en «Registrando…». Atiende las colas `lns-register` y
+  `lns-deregister` de pg-boss.
+- Un registro atascado en `error` o `parcial` se reintenta desde la ficha del activo (**Reintentar**). `parcial` indica qué
+  componente quedó huérfano en el LNS (en TTN: Identity, Join, Network o Application Server).
+- Antes de registrar se compara el activo con el **device profile** del perfil LNS: si la versión de LoRaWAN, la clase o la
+  región no calzan, no se registra y se explica qué difiere. Si el LNS no responde, tampoco se registra a ciegas.
+- Ante un conflicto (el DevEUI ya existía en el LNS y no lo creó Inventarius) la ficha ofrece **Vincular** o **Cancelar
+  registro**. **Vincular** lee el dispositivo del LNS (solo lectura), muestra las diferencias y permite adoptar sus datos
+  (JoinEUI y claves que el LNS tiene) o cancelar. Nunca modifica el dispositivo remoto. Un vinculado se **desvincula**: no se
+  borra nada en el LNS.
+- Las API keys de los perfiles deben tener el mínimo de derechos: de **tenant** en ChirpStack y de **aplicación** en TTN.

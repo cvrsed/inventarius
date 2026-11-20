@@ -10,6 +10,8 @@ x-app-env: &app-env
   NODE_ENV: production
   # Secreto de firma de los tokens CSRF (obligatorio en producción); valor ficticio solo para estas pruebas.
   CSRF_SECRET: e2e-csrf-secret-solo-para-pruebas-no-usar-en-produccion
+  # Clave maestra de cifrado de secretos (obligatoria en producción); valor ficticio solo para estas pruebas.
+  APP_ENCRYPTION_KEY: e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0
   LOG_LEVEL: warn
   # Sin HTTPS dentro de la red de Compose: la cookie no puede ser Secure/__Host- aquí.
   SESSION_COOKIE_SECURE: 'false'
@@ -104,14 +106,76 @@ services:
       timeout: 3s
       retries: 20
 
+  # ChirpStack v4 real de prueba (sección 13): el e2e registra y da de baja dispositivos contra él.
+  chirpstack-postgres:
+    image: postgres:18-trixie@sha256:2ea8630df176ad090ec92136dee850397c5af8781e4bcf2e4162593691c61bbc
+    environment:
+      POSTGRES_USER: chirpstack
+      POSTGRES_PASSWORD: chirpstack-prueba
+      POSTGRES_DB: chirpstack
+    volumes:
+      - ./deploy/chirpstack/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    tmpfs:
+      - /var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U chirpstack -d chirpstack']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  chirpstack-redis:
+    image: redis:7-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe
+
+  chirpstack-mqtt:
+    image: eclipse-mosquitto:2@sha256:fa12172a051310efe5bcb7a6a11b77bd5faacb82cbacd7742aa758bf024fd8e4
+    volumes:
+      - ./deploy/chirpstack/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+
+  chirpstack:
+    image: chirpstack/chirpstack:4@sha256:6ef779ce1dfbef273a1c99649672170c791441b42832c8245b01110eab3a369a
+    command: ['-c', '/etc/chirpstack']
+    volumes:
+      - ./deploy/chirpstack/chirpstack.toml:/etc/chirpstack/chirpstack.toml:ro
+    depends_on:
+      chirpstack-postgres: { condition: service_healthy }
+      chirpstack-redis: { condition: service_started }
+      chirpstack-mqtt: { condition: service_started }
+
+  # Deja los ids y la API key del ChirpStack de prueba en un volumen que lee el runner e2e. Corre como root solo para
+  # poder escribir en el volumen recién creado (es un contenedor de pruebas de un solo uso).
+  chirpstack-bootstrap:
+    build: { context: ., target: api }
+    command:
+      [
+        'node',
+        'dist/dev/chirpstack-bootstrap.js',
+        'chirpstack:8080',
+        '/shared/chirpstack.json',
+        '--foreign-devices',
+      ]
+    user: root
+    restart: 'no'
+    volumes:
+      - chirpstack-shared:/shared
+    depends_on:
+      chirpstack: { condition: service_started }
+
   e2e:
     build: { context: ., target: e2e }
     environment:
       BASE_URL: http://web:8080
       E2E_ADMIN_EMAIL: admin@e2e.test
       E2E_ADMIN_PASSWORD: e2e-Admin-Password-2026
+      CHIRPSTACK_CONFIG: /shared/chirpstack.json
+      # Marca este ChirpStack como de prueba: el e2e crea y borra dispositivos y se niega a correr contra otro.
+      CHIRPSTACK_TEST_ENDPOINT: chirpstack:8080
     volumes:
+      - chirpstack-shared:/shared:ro
       - ./e2e/playwright-report:/repo/e2e/playwright-report
       - ./e2e/test-results:/repo/e2e/test-results
     depends_on:
       web: { condition: service_healthy }
+      chirpstack-bootstrap: { condition: service_completed_successfully }
+
+volumes:
+  chirpstack-shared:

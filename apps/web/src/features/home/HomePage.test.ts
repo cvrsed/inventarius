@@ -35,6 +35,7 @@ const summary = (over: Partial<DashboardSummary> = {}): DashboardSummary => ({
       at: '2026-11-16T15:00:00.000Z',
       action: 'asset.checkout',
       actorName: 'Ana',
+      actorLabel: null,
       assetId: uuid(3),
       assetTag: 'INV-000003',
       assetName: 'Sensor 3',
