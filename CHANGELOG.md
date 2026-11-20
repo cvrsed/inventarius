@@ -34,6 +34,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). D
 - Auditoría sin scroll horizontal en escritorio; la IP va al detalle [P21].
 - Registrar toma del device profile la versión y la región que el activo no tiene, y la confirmación lo indica [R1].
 - La AppKey enmascarada de la confirmación se muestra «•••• (32 hex)» en una sola línea [R2].
+- Las pruebas contra ChirpStack real exigen la marca `CHIRPSTACK_TEST_ENDPOINT`, usan prefijo por corrida y borran lo que crean; los dispositivos «ajenos» del bootstrap solo existen en `compose.e2e.yml` [R3].
 - Serie única por (modelo, serie) sin distinguir mayúsculas, migración 0016; el CSV admite la columna opcional «Modelo» [P18b].
 - En producción la app no arranca con la clave de cifrado por defecto de `compose.yml` [P22].
 

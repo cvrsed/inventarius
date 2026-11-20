@@ -3,7 +3,9 @@
  * API key de tenant, y escribe los ids en un JSON. No se usa en producción. Es idempotente salvo por la API key, que
  * se crea nueva en cada corrida.
  *
- * Uso: node dist/dev/chirpstack-bootstrap.js <host:puerto> <salida.json>
+ * Uso: node dist/dev/chirpstack-bootstrap.js <host:puerto> <salida.json> [--foreign-devices]
+ * `--foreign-devices` crea además dos dispositivos «ajenos» para el e2e de Vincular; solo lo usa `compose.e2e.yml`: el
+ * ChirpStack de desarrollo no los necesita y no debe llenarse de dispositivos de prueba.
  * El usuario inicial `admin` de ChirpStack solo existe en una instalación de pruebas recién creada.
  */
 import applicationGrpc from '@chirpstack/chirpstack-api/api/application_grpc_pb.js';
@@ -24,9 +26,12 @@ import { createRequire } from 'node:module';
 
 type Make = (address: string, creds: ReturnType<typeof credentials.createInsecure>) => Client;
 
-const [endpoint, outFile] = process.argv.slice(2);
+const [endpoint, outFile, ...flags] = process.argv.slice(2);
+const withForeignDevices = flags.includes('--foreign-devices');
 if (!endpoint || !outFile) {
-  process.stderr.write('Uso: chirpstack-bootstrap <host:puerto> <salida.json>\n');
+  process.stderr.write(
+    'Uso: chirpstack-bootstrap <host:puerto> <salida.json> [--foreign-devices]\n',
+  );
   process.exit(2);
 }
 const TEST_ADMIN = { email: 'admin', password: 'admin' };
@@ -219,7 +224,7 @@ const FOREIGN_PREFIX = '70b3d5ff';
 const devices = (a: string, c: ReturnType<typeof credentials.createInsecure>) =>
   new deviceGrpc.DeviceServiceClient(a, c);
 const foreignDevices: { devEui: string; joinEui: string; appKey: string }[] = [];
-for (const n of [1, 2]) {
+for (const n of withForeignDevices ? [1, 2] : []) {
   const devEui = `${FOREIGN_PREFIX}${String(n).padStart(8, '0')}`;
   const getReq = new devicePb.GetDeviceRequest();
   getReq.setDevEui(devEui);

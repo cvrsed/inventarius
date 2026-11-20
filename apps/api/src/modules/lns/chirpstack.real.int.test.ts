@@ -1,15 +1,19 @@
 import deviceGrpc from '@chirpstack/chirpstack-api/api/device_grpc_pb.js';
 import devicePb from '@chirpstack/chirpstack-api/api/device_pb.js';
 import { credentials, Metadata } from '@grpc/grpc-js';
+import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { assertMarkedAsTest } from '../../dev/chirpstack-test-guard.js';
 import type { LnsProfile, LorawanDeviceSecrets } from './adapter.js';
 import { ChirpstackAdapter } from './chirpstack.js';
 import { rejection } from './rejection.js';
 
 /**
  * Contra un ChirpStack v4 REAL de pruebas (el del compose de desarrollo o del e2e). Se activa con
- * `CHIRPSTACK_TEST_CONFIG=<json de scripts/chirpstack-bootstrap>`; sin la variable se omite.
+ * `CHIRPSTACK_TEST_CONFIG=<json de scripts/chirpstack-bootstrap>`; sin la variable se omite. Crea y borra dispositivos, así
+ * que además exige `CHIRPSTACK_TEST_ENDPOINT=<el mismo endpoint>`: la marca explícita de que ese ChirpStack es de prueba;
+ * con otro valor (o sin ella) se niega a correr. Cada corrida usa un prefijo propio y `afterAll` borra lo que creó.
  * Verifica lo que los dobles no pueden: dónde guarda ChirpStack las claves según la versión (sección 5.4, paso 3).
  */
 const configPath = process.env['CHIRPSTACK_TEST_CONFIG'];
@@ -28,6 +32,19 @@ const NWK_KEY = '0F1E2D3C4B5A69788796A5B4C3D2E1F0';
 
 describe.skipIf(!real)('ChirpStack v4 real', () => {
   const adapter = new ChirpstackAdapter(10_000);
+  /** DevEUI de todo lo que esta corrida creó: `afterAll` lo borra aunque una prueba falle a medias. */
+  const created = new Set<string>();
+
+  beforeAll(() => assertMarkedAsTest(real!.endpoint, process.env['CHIRPSTACK_TEST_ENDPOINT']));
+
+  afterAll(async () => {
+    for (const devEui of created) {
+      await adapter
+        .deregisterDevice(profile(), { externalId: devEui.toLowerCase(), devEui })
+        .catch(() => undefined);
+    }
+  });
+
   const profile = (): LnsProfile => ({
     id: 'p',
     kind: 'chirpstack',
@@ -38,23 +55,28 @@ describe.skipIf(!real)('ChirpStack v4 real', () => {
     target: { tenantId: real!.tenantId, applicationId: real!.applicationId },
     deviceDefaults: { deviceProfileId: real!.deviceProfileId },
   });
-  const run = Date.now().toString(16).padStart(8, '0').slice(-8).toUpperCase();
+  // Prefijo único por corrida (aleatorio): dos corridas, o una corrida y un humano, no se pisan.
+  const run = randomBytes(4).toString('hex').toUpperCase();
   const device = (
     suffix: string,
     extra: Partial<LorawanDeviceSecrets> = {},
-  ): LorawanDeviceSecrets => ({
-    assetId: '0190a1b2-0000-7000-8000-0000000000aa',
-    name: `INV-${run}-${suffix} Sensor de prueba`,
-    description: 'Sensor de prueba',
-    devEui: `70B3D5${run}${suffix}`.slice(0, 16).padEnd(16, '0'),
-    joinEui: '8877665544332211',
-    appKey: APP_KEY,
-    nwkKey: null,
-    deviceClass: 'A',
-    lorawanVersion: '1.0.3',
-    region: 'AU915',
-    ...extra,
-  });
+  ): LorawanDeviceSecrets => {
+    const devEui = `70B3D5${run}${suffix}`.slice(0, 16).padEnd(16, '0');
+    created.add(devEui);
+    return {
+      assetId: '0190a1b2-0000-7000-8000-0000000000aa',
+      name: `INV-${run}-${suffix} Sensor de prueba`,
+      description: 'Sensor de prueba',
+      devEui,
+      joinEui: '8877665544332211',
+      appKey: APP_KEY,
+      nwkKey: null,
+      deviceClass: 'A',
+      lorawanVersion: '1.0.3',
+      region: 'AU915',
+      ...extra,
+    };
+  };
 
   /** Claves tal como las guardó ChirpStack (lo que ve la UI de ChirpStack). */
   async function storedKeys(devEui: string): Promise<{ nwk: string; app: string }> {

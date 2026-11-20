@@ -128,13 +128,16 @@ en la web (Perfiles LNS): endpoint `chirpstack:8080`, sin TLS. La interfaz de Ch
 (`admin` / `admin`, solo de pruebas). Para correr la prueba del adaptador contra ese ChirpStack real:
 
 ```bash
-CHIRPSTACK_TEST_CONFIG=/ruta/a/chirpstack.json pnpm --filter @inventarius/api test:int src/modules/lns/chirpstack.real.int.test.ts
+CHIRPSTACK_TEST_CONFIG=/ruta/a/chirpstack.json CHIRPSTACK_TEST_ENDPOINT=<el endpoint del JSON> \
+  pnpm --filter @inventarius/api test:int src/modules/lns/chirpstack.real.int.test.ts
 ```
 
-(sin la variable esa prueba se omite). El script `chirpstack-bootstrap` también crea dos dispositivos «ajenos» de prueba
-(sin la etiqueta de Inventarius; DevEUI con prefijo `70B3D5FF` y un contador) que usa el e2e para probar «Vincular»; salen en
-`foreignDevices` del JSON. El e2e de LoRaWAN (`e2e/tests/lorawan.spec.ts`) levanta su propio ChirpStack en
-`compose.e2e.yml`.
+(sin `CHIRPSTACK_TEST_CONFIG` esa prueba se omite). `CHIRPSTACK_TEST_ENDPOINT` es la marca explícita de que ese ChirpStack es de
+prueba: la prueba crea y borra dispositivos y, sin la marca o con otro endpoint, se niega a correr. Cada corrida usa un prefijo
+aleatorio propio y su `afterAll` borra lo que creó. El script `chirpstack-bootstrap` solo crea dos dispositivos «ajenos»
+de prueba (sin la etiqueta de Inventarius; DevEUI con prefijo `70B3D5FF` y un contador) si se le pasa `--foreign-devices`, que
+solo hace `compose.e2e.yml` para probar «Vincular» (salen en `foreignDevices` del JSON): el ChirpStack de desarrollo no los tiene. El e2e de LoRaWAN (`e2e/tests/lorawan.spec.ts`) levanta su propio ChirpStack en
+`compose.e2e.yml`, exige la misma marca (`CHIRPSTACK_TEST_ENDPOINT`, ya definida ahí) y da de baja al terminar lo que registró.
 
 ### Prueba manual contra TTN real
 

@@ -146,7 +146,13 @@ services:
   chirpstack-bootstrap:
     build: { context: ., target: api }
     command:
-      ['node', 'dist/dev/chirpstack-bootstrap.js', 'chirpstack:8080', '/shared/chirpstack.json']
+      [
+        'node',
+        'dist/dev/chirpstack-bootstrap.js',
+        'chirpstack:8080',
+        '/shared/chirpstack.json',
+        '--foreign-devices',
+      ]
     user: root
     restart: 'no'
     volumes:
@@ -161,6 +167,8 @@ services:
       E2E_ADMIN_EMAIL: admin@e2e.test
       E2E_ADMIN_PASSWORD: e2e-Admin-Password-2026
       CHIRPSTACK_CONFIG: /shared/chirpstack.json
+      # Marca este ChirpStack como de prueba: el e2e crea y borra dispositivos y se niega a correr contra otro.
+      CHIRPSTACK_TEST_ENDPOINT: chirpstack:8080
     volumes:
       - chirpstack-shared:/shared:ro
       - ./e2e/playwright-report:/repo/e2e/playwright-report

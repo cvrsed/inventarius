@@ -1,8 +1,9 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import {
   ADMIN,
+  apiDelete,
   apiPost,
   createAssetViaApi,
   eachTheme,
@@ -15,6 +16,7 @@ import {
 
 /** Ids y API key del ChirpStack de prueba que deja `chirpstack-bootstrap` (ver compose.e2e.yml). */
 const chirpstack = JSON.parse(readFileSync(process.env['CHIRPSTACK_CONFIG'] ?? '', 'utf8')) as {
+  endpoint: string;
   tenantId: string;
   applicationId: string;
   deviceProfileId: string;
@@ -25,7 +27,68 @@ const chirpstack = JSON.parse(readFileSync(process.env['CHIRPSTACK_CONFIG'] ?? '
 
 // Datos inventados: DevEUI y claves aleatorios por corrida, nunca valores reales.
 const hex = (bytes: number) => randomBytes(bytes).toString('hex').toUpperCase();
-const newDevEui = () => `70B3D5${hex(5)}`;
+// Prefijo propio de esta corrida (2 bytes aleatorios): lo creado aquí se distingue de lo de otras corridas y de lo manual.
+const RUN = hex(2);
+const newDevEui = () => `70B3D5${RUN}${hex(3)}`;
+
+/** Activos de esta corrida que pueden haber quedado registrados en ChirpStack: `afterAll` los da de baja. */
+const touched: string[] = [];
+
+// Esta suite crea y borra dispositivos en ChirpStack: se niega a correr si el endpoint no está marcado como de prueba.
+test.beforeAll(() => {
+  if (process.env['CHIRPSTACK_TEST_ENDPOINT'] !== chirpstack.endpoint) {
+    throw new Error(
+      `El e2e de LoRaWAN se niega a correr contra «${chirpstack.endpoint}»: defina CHIRPSTACK_TEST_ENDPOINT ` +
+        'con ese mismo endpoint para marcarlo como ChirpStack de prueba',
+    );
+  }
+});
+
+// Cada prueba deja limpio lo que creó en ChirpStack: se da de baja por la propia API, con el worker real.
+test.afterAll(async ({ playwright }) => {
+  const api = await playwright.request.newContext({ baseURL: process.env['BASE_URL'] ?? '' });
+  try {
+    await loginViaApi(api, ADMIN.email, ADMIN.password);
+    for (const id of touched) await deregisterQuietly(api, id);
+  } finally {
+    await api.dispose();
+  }
+});
+
+async function deregisterQuietly(api: APIRequestContext, assetId: string): Promise<void> {
+  const registration = async () =>
+    (
+      (await (await api.get(`/api/v1/assets/${assetId}/lorawan`)).json()) as {
+        registration: { status: string } | null;
+      }
+    ).registration;
+  const settle = async (): Promise<{ status: string } | null> => {
+    let reg = await registration();
+    for (
+      let i = 0;
+      i < 40 && reg && ['registering', 'deregistering'].includes(reg.status);
+      i += 1
+    ) {
+      await new Promise((ok) => setTimeout(ok, 1_000));
+      reg = await registration();
+    }
+    return reg;
+  };
+  try {
+    const reg = await settle();
+    if (!reg) return;
+    if (reg.status === 'conflict') {
+      await apiPost(api, `/api/v1/assets/${assetId}/lns-registration/resolve`, {
+        action: 'cancel',
+      });
+    } else if (['registered', 'partial', 'error'].includes(reg.status)) {
+      await apiDelete(api, `/api/v1/assets/${assetId}/lns-registration`);
+      await settle();
+    }
+  } catch (e) {
+    throw new Error(`No se pudo limpiar ${assetId} en ChirpStack`, { cause: e });
+  }
+}
 
 test.beforeEach(async ({ page }) => {
   await loginViaApi(page.request, ADMIN.email, ADMIN.password);
@@ -43,7 +106,7 @@ async function createProfile(page: Page): Promise<{ id: string; name: string }> 
   const profile = await apiPost<{ id: string }>(page.request, '/api/v1/lns-profiles', {
     kind: 'chirpstack',
     name,
-    endpoint: 'chirpstack:8080',
+    endpoint: chirpstack.endpoint,
     credential: chirpstack.apiKey,
     target: { tenantId: chirpstack.tenantId, applicationId: chirpstack.applicationId },
     deviceDefaults: { deviceProfileId: chirpstack.deviceProfileId },
@@ -86,6 +149,7 @@ async function createLorawanAsset(page: Page, over: { devEui?: string } = {}) {
     },
     { lorawan: { devEui, joinEui: hex(8), appKey } },
   );
+  touched.push(asset.id);
   return { ...asset, devEui, appKey, statusId: await statusIdByName(page.request, 'Disponible') };
 }
 
@@ -284,7 +348,7 @@ test.describe('LoRaWAN (RF-21, RF-50 a RF-66) contra un ChirpStack v4 real', () 
     await page.getByRole('button', { name: 'Nuevo perfil' }).click();
     const dialog = page.getByRole('dialog');
     await dialog.locator('#lns-name').fill(name);
-    await dialog.locator('#lns-endpoint').fill('chirpstack:8080');
+    await dialog.locator('#lns-endpoint').fill(chirpstack.endpoint);
     await dialog.locator('#lns-credential').fill(chirpstack.apiKey);
     await dialog.locator('#lns-tenantId').fill(chirpstack.tenantId);
     await dialog.locator('#lns-applicationId').fill(chirpstack.applicationId);
