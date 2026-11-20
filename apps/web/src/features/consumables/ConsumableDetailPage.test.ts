@@ -319,4 +319,46 @@ describe('ficha del consumible (RF-73, RF-74)', () => {
       expect(w.text()).toContain('Limpiar filtros');
     });
   });
+
+  describe('resaltado de «Ir al movimiento» (P14)', () => {
+    const original = movement({
+      reversedBy: { id: ids.movement2, at: '2026-11-17T12:00:00.000Z', actorName: 'Ada Admin' },
+      reversible: false,
+    });
+    const reversal = movement({
+      id: ids.movement2,
+      kind: 'reversal',
+      delta: '-12',
+      note: 'Duplicado',
+      reverses: { id: ids.movement, kind: 'receipt', at: '2026-11-16T12:00:00.000Z' },
+      reversible: false,
+    });
+
+    afterEach(() => vi.useRealTimers());
+
+    it('marca el movimiento con el color primario (borde y fondo suave) y se desvanece a los pocos segundos', async () => {
+      const w = await mountPage(['consumables:read'], consumable(), [reversal, original]);
+      vi.useFakeTimers();
+      const link = w.findAll('a').find((a) => a.text() === 'Ir al movimiento')!;
+      await link.trigger('click');
+      await flushPromises();
+      const target = w.get(`#mov-${ids.movement}`);
+      expect(target.classes()).toEqual(expect.arrayContaining(['border-primary', 'bg-primary/15']));
+      // No usa el gris casi invisible de antes.
+      expect(target.classes()).not.toContain('bg-elevated');
+      await vi.advanceTimersByTimeAsync(4000);
+      expect(w.get(`#mov-${ids.movement}`).classes()).not.toContain('bg-primary/15');
+      // El fundido es una transición (con movimiento reducido, un cambio directo).
+      expect(w.get(`#mov-${ids.movement}`).classes()).toContain('transition-colors');
+      expect(w.get(`#mov-${ids.movement}`).classes()).toContain('motion-reduce:transition-none');
+    });
+
+    it('lleva el foco al movimiento para quien usa lector de pantalla', async () => {
+      const w = await mountPage(['consumables:read'], consumable(), [reversal, original]);
+      const link = w.findAll('a').find((a) => a.text() === 'Ir al movimiento')!;
+      await link.trigger('click');
+      await flushPromises();
+      expect(document.activeElement?.id).toBe(`mov-${ids.movement}`);
+    });
+  });
 });

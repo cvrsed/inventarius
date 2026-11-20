@@ -671,7 +671,7 @@ marca aquí junto con su commit. Cómo probar cada uno: ver «Cómo probar la re
 - [x] P11 Auditoría de consumibles con orden fijo de campos y «Bodega»
 - [x] P12 Íconos distintos por tipo de movimiento
 - [x] P13 Selectores de bodega con nombre, ruta y stock, sin truncar
-- [ ] P14 Resaltado visible de «Ir al movimiento»
+- [x] P14 Resaltado visible de «Ir al movimiento»
 - [ ] P15 Validación de obligatorios solo tras interactuar o enviar
 - [ ] P16 Botones de la ficha a 360 px: grilla de dos columnas del mismo tamaño
 - [ ] P17 Subtítulo de Catálogo
@@ -706,6 +706,7 @@ marca aquí junto con su commit. Cómo probar cada uno: ver «Cómo probar la re
 - **P11:** en Auditoría, entidad «Consumible», los eventos de movimientos listan siempre: (tipo / movimiento anulado), cantidad, unidad, bodega (o bodega de origen y de destino), saldo antes, saldo después, receptor, motivo, nota y fechas, en ese orden; el lugar se rotula «Bodega», no «Ubicación». Un traslado trae el saldo antes y después de las dos bodegas; una devolución, «Devuelto 1 par de 3 pares».
 - **P12:** en la ficha de un consumible con movimientos, los botones Ingresar (caja con +), Entregar (mano), Registrar devolución (flecha de regreso), Trasladar (flechas cruzadas), Ajustar (balanza) y Anular (círculo tachado) tienen cada uno su ícono, y el historial usa el mismo ícono para cada tipo de movimiento. Todos están en `APP_ICONS` (la prueba de íconos empaquetados lo verifica).
 - **P13:** todos los selectores de bodega (ingreso, entrega, traslado origen y destino, ajuste, devolución, mínimos por bodega y filtro del historial) usan el mismo selector: nombre destacado, ruta de los padres en una segunda línea más chica y el stock de ese consumible a la derecha; los nombres largos pasan a otra línea (también el valor elegido en el campo) en escritorio y a 360 px. Abre «Trasladar» y compara origen y destino: tienen el mismo formato.
+- **P14:** anula un movimiento y, en la anulación, pulsa «Ir al movimiento»: el movimiento original se marca con borde y fondo del color primario durante unos 3,5 s y se desvanece (con «reducir movimiento» del sistema, se apaga sin fundido); el foco queda en él. El contraste del texto sobre ese fondo es AA en claro y oscuro (comprobado en `theme.test.ts`).
 
 ### Backlog post-F3.5
 

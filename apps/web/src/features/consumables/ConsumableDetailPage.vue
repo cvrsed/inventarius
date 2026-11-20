@@ -12,7 +12,7 @@ import UButton from '@nuxt/ui/components/Button.vue';
 import UIcon from '@nuxt/ui/components/Icon.vue';
 import UInput from '@nuxt/ui/components/Input.vue';
 import { useToast } from '@nuxt/ui/composables/useToast';
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { errorMessage } from '@/features/auth/errors';
@@ -170,10 +170,19 @@ const clearFilters = () => (filters.value = { locationId: '', kind: '', from: ''
 const kindLabel = (kind: string) => t(`consumables.kinds.${kind}`);
 const present = (movementId: string) => movements.value.some((m) => m.id === movementId);
 const highlighted = ref('');
+/** Cuánto dura el resaltado antes de empezar a desvanecerse (la transición lo apaga en 1 s). */
+const HIGHLIGHT_MS = 3500;
+let highlightTimer: ReturnType<typeof setTimeout> | undefined;
+onBeforeUnmount(() => clearTimeout(highlightTimer));
 async function goTo(movementId: string): Promise<void> {
   highlighted.value = movementId;
+  clearTimeout(highlightTimer);
+  highlightTimer = setTimeout(() => (highlighted.value = ''), HIGHLIGHT_MS);
   await nextTick();
-  document.getElementById(`mov-${movementId}`)?.scrollIntoView({ block: 'center' });
+  const target = document.getElementById(`mov-${movementId}`);
+  target?.scrollIntoView({ block: 'center' });
+  // El foco va al movimiento: quien usa lector de pantalla oye adónde llegó.
+  target?.focus({ preventScroll: true });
 }
 </script>
 
@@ -471,8 +480,9 @@ async function goTo(movementId: string): Promise<void> {
             v-for="{ m, view } in views"
             :id="`mov-${m.id}`"
             :key="m.id"
-            class="flex gap-3 rounded-lg p-1"
-            :class="highlighted === m.id ? 'bg-elevated' : ''"
+            tabindex="-1"
+            class="flex gap-3 rounded-lg border-2 border-transparent p-1 transition-colors duration-1000 outline-none motion-reduce:transition-none"
+            :class="highlighted === m.id ? 'border-primary bg-primary/15' : ''"
           >
             <span
               class="mt-1 flex size-8 shrink-0 items-center justify-center rounded-full bg-elevated"
