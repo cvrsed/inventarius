@@ -161,6 +161,82 @@ describe('unidades de medida (D4)', () => {
   });
 });
 
+describe('categorías de consumibles: permiso y unicidad por ámbito (P4, cierra Q57)', () => {
+  const cats = (c: TestClient, body: unknown) => c.post(`${base}/categories`, body);
+
+  it('consumables:manage basta para las de consumibles; catalog:write sigue siendo lo de las de activos', async () => {
+    const actor = { actorId: null, ip: null };
+    await env.services.rbac.createRole(actor, {
+      name: 'Solo consumibles',
+      description: 'Rol de prueba',
+      permissions: ['consumables:read', 'consumables:manage'],
+    });
+    await env.services.rbac.createRole(actor, {
+      name: 'Solo catálogo',
+      description: 'Rol de prueba',
+      permissions: ['asset:read', 'catalog:write'],
+    });
+    await env.createUser({ email: 'solo-cons@ejemplo.cl', role: 'Solo consumibles' });
+    await env.createUser({ email: 'solo-cat@ejemplo.cl', role: 'Solo catálogo' });
+    const consOnly = env.client('10.40.0.1');
+    const catOnly = env.client('10.40.0.2');
+    await consOnly.login('solo-cons@ejemplo.cl');
+    await catOnly.login('solo-cat@ejemplo.cl');
+
+    // consumables:manage: crea, edita y desactiva categorías de consumibles…
+    const made = await cats(consOnly, { name: 'Limpieza', scope: 'consumable' });
+    expect(made.statusCode, made.body).toBe(201);
+    const id = made.json().id as string;
+    const version = `"${made.json().updatedAt}"`;
+    const renamed = await consOnly.patch(
+      `${base}/categories/${id}`,
+      { name: 'Aseo' },
+      { 'if-match': version },
+    );
+    expect(renamed.statusCode, renamed.body).toBe(200);
+    const off = await consOnly.patch(
+      `${base}/categories/${id}`,
+      { active: false },
+      { 'if-match': `"${renamed.json().updatedAt}"` },
+    );
+    expect(off.statusCode, off.body).toBe(200);
+    // …pero no las de activos (ni crearlas ni tocarlas).
+    expect((await cats(consOnly, { name: 'Sensores 2' })).statusCode).toBe(403);
+    expect((await cats(consOnly, { name: 'Sensores 3', scope: 'asset' })).statusCode).toBe(403);
+    const assetCat = await cats(operator, { name: 'Medidores' });
+    expect(
+      (
+        await consOnly.patch(
+          `${base}/categories/${assetCat.json().id}`,
+          { name: 'Medidores 2' },
+          { 'if-match': `"${assetCat.json().updatedAt}"` },
+        )
+      ).statusCode,
+    ).toBe(403);
+    expect((await consOnly.delete(`${base}/categories/${assetCat.json().id}`)).statusCode).toBe(
+      403,
+    );
+
+    // catalog:write sigue valiendo para las de activos y, sin consumables:manage, no para las de consumibles.
+    expect((await cats(catOnly, { name: 'Antenas' })).statusCode).toBe(201);
+    expect((await cats(catOnly, { name: 'Pilas', scope: 'consumable' })).statusCode).toBe(403);
+    expect((await consOnly.delete(`${base}/categories/${id}`)).statusCode).toBe(204);
+    // Quien lee no escribe.
+    expect((await cats(reader, { name: 'Nada', scope: 'consumable' })).statusCode).toBe(403);
+    expect((await cats(tech, { name: 'Nada', scope: 'consumable' })).statusCode).toBe(403);
+  });
+
+  it('el nombre es único por ámbito y sin distinguir mayúsculas; en otro ámbito se puede repetir', async () => {
+    expect((await cats(operator, { name: 'Cables', scope: 'consumable' })).statusCode).toBe(201);
+    const dup = await cats(operator, { name: 'cables', scope: 'consumable' });
+    expect(dup.statusCode).toBe(409);
+    expect(dup.json().detail).toContain('Ya existe una categoría');
+    // El mismo nombre en el ámbito de activos es otra categoría.
+    expect((await cats(operator, { name: 'CABLES' })).statusCode).toBe(201);
+    expect((await cats(operator, { name: 'cables' })).statusCode).toBe(409);
+  });
+});
+
 describe('catálogo de consumibles (RF-70)', () => {
   it('crea con categoría de consumibles y unidad; lista con stock total en 0', async () => {
     const c = await newConsumable({ minStock: '10' });
@@ -192,7 +268,9 @@ describe('catálogo de consumibles (RF-70)', () => {
     });
     expect(model.statusCode).toBe(422);
     const cats = (await reader.get(`${base}/categories?scope=consumable`)).json().data as Json[];
-    expect(cats.map((x) => x.name)).toEqual(['EPP']);
+    expect(cats.map((x) => x.name)).toContain('EPP');
+    expect(cats.every((x) => x.scope === 'consumable')).toBe(true);
+    expect(cats.map((x) => x.name)).not.toContain('Sensores');
     expect(cats[0]!.scope).toBe('consumable');
   });
 

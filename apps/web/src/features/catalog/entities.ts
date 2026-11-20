@@ -36,14 +36,14 @@ export const SECTION_READ: Record<Section, Permission> = {
   units: 'consumables:read',
 };
 
-/** Permiso para modificarlas (las categorías de consumibles son del catálogo; las unidades, de consumibles). */
+/** Permiso para modificarlas: las categorías de consumibles y las unidades son de quien gestiona consumibles (P4). */
 export const SECTION_WRITE: Record<Section, Permission> = {
   categories: 'catalog:write',
   manufacturers: 'catalog:write',
   models: 'catalog:write',
   locations: 'catalog:write',
   statuses: 'catalog:write',
-  consumableCategories: 'catalog:write',
+  consumableCategories: 'consumables:manage',
   units: 'consumables:manage',
 };
 

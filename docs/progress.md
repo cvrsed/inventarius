@@ -661,7 +661,7 @@ marca aquí junto con su commit. Cómo probar cada uno: ver «Cómo probar la re
 - [x] P1 Devolución como movimiento propio (`return`)
 - [x] P2 Permisos separados: `consumables:adjust` y `consumables:reverse`
 - [x] P3 Auditoría de la anulación con el detalle completo del movimiento anulado
-- [ ] P4 Categorías de consumibles con `consumables:manage` y unicidad por (ámbito, nombre)
+- [x] P4 Categorías de consumibles con `consumables:manage` y unicidad por (ámbito, nombre)
 - [ ] P5 Concurrencia del primer movimiento en una bodega sin fila de saldo
 - [ ] P6 Fecha pasada solo en el ingreso (máx. 90 días) y «Registrado el…» en el historial
 - [ ] P7 Bodega inactiva con stock: salidas sí, entradas no
@@ -687,6 +687,9 @@ marca aquí junto con su commit. Cómo probar cada uno: ver «Cómo probar la re
 - **P3:** anula una entrega con identificador, un ajuste con nota y un traslado; en Auditoría, entidad «Consumible», cada
   «Anulación de movimiento» lista el tipo, cantidad, unidad, bodega(s), saldos antes y después, receptor, motivo y nota
   originales, motivo de la anulación, quién registró el movimiento y sus fechas.
+- **P4:** con un rol que solo tenga `consumables:read` y `consumables:manage`, Catálogo → Categorías de consumibles permite
+  crear, editar y desactivar; Categorías (de activos) no ofrece alta. Con `asset:read` y `catalog:write` (sin `manage`) ocurre
+  lo contrario. «Cables» se puede crear una vez como categoría de activos y otra como de consumibles, pero no dos veces en el mismo ámbito.
 
 ### Backlog post-F3.5
 

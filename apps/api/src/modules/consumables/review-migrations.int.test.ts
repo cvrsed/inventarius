@@ -57,3 +57,33 @@ describe('migración 0019: consumables:reverse (P2)', () => {
     ]);
   });
 });
+
+describe('migración 0020: categorías únicas por ámbito (P4)', () => {
+  it('reemplaza la unicidad global del nombre por (ámbito, nombre sin distinguir mayúsculas)', async () => {
+    const pool = env.db.migratorPool;
+    // Estado anterior: nombre único global.
+    await pool.query('DROP INDEX categories_scope_name_lower_uq');
+    await pool.query(`ALTER TABLE categories ADD CONSTRAINT categories_name_unique UNIQUE (name)`);
+    await pool.query(
+      `INSERT INTO categories (name, scope) VALUES ('Cables', 'asset'), ('EPP', 'consumable')`,
+    );
+    await expect(
+      pool.query(`INSERT INTO categories (name, scope) VALUES ('cables', 'consumable')`),
+    ).rejects.toThrow(/categories_name_unique/);
+
+    for (const sql of statementsOf('0020_categories_unique_per_scope.sql')) await pool.query(sql);
+
+    // Los datos que existían siguen ahí y el mismo nombre ya cabe en el otro ámbito.
+    expect(
+      (await pool.query(`SELECT 1 FROM categories WHERE name IN ('Cables', 'EPP')`)).rowCount,
+    ).toBe(2);
+    await pool.query(`INSERT INTO categories (name, scope) VALUES ('cables', 'consumable')`);
+    // Pero no se repite dentro del ámbito, ni cambiando mayúsculas.
+    await expect(
+      pool.query(`INSERT INTO categories (name, scope) VALUES ('CABLES', 'consumable')`),
+    ).rejects.toThrow(/categories_scope_name_lower_uq/);
+    await expect(
+      pool.query(`INSERT INTO categories (name, scope) VALUES ('cAbLeS', 'asset')`),
+    ).rejects.toThrow(/categories_scope_name_lower_uq/);
+  });
+});

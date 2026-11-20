@@ -148,17 +148,24 @@ export const auditLog = pgTable(
 
 // --- Catálogo (RF-10 a RF-14) ---
 
-export const categories = pgTable('categories', {
-  id: pk(),
-  name: citext('name').notNull().unique(),
-  /** `none` | `lorawan`: con `lorawan` la ficha del activo suma la sección LoRaWAN (F3). */
-  extension: text('extension').notNull().default('none'),
-  /** `asset` (modelos de activos) | `consumable` (consumibles, F3.5). No cambia después de creada. */
-  scope: text('scope').notNull().default('asset'),
-  active: boolean('active').notNull().default(true),
-  createdAt: createdAt(),
-  updatedAt: updatedAt(),
-});
+export const categories = pgTable(
+  'categories',
+  {
+    id: pk(),
+    name: citext('name').notNull(),
+    /** `none` | `lorawan`: con `lorawan` la ficha del activo suma la sección LoRaWAN (F3). */
+    extension: text('extension').notNull().default('none'),
+    /** `asset` (modelos de activos) | `consumable` (consumibles, F3.5). No cambia después de creada. */
+    scope: text('scope').notNull().default('asset'),
+    active: boolean('active').notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    // El nombre es único dentro de su ámbito: «Cables» puede existir como categoría de activos y de consumibles.
+    uniqueIndex('categories_scope_name_lower_uq').on(t.scope, sql`lower(${t.name})`),
+  ],
+);
 
 export const manufacturers = pgTable('manufacturers', {
   id: pk(),

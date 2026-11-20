@@ -22,7 +22,7 @@ async function mountSection(
 ) {
   const fetchMock = mockApi({
     ...extra,
-    [`GET /api/v1/${section === 'statuses' ? 'status-labels' : section}`]: () => ({
+    [`GET /api/v1/${PATH[section] ?? section}`]: () => ({
       data,
       meta: { page: 1, pageSize: 25, total: data.length },
     }),
@@ -43,6 +43,12 @@ async function mountSection(
   await flushPromises();
   return { wrapper, fetchMock };
 }
+
+const PATH: Record<string, string> = {
+  statuses: 'status-labels',
+  consumableCategories: 'categories',
+  units: 'measure-units',
+};
 
 const status = (over: Record<string, unknown>) => ({
   id: '018f0000-0000-7000-8000-000000000001',
@@ -90,6 +96,23 @@ describe('CatalogPage (RF-10 a RF-14)', () => {
     expect(wrapper.text()).toContain('Notebooks');
     expect(wrapper.find('button[aria-label^="Editar"]').exists()).toBe(false);
     expect(wrapper.text()).not.toContain('Nueva categoría');
+  });
+
+  it('las categorías de consumibles se administran con consumables:manage, no con catalog:write (P4)', async () => {
+    const withManage = await mountSection(
+      'consumableCategories',
+      [],
+      ['consumables:read', 'consumables:manage'],
+    );
+    expect(withManage.wrapper.text()).toContain('Nueva categoría de consumibles');
+    withManage.wrapper.unmount();
+    mounted.pop();
+    const withCatalog = await mountSection(
+      'consumableCategories',
+      [],
+      ['consumables:read', 'asset:read', 'catalog:write'],
+    );
+    expect(withCatalog.wrapper.text()).not.toContain('Nueva categoría de consumibles');
   });
 
   it('las secciones del catálogo son enlaces con nombre accesible', async () => {
