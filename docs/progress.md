@@ -626,11 +626,11 @@ Para que Rodrigo recorra la fase en su entorno de desarrollo.
 - **Levantar:** `docker compose up --build` (no hace falta ningún perfil; el perfil `chirpstack` es de F3). Web en
   http://localhost:5173, API en http://localhost:3000, Postgres en `127.0.0.1:5432`.
 - **Usuarios de prueba** (datos inventados):
-  1. Administrador (tiene `consumables:adjust`): `docker compose exec api pnpm --filter @inventarius/api cli create-admin --email admin@example.test --name "Admin de prueba"`.
-  2. Operador **sin** `consumables:adjust`: en Usuarios, «Nuevo usuario» con rol Operador (por ejemplo `operador@example.test`);
+  1. Administrador (tiene `consumables:adjust` y `consumables:reverse`): `docker compose exec api pnpm --filter @inventarius/api cli create-admin --email admin@example.test --name "Admin de prueba"`.
+  2. Operador (ajusta, pero no anula): en Usuarios, «Nuevo usuario» con rol Operador (por ejemplo `operador@example.test`);
      entra con la contraseña temporal y la cambia.
-  3. Para probar un rol con `consumables:adjust` que no sea Administrador: en Roles, crea uno con solo `consumables:read` y
-     `consumables:adjust` (Q60).
+  3. Para probar los permisos por separado (P2), en Roles crea uno con solo `consumables:read` y `consumables:adjust`, y otro
+     con solo `consumables:read` y `consumables:reverse`.
 - **Datos de ejemplo** (todo por la interfaz):
   1. Catálogo → Ubicaciones: «Bodega central» y «Bodega anexo», tipo Bodega.
   2. Catálogo → Categorías de consumibles: «EPP».
@@ -643,9 +643,9 @@ Para que Rodrigo recorra la fase en su entorno de desarrollo.
   - Intenta ingresar «2,5» pares: la unidad no admite decimales. Intenta entregar más de lo que hay: el tope se ve en el diálogo.
   - Entrega 3 pares a «Persona Inventada» con identificador libre y a un usuario del sistema; traslada 4 a la anexo; mira el
     historial (fechas `dd-mm-aaaa HH:mm`, «Ver más», filtros por bodega, tipo y fecha).
-  - Como Operador: no ves «Ajustar» ni «Anular». Como Administrador: ajusta con motivo «Otro» (la nota es obligatoria) y mira la
+  - Como Operador: ves «Ajustar» pero no «Anular». Como Administrador: ajusta con motivo «Otro» (la nota es obligatoria) y mira la
     confirmación con el saldo antes y después.
-  - Anula la entrega: el historial enlaza «Anulado por…» y «Anula a…». Intenta anular un ingreso cuyo stock ya se entregó: lo
+  - Anula una entrega sin devoluciones: el historial enlaza «Anulado por…» y «Anula a…». Intenta anular un ingreso cuyo stock ya se entregó: lo
     rechaza diciendo que dejaría el stock negativo. Anula un traslado: se revierten las dos bodegas.
   - Desactiva un consumible: ingresar, entregar y trasladar se ven apagados con el motivo al pasar el cursor; ajustar sigue.
     «Eliminar» está apagado si tiene movimientos.

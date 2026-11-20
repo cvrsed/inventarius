@@ -195,23 +195,38 @@ export interface WarehouseInfo {
   active: boolean;
 }
 
-/** Todas las bodegas (hasta 100, el tope de los listados; RNF-06), ordenadas por ruta. */
+const WAREHOUSE_PAGE = 100;
+/** Tope de páginas: 3.000 bodegas es mucho más de lo que tiene cualquier instalación; evita un bucle sin fin ante un error. */
+const WAREHOUSE_MAX_PAGES = 30;
+
+/**
+ * Todas las bodegas, ordenadas por ruta. Los listados traen hasta 100 filas (RNF-06), así que se piden las páginas que
+ * hagan falta: una bodega no puede quedar fuera del selector solo porque hay más de 100 (en la base compartida del e2e
+ * ya ocurría). El selector las filtra en el navegador.
+ */
 export function useWarehouses() {
   return useQuery({
     queryKey: ['remote', 'warehouses-all'] as const,
     queryFn: async ({ signal }): Promise<WarehouseInfo[]> => {
-      const res = await api(
-        '/api/v1/locations?type=warehouse&pageSize=100&sort=path',
-        pageOf(locationSchema),
-        { signal },
-      );
-      return res.data.map((l) => ({
-        id: l.id,
-        name: l.name,
-        path: l.path,
-        parents: l.path.split(' > ').slice(0, -1).join(' › '),
-        active: l.active,
-      }));
+      const all: WarehouseInfo[] = [];
+      for (let page = 1; page <= WAREHOUSE_MAX_PAGES; page++) {
+        const res = await api(
+          `/api/v1/locations?type=warehouse&pageSize=${WAREHOUSE_PAGE}&sort=path&page=${page}`,
+          pageOf(locationSchema),
+          { signal },
+        );
+        all.push(
+          ...res.data.map((l) => ({
+            id: l.id,
+            name: l.name,
+            path: l.path,
+            parents: l.path.split(' > ').slice(0, -1).join(' › '),
+            active: l.active,
+          })),
+        );
+        if (page * res.meta.pageSize >= res.meta.total) break;
+      }
+      return all;
     },
     staleTime: 15_000,
   });

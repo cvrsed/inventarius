@@ -409,7 +409,16 @@ async function goTo(movementId: string): Promise<void> {
           </template>
           <template #empty>{{ t('consumables.stock.empty') }}</template>
           <template #card="{ item }">
-            <span class="font-semibold text-highlighted">{{ item.location.path }}</span>
+            <span class="font-semibold text-highlighted">
+              {{ item.location.path }}
+              <UBadge
+                v-if="!item.location.active"
+                :label="t('consumables.stock.inactiveWarehouse')"
+                color="neutral"
+                variant="subtle"
+                class="ml-1"
+              />
+            </span>
             <dl class="m-0 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
               <dt class="text-muted">{{ t('consumables.stock.quantity') }}</dt>
               <dd class="m-0 flex flex-wrap items-center gap-2">

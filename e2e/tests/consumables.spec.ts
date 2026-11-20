@@ -90,11 +90,20 @@ async function stockVsLedger(page: Page, id: string) {
     const res = (await (
       await page.request.get(`/api/v1/consumables/${id}/movements?pageSize=100&page=${p}`)
     ).json()) as {
-      data: { location: { id: string }; delta: string }[];
+      data: {
+        location: { id: string };
+        counterpartLocation: { id: string } | null;
+        delta: string;
+      }[];
       meta: { total: number; pageSize: number; page: number };
     };
     for (const m of res.data) {
+      // Un traslado (y su anulación) es una sola entrada del historial (P8): mueve la cantidad entre sus dos bodegas.
       ledger.set(m.location.id, (ledger.get(m.location.id) ?? 0) + Number(m.delta));
+      if (m.counterpartLocation) {
+        const other = m.counterpartLocation.id;
+        ledger.set(other, (ledger.get(other) ?? 0) - Number(m.delta));
+      }
     }
     if (res.meta.page * res.meta.pageSize >= res.meta.total) break;
   }
