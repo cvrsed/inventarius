@@ -60,7 +60,7 @@ const what = computed(() => {
   const m = props.movement;
   if (!m) return '';
   const v = describeMovement(m, unit.value, t);
-  return `${v.title} ${v.quantity} (${v.place}, ${formatDateTime(m.occurredAt)})`;
+  return `${v.headline} (${m.counterpartLocation ? '' : `${v.place}, `}${formatDateTime(m.occurredAt)})`;
 });
 
 async function submit(): Promise<void> {

@@ -28,6 +28,8 @@ export function signedQuantity(delta: string, unit: UnitRef): string {
 export interface MovementView {
   title: string;
   quantity: string;
+  /** Lo que dice la entrada: «Ingreso +12 pares» o «Traslado: origen → destino, 2 pares». */
+  headline: string;
   /** Dónde: una bodega, o «origen → destino» en un traslado. */
   place: string;
   /** Líneas «campo: valor» propias del tipo (receptor, proveedor, motivo...). */
@@ -51,6 +53,7 @@ export function describeMovement(m: MovementDto, unit: UnitRef, t: Translate): M
   add(m.kind === 'reversal' ? 'reversalReason' : 'note', m.note);
 
   let place = m.location.name;
+  const isTransfer = m.counterpartLocation !== null;
   if (m.counterpartLocation) {
     // El stock entra a la bodega del movimiento cuando el `delta` es positivo y sale cuando es negativo.
     const [from, to] = m.delta.startsWith('-')
@@ -58,9 +61,18 @@ export function describeMovement(m: MovementDto, unit: UnitRef, t: Translate): M
       : [m.counterpartLocation.name, m.location.name];
     place = `${from} → ${to}`;
   }
+  const reversesTransfer = m.kind === 'reversal' && m.reverses?.kind.startsWith('transfer');
+  const title = reversesTransfer
+    ? t('consumables.kinds.reversalTransfer')
+    : t(`consumables.kinds.${m.kind}`);
+  // Un traslado no suma ni resta: es una cantidad que se mueve, sin signo.
+  const quantity = isTransfer
+    ? formatQuantity(m.delta.startsWith('-') ? m.delta.slice(1) : m.delta, unit)
+    : signedQuantity(m.delta, unit);
   return {
-    title: t(`consumables.kinds.${m.kind}`),
-    quantity: signedQuantity(m.delta, unit),
+    title,
+    quantity,
+    headline: isTransfer ? `${title}: ${place}, ${quantity}` : `${title} ${quantity}`,
     place,
     lines,
   };

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {
-  MOVEMENT_KINDS,
+  HISTORY_KINDS,
   compareQuantities,
   formatQuantity,
   type MovementDto,
@@ -151,7 +151,7 @@ const warehouseItems = computed(() => [
 ]);
 const kindItems = computed(() => [
   { value: '', label: t('consumables.history.allKinds') },
-  ...MOVEMENT_KINDS.map((k) => ({ value: k, label: t(`consumables.kinds.${k}`) })),
+  ...HISTORY_KINDS.map((k) => ({ value: k, label: t(`consumables.kinds.${k}`) })),
 ]);
 const setFilter = (key: keyof HistoryFilters, value: string | number) => {
   filters.value = { ...filters.value, [key]: String(value) };
@@ -465,8 +465,7 @@ async function goTo(movementId: string): Promise<void> {
             </span>
             <div class="min-w-0 flex-1">
               <p class="m-0 flex flex-wrap items-center gap-x-2 font-medium text-highlighted">
-                <span>{{ view.title }}</span>
-                <span>{{ view.quantity }}</span>
+                <span>{{ view.headline }}</span>
                 <UBadge
                   v-if="m.reversedBy"
                   :label="t('consumables.history.reversedBadge')"
@@ -474,7 +473,9 @@ async function goTo(movementId: string): Promise<void> {
                   variant="subtle"
                 />
               </p>
-              <p class="m-0 text-sm text-default">{{ view.place }}</p>
+              <p v-if="!m.counterpartLocation" class="m-0 text-sm text-default">
+                {{ view.place }}
+              </p>
               <p v-if="m.backdated" class="m-0 text-sm text-muted">
                 {{ formatDate(m.occurredAt) }}
               </p>
@@ -568,7 +569,7 @@ async function goTo(movementId: string): Promise<void> {
                   v-if="m.returnable && !inactive && auth.can('consumables:deliver')"
                   icon="i-lucide-undo-2"
                   :label="t('consumables.actions.return')"
-                  :aria-label="`${t('consumables.actions.return')}: ${view.title} ${view.quantity}`"
+                  :aria-label="`${t('consumables.actions.return')}: ${view.headline}`"
                   color="neutral"
                   variant="outline"
                   size="sm"
@@ -578,7 +579,7 @@ async function goTo(movementId: string): Promise<void> {
                   v-if="m.reversible && auth.can('consumables:reverse')"
                   icon="i-lucide-ban"
                   :label="t('consumables.actions.reverse')"
-                  :aria-label="`${t('consumables.actions.reverse')} ${view.title} ${view.quantity}`"
+                  :aria-label="`${t('consumables.actions.reverse')} ${view.headline}`"
                   color="neutral"
                   variant="outline"
                   size="sm"

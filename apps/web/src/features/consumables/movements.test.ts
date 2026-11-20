@@ -65,20 +65,44 @@ describe('historial de movimientos', () => {
     expect(JSON.stringify(v)).not.toContain('waste_damage');
   });
 
-  it('un traslado muestra origen → destino según el sentido del stock', () => {
+  it('un traslado es una sola entrada: «Traslado: origen → destino, N unidades» (P8)', () => {
     const counterpart = { id: '0190d1a0-0000-7000-8000-0000000000a2', name: 'Bodega anexo' };
-    const out = describeMovement(
+    const v = describeMovement(
       movement({ kind: 'transfer_out', delta: '-2', counterpartLocation: counterpart }),
       par,
       t,
     );
-    expect(out.place).toBe('Bodega central → Bodega anexo');
-    const inn = describeMovement(
-      movement({ kind: 'transfer_in', delta: '2', counterpartLocation: counterpart }),
+    expect(v.title).toBe('Traslado');
+    expect(v.place).toBe('Bodega central → Bodega anexo');
+    expect(v.quantity).toBe('2 pares');
+    expect(v.headline).toBe('Traslado: Bodega central → Bodega anexo, 2 pares');
+  });
+
+  it('la anulación de un traslado también es una entrada, con el sentido contrario', () => {
+    const counterpart = { id: '0190d1a0-0000-7000-8000-0000000000a2', name: 'Bodega anexo' };
+    const v = describeMovement(
+      movement({
+        kind: 'reversal',
+        delta: '2',
+        note: 'Bodega equivocada',
+        counterpartLocation: counterpart,
+        reverses: {
+          id: '0190d1a0-0000-7000-8000-0000000000f9',
+          kind: 'transfer_out',
+          at: '2026-11-16T12:00:00.000Z',
+        },
+      }),
       par,
       t,
     );
-    expect(inn.place).toBe('Bodega anexo → Bodega central');
+    expect(v.headline).toBe('Anulación de traslado: Bodega anexo → Bodega central, 2 pares');
+    expect(v.lines).toEqual([{ label: 'Motivo de la anulación', value: 'Bodega equivocada' }]);
+  });
+
+  it('el resto de los movimientos conservan «Tipo +cantidad» y su bodega', () => {
+    const v = describeMovement(movement({ kind: 'receipt', delta: '12' }), par, t);
+    expect(v.headline).toBe('Ingreso +12 pares');
+    expect(v.place).toBe('Bodega central');
   });
 
   it('una anulación muestra su motivo como tal', () => {

@@ -487,8 +487,26 @@ export class ConsumablesRepository {
           sql`, `,
         )})`,
       );
-    if (f.locationId) conds.push(sql`m.location_id = ${f.locationId}`);
-    if (f.kind) conds.push(sql`m.kind = ${f.kind}`);
+    // Un traslado (y su anulación) es una sola entrada del historial aunque el libro tenga dos filas (P8): se deja la de
+    // la salida y la que anula la salida. Al pedir movimientos por id (el resultado de registrar uno) vienen todas.
+    if (!f.ids) {
+      conds.push(sql`m.kind <> 'transfer_in'`);
+      conds.push(sql`NOT (m.kind = 'reversal' AND orig.kind = 'transfer_in')`);
+    }
+    if (f.locationId) {
+      conds.push(
+        f.ids
+          ? sql`m.location_id = ${f.locationId}`
+          : sql`(m.location_id = ${f.locationId} OR cp.location_id = ${f.locationId})`,
+      );
+    }
+    if (f.kind) {
+      conds.push(
+        f.kind === 'transfer'
+          ? sql`m.kind IN ('transfer_out', 'transfer_in')`
+          : sql`m.kind = ${f.kind}`,
+      );
+    }
     if (f.from)
       conds.push(sql`(m.occurred_at AT TIME ZONE ${f.timezone})::date >= ${f.from}::date`);
     if (f.to) conds.push(sql`(m.occurred_at AT TIME ZONE ${f.timezone})::date <= ${f.to}::date`);

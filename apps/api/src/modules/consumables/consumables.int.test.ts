@@ -1193,6 +1193,117 @@ describe('stock mínimo (RF-74, D9)', () => {
   });
 });
 
+describe('traslado como una sola entrada del historial (P8)', () => {
+  const history = async (id: string, qs = '') =>
+    (
+      await reader.get(
+        `${base}/consumables/${id}/movements?${qs.includes('pageSize') ? qs.slice(1) : `pageSize=100${qs}`}`,
+      )
+    ).json();
+
+  it('un traslado es una entrada (origen → destino) aunque el libro tenga dos filas', async () => {
+    const c = await newConsumable();
+    await receive(c.id, ids.main, '10');
+    const tr = await move(operator, c.id, 'transfers', {
+      fromLocationId: ids.main,
+      toLocationId: ids.annex,
+      quantity: '4',
+    });
+    // El resultado de registrarlo sigue trayendo las dos filas del libro…
+    expect(tr.json().movements).toHaveLength(2);
+    // …pero el historial muestra una sola.
+    const h = await history(c.id);
+    expect(h.meta.total).toBe(2);
+    const entries = (h.data as Json[]).filter((m) => m.kind.startsWith('transfer'));
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      kind: 'transfer_out',
+      delta: '-4',
+      location: { id: ids.main },
+      counterpartLocation: { id: ids.annex },
+      reversible: true,
+    });
+    // El libro sí tiene las dos filas.
+    const rows = await env.db.migratorPool.query(
+      `SELECT 1 FROM consumable_movements WHERE consumable_id = $1 AND kind LIKE 'transfer%'`,
+      [c.id],
+    );
+    expect(rows.rowCount).toBe(2);
+  });
+
+  it('el filtro por bodega la muestra en ambas bodegas y el de tipo «traslado» la encuentra', async () => {
+    const c = await newConsumable();
+    await receive(c.id, ids.main, '10');
+    await move(operator, c.id, 'transfers', {
+      fromLocationId: ids.main,
+      toLocationId: ids.annex,
+      quantity: '4',
+    });
+    const transfers = (qs: string) =>
+      history(c.id, qs).then((h) =>
+        (h.data as Json[]).filter((m) => m.kind.startsWith('transfer')),
+      );
+    expect(await transfers(`&locationId=${ids.main}`)).toHaveLength(1);
+    expect(await transfers(`&locationId=${ids.annex}`)).toHaveLength(1);
+    expect(await transfers(`&locationId=${ids.site}`)).toHaveLength(0);
+    expect((await history(c.id, '&kind=transfer')).meta.total).toBe(1);
+    expect((await history(c.id, `&kind=transfer&locationId=${ids.annex}`)).meta.total).toBe(1);
+    // El filtro de bodega suma los ingresos de esa bodega y el traslado.
+    expect((await history(c.id, `&locationId=${ids.main}`)).meta.total).toBe(2);
+    expect((await history(c.id, `&locationId=${ids.annex}`)).meta.total).toBe(1);
+  });
+
+  it('anular el traslado es una sola entrada, enlazada con el traslado, y con un solo botón', async () => {
+    const c = await newConsumable();
+    await receive(c.id, ids.main, '10');
+    const tr = await move(operator, c.id, 'transfers', {
+      fromLocationId: ids.main,
+      toLocationId: ids.annex,
+      quantity: '4',
+    });
+    const inLeg = tr.json().movements[1].id as string;
+    const undo = await admin.post(`${base}/consumable-movements/${inLeg}/reversals`, {
+      reason: 'Se equivocó de bodega',
+    });
+    expect(undo.statusCode, undo.body).toBe(201);
+    const h = await history(c.id);
+    const entries = h.data as Json[];
+    // ingreso + traslado + anulación del traslado.
+    expect(h.meta.total).toBe(3);
+    const original = entries.find((m) => m.kind === 'transfer_out')!;
+    const reversal = entries.find((m) => m.kind === 'reversal')!;
+    expect(original).toMatchObject({ reversible: false, reversedBy: { id: reversal.id } });
+    expect(reversal).toMatchObject({
+      delta: '4',
+      reverses: { id: original.id, kind: 'transfer_out' },
+      counterpartLocation: { id: ids.annex },
+      location: { id: ids.main },
+      reversible: false,
+    });
+    expect(
+      (await history(c.id, `&locationId=${ids.annex}`)).data.filter(
+        (m: Json) => m.kind === 'reversal',
+      ),
+    ).toHaveLength(1);
+  });
+
+  it('pagina por entradas: un traslado cuenta una vez', async () => {
+    const c = await newConsumable();
+    await receive(c.id, ids.main, '30');
+    for (let i = 0; i < 3; i++) {
+      await move(operator, c.id, 'transfers', {
+        fromLocationId: ids.main,
+        toLocationId: ids.annex,
+        quantity: '1',
+      });
+    }
+    const page1 = await history(c.id, '&pageSize=2');
+    expect(page1.meta.total).toBe(4);
+    expect(page1.data).toHaveLength(2);
+    expect((await history(c.id, '&pageSize=2&page=2')).data).toHaveLength(2);
+  });
+});
+
 describe('historial (RF-73)', () => {
   it('se filtra por bodega, tipo y fecha, y se pagina', async () => {
     const c = await newConsumable();

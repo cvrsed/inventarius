@@ -409,7 +409,10 @@ export const movementSchema = z.object({
   recipient: z
     .object({ userId: z.uuid().nullable(), name: z.string(), ref: z.string().nullable() })
     .nullable(),
-  /** La otra bodega de un traslado (o de su anulación). */
+  /**
+   * La otra bodega de un traslado (o de su anulación). El historial trae una sola fila por traslado: la de la salida
+   * (`delta` negativo en el origen) o, en su anulación, la que devuelve el stock al origen (P8).
+   */
   counterpartLocation: z.object({ id: z.uuid(), name: z.string() }).nullable(),
   /** Este movimiento fue anulado por otro. */
   reversedBy: z
@@ -432,9 +435,24 @@ export const movementSchema = z.object({
 });
 export type MovementDto = z.infer<typeof movementSchema>;
 
+/**
+ * Tipos que se pueden filtrar en el historial: un traslado es una sola entrada (P8), así que sus dos filas del libro
+ * (`transfer_out` y `transfer_in`) se filtran como «traslado».
+ */
+export const HISTORY_KINDS = [
+  'receipt',
+  'delivery',
+  'return',
+  'transfer',
+  'adjustment',
+  'reversal',
+] as const;
+export const historyKindSchema = z.enum(HISTORY_KINDS);
+export type HistoryKind = z.infer<typeof historyKindSchema>;
+
 export const movementListQuerySchema = pageQuerySchema.extend({
   locationId: z.uuid().optional(),
-  kind: movementKindSchema.optional(),
+  kind: historyKindSchema.optional(),
   /** Fechas (inclusive), día calendario de la zona horaria de la instalación. */
   from: z.iso.date().optional(),
   to: z.iso.date().optional(),

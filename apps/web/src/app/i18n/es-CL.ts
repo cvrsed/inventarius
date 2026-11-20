@@ -373,9 +373,11 @@ export const messages = {
       delivery: 'Entrega',
       return: 'Devolución',
       adjustment: 'Ajuste',
-      transfer_out: 'Traslado (salida)',
-      transfer_in: 'Traslado (entrada)',
+      transfer: 'Traslado',
+      transfer_out: 'Traslado',
+      transfer_in: 'Traslado',
       reversal: 'Anulación',
+      reversalTransfer: 'Anulación de traslado',
     },
     reasons: {
       physical_count: 'Conteo físico',

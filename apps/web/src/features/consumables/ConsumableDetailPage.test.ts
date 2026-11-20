@@ -218,4 +218,32 @@ describe('ficha del consumible (RF-73, RF-74)', () => {
       expect(w.text()).not.toContain('Registrado el');
     });
   });
+
+  describe('traslado como una sola entrada (P8)', () => {
+    const transfer = movement({
+      id: '0190d1a0-0000-7000-8000-0000000000f4',
+      kind: 'transfer_out',
+      delta: '-2',
+      counterpartLocation: { id: ids.annex, name: 'Bodega anexo' },
+    });
+
+    it('muestra «Traslado: origen → destino, N unidades» con un solo botón Anular', async () => {
+      const w = await mountPage(ALL, consumable(), [transfer]);
+      expect(w.text()).toContain('Traslado: Bodega central → Bodega anexo, 2 pares');
+      const undo = w.findAll('button').filter((b) => b.text().includes('Anular'));
+      expect(undo).toHaveLength(1);
+      expect(undo[0]!.attributes('aria-label')).toContain(
+        'Traslado: Bodega central → Bodega anexo',
+      );
+    });
+
+    it('el filtro de tipo ofrece un solo «Traslado»', async () => {
+      const w = await mountPage(['consumables:read']);
+      const labels = (
+        w.vm as unknown as { $: { setupState: { kindItems: { label: string }[] } } }
+      ).$.setupState.kindItems.map((i) => i.label);
+      expect(labels.filter((l) => l === 'Traslado')).toHaveLength(1);
+      expect(labels).toContain('Devolución');
+    });
+  });
 });
