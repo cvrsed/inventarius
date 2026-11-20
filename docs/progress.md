@@ -529,3 +529,20 @@ Segunda revisión manual del PR #6 (2026-11-19). Cada punto va en su propio comm
 - [x] R4 Vincular: un JoinEUI en ceros no pisa el local; el usuario elige por campo qué adoptar
 - [x] R5 Vincular muestra el device profile con nombre, versión y región
 - [x] R6 Vincular advierte si el dispositivo remoto no tiene AppKey/NwkKey (no podrá hacer join)
+
+**Resumen de la revisión 2 (2026-11-19)**
+
+- Todos los puntos (P18b, R1 a R6) quedaron hechos, un commit por punto. Migración nueva: 0016 (serie única por
+  `(model_id, lower(serial))`; se detiene y lista los duplicados dentro de un mismo modelo). Q52 y Q54 actualizadas; Q55 nueva (R1).
+- **Pruebas:** shared 42, API 200 unitarias + 249 de integración con Postgres 18 (+8 opt-in), Web 355. e2e sobre un stack
+  limpio (escritorio y 360 px): 127 pasaron y 3 se omiten (los mismos de antes); el e2e de LoRaWAN comprueba que la máscara
+  de la AppKey cabe en una línea, el device profile con nombre y que no queda nada registrado al terminar.
+- **ChirpStack de desarrollo:** se borraron de él los dos dispositivos «ajenos» del bootstrap y los dos «Sensor de prueba» que
+  dejó `chirpstack.real.int`. Quedan «creado a mano» y «INV-000016 pruebaCSV1» (registrado desde la app de
+  desarrollo, no era de las pruebas).
+
+**Pendiente / no verificado**
+
+- El CI de GitHub no se esperó (instrucción del responsable).
+- Una instalación con series repetidas dentro de un mismo modelo hará abortar la migración 0016; el mensaje las lista.
+- TTN: las lecturas para vincular siguen sin probarse contra una aplicación real (Q48).
