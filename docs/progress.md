@@ -662,7 +662,7 @@ marca aquí junto con su commit. Cómo probar cada uno: ver «Cómo probar la re
 - [x] P2 Permisos separados: `consumables:adjust` y `consumables:reverse`
 - [x] P3 Auditoría de la anulación con el detalle completo del movimiento anulado
 - [x] P4 Categorías de consumibles con `consumables:manage` y unicidad por (ámbito, nombre)
-- [ ] P5 Concurrencia del primer movimiento en una bodega sin fila de saldo
+- [x] P5 Concurrencia del primer movimiento en una bodega sin fila de saldo
 - [ ] P6 Fecha pasada solo en el ingreso (máx. 90 días) y «Registrado el…» en el historial
 - [ ] P7 Bodega inactiva con stock: salidas sí, entradas no
 - [ ] P8 Traslado como una sola entrada del historial
@@ -690,6 +690,9 @@ marca aquí junto con su commit. Cómo probar cada uno: ver «Cómo probar la re
 - **P4:** con un rol que solo tenga `consumables:read` y `consumables:manage`, Catálogo → Categorías de consumibles permite
   crear, editar y desactivar; Categorías (de activos) no ofrece alta. Con `asset:read` y `catalog:write` (sin `manage`) ocurre
   lo contrario. «Cables» se puede crear una vez como categoría de activos y otra como de consumibles, pero no dos veces en el mismo ámbito.
+- **P5:** no hay nada que probar a mano: `pnpm --filter @inventarius/api test:int` incluye ocho ingresos simultáneos y ocho traslados
+  simultáneos hacia una bodega sin fila de saldo. `lockStock` ya hacía `INSERT ... ON CONFLICT DO NOTHING` antes del
+  `FOR UPDATE`, así que las pruebas pasaron sin cambiar código: quedan como guarda contra una regresión.
 
 ### Backlog post-F3.5
 

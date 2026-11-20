@@ -1122,6 +1122,74 @@ describe('concurrencia (D3)', () => {
   });
 });
 
+describe('primer movimiento en una bodega sin fila de saldo (P5)', () => {
+  /** Una bodega nueva por prueba: así ningún consumible tiene fila de saldo previa en ella. */
+  async function freshWarehouse(name: string): Promise<string> {
+    return (await create(operator, 'locations', { name, type: 'warehouse' })).id as string;
+  }
+  const rowCount = async (consumableId: string, locationId: string) =>
+    (
+      await env.db.migratorPool.query(
+        'SELECT 1 FROM consumable_stock WHERE consumable_id = $1 AND location_id = $2',
+        [consumableId, locationId],
+      )
+    ).rowCount;
+  async function clients(prefix: string, n: number): Promise<TestClient[]> {
+    const list = Array.from({ length: n }, (_, i) => env.client(`${prefix}.${i + 1}`));
+    await Promise.all(list.map((x) => x.login('op@ejemplo.cl')));
+    return list;
+  }
+
+  it('ingresos simultáneos al mismo (consumible, bodega) sin saldo previo suman todos y crean una sola fila', async () => {
+    const c = await newConsumable();
+    const wh = await freshWarehouse('Bodega P5 ingresos');
+    expect(await rowCount(c.id, wh)).toBe(0);
+    const results = await Promise.all(
+      (await clients('10.50.0', 8)).map((x) =>
+        move(x, c.id, 'receipts', { locationId: wh, quantity: '1' }),
+      ),
+    );
+    expect(results.map((r) => r.statusCode)).toEqual(Array(8).fill(201));
+    expect((await stock(c.id))[wh]).toBe('8');
+    expect(await rowCount(c.id, wh)).toBe(1);
+    expect(await env.services.consumables.verifyLedger()).toEqual([]);
+  });
+
+  it('traslados simultáneos hacia una bodega destino sin saldo previo llegan todos', async () => {
+    const c = await newConsumable();
+    await receive(c.id, ids.main, '20');
+    const wh = await freshWarehouse('Bodega P5 destino');
+    expect(await rowCount(c.id, wh)).toBe(0);
+    const results = await Promise.all(
+      (await clients('10.51.0', 8)).map((x) =>
+        move(x, c.id, 'transfers', { fromLocationId: ids.main, toLocationId: wh, quantity: '1' }),
+      ),
+    );
+    expect(results.map((r) => r.statusCode)).toEqual(Array(8).fill(201));
+    const after = await stock(c.id);
+    expect(after[wh]).toBe('8');
+    expect(after[ids.main]).toBe('12');
+    expect(await rowCount(c.id, wh)).toBe(1);
+    expect(await env.services.consumables.verifyLedger()).toEqual([]);
+  });
+
+  it('un ingreso y un traslado de entrada a la vez sobre la misma bodega nueva no se pisan', async () => {
+    const c = await newConsumable();
+    await receive(c.id, ids.main, '5');
+    const wh = await freshWarehouse('Bodega P5 mixta');
+    const [a, b, d, e] = await clients('10.52.0', 4);
+    const results = await Promise.all([
+      move(a!, c.id, 'receipts', { locationId: wh, quantity: '2' }),
+      move(b!, c.id, 'transfers', { fromLocationId: ids.main, toLocationId: wh, quantity: '3' }),
+      move(d!, c.id, 'receipts', { locationId: wh, quantity: '4' }),
+      move(e!, c.id, 'transfers', { fromLocationId: ids.main, toLocationId: wh, quantity: '1' }),
+    ]);
+    expect(results.map((r) => r.statusCode)).toEqual([201, 201, 201, 201]);
+    expect((await stock(c.id))[wh]).toBe('10');
+    expect(await env.services.consumables.verifyLedger()).toEqual([]);
+  });
+});
+
 describe('libro y saldo (D2)', () => {
   it('el saldo materializado es igual a la suma del libro para cada consumible y bodega', async () => {
     expect(await env.services.consumables.verifyLedger()).toEqual([]);
