@@ -5,7 +5,9 @@ import {
   formatQuantity,
   negateDelta,
   normalizeDelta,
+  MAX_BACKDATE_DAYS,
   normalizeQuantity,
+  receivedOnProblem,
   type AdjustmentInput,
   type ConsumableDetailDto,
   type ConsumableDto,
@@ -342,10 +344,13 @@ export class ConsumablesService {
       assertQuantityFitsUnit(input.quantity, unit, 'quantity');
       const warehouse = await this.catalog.requireWarehouse(tx, input.locationId);
       const today = this.today();
-      if (input.receivedOn && input.receivedOn > today) {
-        throw new ValidationError('La fecha del ingreso no puede ser futura', {
-          receivedOn: ['La fecha del ingreso no puede ser futura'],
-        });
+      const problem = input.receivedOn ? receivedOnProblem(input.receivedOn, today) : null;
+      if (problem) {
+        const message =
+          problem === 'future'
+            ? 'La fecha del ingreso no puede ser futura'
+            : `La fecha del ingreso no puede ser de más de ${MAX_BACKDATE_DAYS} días atrás`;
+        throw new ValidationError(message, { receivedOn: [message] });
       }
       const before = (await this.repo.lockStock(tx, consumableId, [warehouse.id])).get(
         warehouse.id,
@@ -376,6 +381,7 @@ export class ConsumablesService {
           supplier: input.supplier,
           note: input.note,
           receivedOn: input.receivedOn ?? today,
+          registeredAt: iso((await this.repo.getMovement(tx, id))!.createdAt),
           stockBefore: normalizeQuantity(before),
           stockAfter: normalizeQuantity(after),
         },
@@ -999,6 +1005,8 @@ export class ConsumablesService {
       location: place(r.locationId),
       delta: normalizeDelta(r.delta),
       occurredAt: iso(r.occurredAt),
+      registeredAt: iso(r.createdAt),
+      backdated: r.backdated,
       actor: names.has(r.actorId) ? { id: r.actorId, name: names.get(r.actorId)! } : null,
       supplier: r.supplier,
       note: r.note,

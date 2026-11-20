@@ -18,7 +18,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { errorMessage } from '@/features/auth/errors';
 import { useAuthStore } from '@/features/auth/useAuthStore';
 import { ApiError } from '@/shared/api/http';
-import { formatDateTime } from '@/shared/format/format';
+import { formatDate, formatDateTime } from '@/shared/format/format';
 import AppSelect from '@/shared/ui/AppSelect.vue';
 import ReasonButton from '@/shared/ui/ReasonButton.vue';
 import ResponsiveTable from '@/shared/ui/ResponsiveTable.vue';
@@ -475,7 +475,22 @@ async function goTo(movementId: string): Promise<void> {
                 />
               </p>
               <p class="m-0 text-sm text-default">{{ view.place }}</p>
-              <p class="m-0 text-sm text-muted">
+              <p v-if="m.backdated" class="m-0 text-sm text-muted">
+                {{ formatDate(m.occurredAt) }}
+              </p>
+              <p v-if="m.backdated" class="m-0 text-sm text-muted">
+                {{
+                  m.actor
+                    ? t('consumables.history.registeredOn', {
+                        date: formatDateTime(m.registeredAt),
+                        name: m.actor.name,
+                      })
+                    : t('consumables.history.registeredOnAnon', {
+                        date: formatDateTime(m.registeredAt),
+                      })
+                }}
+              </p>
+              <p v-else class="m-0 text-sm text-muted">
                 {{ formatDateTime(m.occurredAt) }}
                 <template v-if="m.actor">
                   · {{ t('consumables.history.by', { name: m.actor.name }) }}</template

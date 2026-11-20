@@ -7,10 +7,13 @@ import {
   deliverySchema,
   formatQuantity,
   isPositiveQuantity,
+  MAX_BACKDATE_DAYS,
   negateDelta,
   normalizeDelta,
   normalizeQuantity,
   quantityFitsUnit,
+  receivedOnProblem,
+  earliestReceivedOn,
   subtractQuantities,
   transferSchema,
 } from './consumables.js';
@@ -113,5 +116,22 @@ describe('esquemas de movimientos', () => {
     expect(
       transferSchema.safeParse({ fromLocationId: id, toLocationId: other, quantity: '1' }).success,
     ).toBe(true);
+  });
+});
+
+describe('fecha del ingreso (P6)', () => {
+  it('se admite hasta 90 días atrás, hoy incluido, y nunca una fecha futura', () => {
+    expect(MAX_BACKDATE_DAYS).toBe(90);
+    expect(receivedOnProblem('2026-11-20', '2026-11-20')).toBeNull();
+    expect(receivedOnProblem('2026-11-19', '2026-11-20')).toBeNull();
+    expect(receivedOnProblem('2026-08-22', '2026-11-20')).toBeNull();
+    expect(receivedOnProblem('2026-08-21', '2026-11-20')).toBe('tooOld');
+    expect(receivedOnProblem('2026-11-21', '2026-11-20')).toBe('future');
+  });
+
+  it('cuenta los días del calendario aunque cruce un cambio de año o un año bisiesto', () => {
+    expect(earliestReceivedOn('2026-11-20')).toBe('2026-08-22');
+    expect(earliestReceivedOn('2024-03-01')).toBe('2023-12-02');
+    expect(earliestReceivedOn('2026-01-10')).toBe('2025-10-12');
   });
 });

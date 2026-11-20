@@ -663,7 +663,7 @@ marca aquí junto con su commit. Cómo probar cada uno: ver «Cómo probar la re
 - [x] P3 Auditoría de la anulación con el detalle completo del movimiento anulado
 - [x] P4 Categorías de consumibles con `consumables:manage` y unicidad por (ámbito, nombre)
 - [x] P5 Concurrencia del primer movimiento en una bodega sin fila de saldo
-- [ ] P6 Fecha pasada solo en el ingreso (máx. 90 días) y «Registrado el…» en el historial
+- [x] P6 Fecha pasada solo en el ingreso (máx. 90 días) y «Registrado el…» en el historial
 - [ ] P7 Bodega inactiva con stock: salidas sí, entradas no
 - [ ] P8 Traslado como una sola entrada del historial
 - [ ] P9 «Bajo mínimo» explícito (motivo en la insignia y bodegas nombradas en la ficha)
@@ -693,6 +693,9 @@ marca aquí junto con su commit. Cómo probar cada uno: ver «Cómo probar la re
 - **P5:** no hay nada que probar a mano: `pnpm --filter @inventarius/api test:int` incluye ocho ingresos simultáneos y ocho traslados
   simultáneos hacia una bodega sin fila de saldo. `lockStock` ya hacía `INSERT ... ON CONFLICT DO NOTHING` antes del
   `FOR UPDATE`, así que las pruebas pasaron sin cambiar código: quedan como guarda contra una regresión.
+- **P6:** Ingresar con fecha de hace 10 días: el historial muestra solo «10-11-2026» y debajo «Registrado el … por …»; uno de
+  hoy muestra fecha y hora. Fecha de hace más de 90 días o futura: el diálogo y la API la rechazan. Entrega, traslado y ajuste no
+  tienen campo de fecha. En Auditoría, el ingreso muestra «Fecha del ingreso» y «Registrado el».
 
 ### Backlog post-F3.5
 

@@ -195,4 +195,25 @@ describe('ficha del consumible (RF-73, RF-74)', () => {
       expect(w.text()).toContain('Devuelve la entrega del');
     });
   });
+
+  describe('fecha pasada en el historial (P6)', () => {
+    it('un ingreso retroactivo muestra solo la fecha y una línea «Registrado el … por …»', async () => {
+      const past = movement({
+        occurredAt: '2026-11-10T15:00:00.000Z',
+        registeredAt: '2026-11-16T18:45:00.000Z',
+        backdated: true,
+      });
+      const w = await mountPage(['consumables:read'], consumable(), [past]);
+      const text = w.text();
+      expect(text).toContain('10-11-2026');
+      expect(text).not.toContain('10-11-2026 12:00');
+      expect(text).toContain('Registrado el 16-11-2026 15:45 por Olga Operadora');
+    });
+
+    it('un movimiento de hoy muestra fecha y hora, sin la línea de registro', async () => {
+      const w = await mountPage(['consumables:read'], consumable(), [movement()]);
+      expect(w.text()).toContain('16-11-2026 09:00');
+      expect(w.text()).not.toContain('Registrado el');
+    });
+  });
 });

@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import {
   ADJUSTMENT_REASONS,
+  MAX_BACKDATE_DAYS,
   addDelta,
   compareQuantities,
+  earliestReceivedOn,
   formatQuantity,
+  receivedOnProblem,
   type ConsumableDetailDto,
 } from '@inventarius/shared';
 import UAlert from '@nuxt/ui/components/Alert.vue';
@@ -36,6 +39,7 @@ const mutations = useConsumableMutations();
 
 const unit = computed(() => props.consumable.unit);
 const today = () => new Date().toLocaleDateString('en-CA');
+const earliest = () => earliestReceivedOn(today());
 
 /** Bodega de origen elegida de entre las que tienen stock (entrega y traslado). */
 const originId = ref('');
@@ -139,6 +143,10 @@ function validate(): boolean {
     e['quantity'] = t('consumables.movement.problems.exceeds', {
       max: formatQuantity(cap.value, unit.value),
     });
+  }
+  if (props.kind === 'receipt' && receivedOn.value) {
+    const dateProblem = receivedOnProblem(receivedOn.value, today());
+    if (dateProblem) e['receivedOn'] = t(`consumables.movement.problems.date.${dateProblem}`);
   }
   if (usesOrigin.value) {
     if (!originId.value) e[props.kind === 'transfer' ? 'fromLocationId' : 'locationId'] = required;
@@ -366,9 +374,17 @@ const quantityHelp = computed(() =>
           <UFormField
             :label="t('consumables.movement.receivedOn')"
             name="mv-date"
+            :help="t('consumables.movement.receivedOnHelp', { days: MAX_BACKDATE_DAYS })"
             :error="errors['receivedOn']"
           >
-            <UInput id="mv-date" v-model="receivedOn" type="date" :max="today()" class="w-full" />
+            <UInput
+              id="mv-date"
+              v-model="receivedOn"
+              type="date"
+              :min="earliest()"
+              :max="today()"
+              class="w-full"
+            />
           </UFormField>
           <UFormField :label="t('consumables.movement.supplier')" name="mv-supplier">
             <UInput id="mv-supplier" v-model="supplier" :maxlength="120" class="w-full" />

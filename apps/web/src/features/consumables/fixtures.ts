@@ -50,6 +50,8 @@ export const movement = (over: Partial<MovementDto> = {}): MovementDto => ({
   location: { id: ids.main, name: 'Bodega central' },
   delta: '12',
   occurredAt: '2026-11-16T12:00:00.000Z',
+  registeredAt: '2026-11-16T12:00:00.000Z',
+  backdated: false,
   actor: { id: ids.user, name: 'Olga Operadora' },
   supplier: null,
   note: null,

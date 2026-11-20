@@ -16,6 +16,8 @@ const movement = (over: Partial<MovementDto>): MovementDto => ({
   location: { id: '0190d1a0-0000-7000-8000-0000000000a1', name: 'Bodega central' },
   delta: '12',
   occurredAt: '2026-11-16T12:00:00.000Z',
+  registeredAt: '2026-11-16T12:00:00.000Z',
+  backdated: false,
   actor: null,
   supplier: null,
   note: null,

@@ -417,6 +417,73 @@ describe('ingreso a bodega (RF-71)', () => {
     expect((await reader.get(`${base}/consumables/${c.id}`)).json().totalStock).toBe('24');
   });
 
+  it('la fecha del ingreso admite hasta 90 días atrás y nunca una futura; hoy es el 16-11-2026 (P6)', async () => {
+    const c = await newConsumable();
+    const on = (receivedOn: string) =>
+      move(operator, c.id, 'receipts', { locationId: ids.main, quantity: '1', receivedOn });
+    expect((await on('2026-08-18')).statusCode).toBe(201);
+    const old = await on('2026-08-17');
+    expect(old.statusCode).toBe(422);
+    expect(old.json().errors.receivedOn[0]).toContain('90 días');
+    const future = await on('2026-11-17');
+    expect(future.statusCode).toBe(422);
+    expect(future.json().errors.receivedOn[0]).toContain('futura');
+    expect((await on('2026-11-16')).statusCode).toBe(201);
+    expect((await stock(c.id))[ids.main]).toBe('2');
+  });
+
+  it('un ingreso de otro día lo marca como retroactivo y guarda cuándo se registró; el de hoy no (P6)', async () => {
+    const c = await newConsumable();
+    const past = await move(operator, c.id, 'receipts', {
+      locationId: ids.main,
+      quantity: '2',
+      receivedOn: '2026-11-10',
+    });
+    expect(past.json().movements[0]).toMatchObject({ backdated: true });
+    expect(past.json().movements[0].occurredAt.startsWith('2026-11-10')).toBe(true);
+    expect(new Date(past.json().movements[0].registeredAt).getTime()).toBeGreaterThan(
+      new Date('2026-11-10T23:59:59Z').getTime(),
+    );
+    const today = await move(operator, c.id, 'receipts', {
+      locationId: ids.main,
+      quantity: '1',
+      receivedOn: '2026-11-16',
+    });
+    expect(today.json().movements[0].backdated).toBe(false);
+    const plain = await receive(c.id, ids.main, '1');
+    expect(plain.movements[0].backdated).toBe(false);
+  });
+
+  it('solo el ingreso admite otra fecha: una entrega, un traslado o un ajuste con fecha la ignoran (P6)', async () => {
+    const c = await newConsumable();
+    await receive(c.id, ids.main, '10');
+    const del = await move(operator, c.id, 'deliveries', {
+      locationId: ids.main,
+      quantity: '1',
+      recipientName: 'Persona Inventada',
+      receivedOn: '2026-10-01',
+      occurredOn: '2026-10-01',
+    });
+    expect(del.statusCode, del.body).toBe(201);
+    expect(del.json().movements[0].backdated).toBe(false);
+    expect(del.json().movements[0].occurredAt).not.toContain('2026-10-01');
+  });
+
+  it('el ingreso audita la fecha del movimiento y cuándo se registró (P6)', async () => {
+    const c = await newConsumable({ name: 'Con fecha pasada' });
+    await move(operator, c.id, 'receipts', {
+      locationId: ids.main,
+      quantity: '2',
+      receivedOn: '2026-11-10',
+    });
+    const res = await admin.get(`${base}/audit?entity=consumable&pageSize=100`);
+    const event = (res.json().data as Json[]).find(
+      (e) => e.entityId === c.id && e.action === 'consumable.receive',
+    )!;
+    expect(event.diff.receivedOn).toBe('2026-11-10');
+    expect(event.diff.registeredAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+
   it('valida bodega, decimales, cantidad y fecha', async () => {
     const c = await newConsumable();
     const cases: [Json, number][] = [
@@ -426,6 +493,7 @@ describe('ingreso a bodega (RF-71)', () => {
       [{ locationId: ids.main, quantity: '-2' }, 400],
       [{ locationId: ids.main, quantity: '1,5' }, 400],
       [{ locationId: ids.main, quantity: '1', receivedOn: '2099-01-01' }, 422],
+      [{ locationId: ids.main, quantity: '1', receivedOn: '2020-01-01' }, 422],
       [{ locationId: '0190d1a0-0000-7000-8000-00000000dead', quantity: '1' }, 422],
     ];
     for (const [body, status] of cases) {
@@ -1035,7 +1103,7 @@ describe('historial (RF-73)', () => {
     await move(operator, c.id, 'receipts', {
       locationId: ids.main,
       quantity: '1',
-      receivedOn: '2026-01-15',
+      receivedOn: '2026-09-15',
     });
     const get = async (qs: string) =>
       (await reader.get(`${base}/consumables/${c.id}/movements?${qs}`)).json();
@@ -1043,8 +1111,8 @@ describe('historial (RF-73)', () => {
     expect((await get(`locationId=${ids.annex}`)).meta.total).toBe(1);
     expect((await get('kind=receipt')).meta.total).toBe(3);
     expect((await get('kind=delivery')).meta.total).toBe(1);
-    expect((await get('to=2026-02-01')).meta.total).toBe(1);
-    expect((await get('from=2026-02-01')).meta.total).toBe(3);
+    expect((await get('to=2026-10-01')).meta.total).toBe(1);
+    expect((await get('from=2026-10-01')).meta.total).toBe(3);
     const page1 = await get('pageSize=3');
     expect(page1.data).toHaveLength(3);
     const page2 = await get('pageSize=3&page=2');

@@ -50,6 +50,9 @@ export interface MovementViewRow {
   locationId: string;
   delta: string;
   occurredAt: Date;
+  createdAt: Date;
+  /** La fecha del movimiento (zona de la instalación) no es la del día en que se registró. */
+  backdated: boolean;
   actorId: string;
   supplier: string | null;
   note: string | null;
@@ -490,8 +493,12 @@ export class ConsumablesRepository {
       conds.push(sql`(m.occurred_at AT TIME ZONE ${f.timezone})::date >= ${f.from}::date`);
     if (f.to) conds.push(sql`(m.occurred_at AT TIME ZONE ${f.timezone})::date <= ${f.to}::date`);
     const res = await exec.execute<
-      Omit<MovementViewRow, 'occurredAt' | 'reversedAt' | 'reversesAt' | 'returnsAt'> & {
+      Omit<
+        MovementViewRow,
+        'occurredAt' | 'createdAt' | 'reversedAt' | 'reversesAt' | 'returnsAt'
+      > & {
         occurredAt: Date | string;
+        createdAt: Date | string;
         reversedAt: Date | string | null;
         reversesAt: Date | string | null;
         returnsAt: Date | string | null;
@@ -499,6 +506,8 @@ export class ConsumablesRepository {
       }
     >(sql`
       SELECT m.id, m.kind, m.location_id AS "locationId", m.delta, m.occurred_at AS "occurredAt",
+             m.created_at AS "createdAt",
+             (m.occurred_at AT TIME ZONE ${f.timezone})::date <> (m.created_at AT TIME ZONE ${f.timezone})::date AS backdated,
              m.actor_id AS "actorId", m.supplier, m.note, m.reason,
              m.recipient_user_id AS "recipientUserId", m.recipient_name AS "recipientName",
              m.recipient_ref AS "recipientRef", m.transfer_id AS "transferId",
@@ -524,6 +533,7 @@ export class ConsumablesRepository {
       rows: res.rows.map((r) => ({
         ...r,
         occurredAt: new Date(r.occurredAt),
+        createdAt: new Date(r.createdAt),
         reversedAt: toDate(r.reversedAt),
         reversesAt: toDate(r.reversesAt),
         returnsAt: toDate(r.returnsAt),

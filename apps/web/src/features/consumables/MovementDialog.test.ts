@@ -197,3 +197,37 @@ describe('ingreso (RF-71)', () => {
     expect(body.receivedOn).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });
+
+describe('fecha del ingreso (P6)', () => {
+  it('solo el ingreso tiene fecha, con tope de 90 días atrás y sin fechas futuras', async () => {
+    await open('receipt');
+    const date = document.body.querySelector<HTMLInputElement>('#mv-date')!;
+    expect(date.max).toBe(new Date().toLocaleDateString('en-CA'));
+    const min = new Date();
+    min.setDate(min.getDate() - 90);
+    expect(date.min).toBe(min.toLocaleDateString('en-CA'));
+    expect(document.body.textContent).toContain('hasta 90 días atrás');
+    for (const kind of ['delivery', 'transfer', 'adjustment'] as const) {
+      mounted.splice(0).forEach((w) => w.unmount());
+      document.body.innerHTML = '';
+      await open(kind);
+      expect(document.body.querySelector('#mv-date'), kind).toBeNull();
+    }
+  });
+
+  it('una fecha de más de 90 días o futura no se envía y dice por qué', async () => {
+    const fetchMock = mockApi({});
+    const { state } = await open('receipt', true);
+    state['warehouse'] = { id: ids.main, name: 'Bodega central' };
+    await flushPromises();
+    await type('#mv-quantity', '2');
+    await type('#mv-date', '2020-01-01');
+    await submit();
+    expect(document.body.textContent).toContain('más de 90 días atrás');
+    expect(posted(fetchMock, 'receipts')).toHaveLength(0);
+    await type('#mv-date', '2999-01-01');
+    await submit();
+    expect(document.body.textContent).toContain('no puede ser futura');
+    expect(posted(fetchMock, 'receipts')).toHaveLength(0);
+  });
+});

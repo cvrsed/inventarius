@@ -386,6 +386,8 @@ export const messages = {
       emptyFiltered: 'No hay movimientos con estos filtros.',
       more: 'Ver más',
       by: 'por {name}',
+      registeredOn: 'Registrado el {date} por {name}',
+      registeredOnAnon: 'Registrado el {date}',
       filterWarehouse: 'Bodega',
       filterKind: 'Tipo',
       filterFrom: 'Desde',
@@ -482,6 +484,7 @@ export const messages = {
       quantityHelp: 'Máximo disponible en esta bodega: {max}.',
       available: 'Disponible en {name}: {qty}',
       receivedOn: 'Fecha del ingreso',
+      receivedOnHelp: 'Hoy por defecto; se puede fechar hasta {days} días atrás.',
       supplier: 'Proveedor',
       note: 'Nota',
       noteRequired: 'Nota (obligatoria con el motivo «otro»)',
@@ -505,6 +508,10 @@ export const messages = {
         decimals: 'Esta unidad admite {decimals}',
         exceeds: 'No puede superar lo disponible: {max}',
         sameWarehouse: 'El destino debe ser distinto del origen',
+        date: {
+          future: 'La fecha no puede ser futura',
+          tooOld: 'La fecha no puede ser de más de 90 días atrás',
+        },
       },
       confirmAdjustTitle: 'Confirmar ajuste',
       confirmAdjust:

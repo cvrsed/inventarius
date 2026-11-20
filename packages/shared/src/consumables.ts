@@ -272,10 +272,29 @@ export type AdjustmentReason = z.infer<typeof adjustmentReasonSchema>;
 const note = optionalText(500);
 const requiredReason = z.string().trim().min(1, 'Indica el motivo').max(300);
 
+/** Hasta cuántos días atrás se puede fechar un ingreso (P6). Los demás movimientos son siempre de hoy. */
+export const MAX_BACKDATE_DAYS = 90;
+
+const DAY_MS = 86_400_000;
+const dayNumber = (date: string): number => {
+  const [y, m, d] = date.split('-').map(Number) as [number, number, number];
+  return Date.UTC(y, m - 1, d) / DAY_MS;
+};
+/** Fecha (`aaaa-mm-dd`) más antigua que admite un ingreso registrado en `today`. */
+export function earliestReceivedOn(today: string): string {
+  return new Date((dayNumber(today) - MAX_BACKDATE_DAYS) * DAY_MS).toISOString().slice(0, 10);
+}
+export type ReceivedOnProblem = 'future' | 'tooOld';
+/** Qué le pasa a la fecha de un ingreso respecto de «hoy» (zona de la instalación), o `null` si es válida. */
+export function receivedOnProblem(date: string, today: string): ReceivedOnProblem | null {
+  if (date > today) return 'future';
+  return date < earliestReceivedOn(today) ? 'tooOld' : null;
+}
+
 export const receiptSchema = z.object({
   locationId: z.uuid(),
   quantity: positiveQuantitySchema,
-  /** Fecha del ingreso (hoy por defecto; no puede ser futura). */
+  /** Fecha del ingreso: hoy por defecto, hasta 90 días atrás y nunca futura (`receivedOnProblem`). */
   receivedOn: z.iso.date().optional(),
   supplier: optionalText(120).default(null),
   note: note.default(null),
@@ -398,6 +417,10 @@ export const movementSchema = z.object({
     .nullable(),
   /** Este movimiento es la anulación de otro. */
   reverses: z.object({ id: z.uuid(), kind: movementKindSchema, at: z.iso.datetime() }).nullable(),
+  /** Cuándo se registró el movimiento (la fecha de `occurredAt` puede ser anterior, solo en un ingreso). */
+  registeredAt: z.iso.datetime(),
+  /** La fecha del movimiento es otro día que la del registro: el historial muestra solo la fecha. */
+  backdated: z.boolean(),
   /** Se puede anular: no es una anulación, no fue anulado y, si es una entrega, no tiene devoluciones vigentes. */
   reversible: z.boolean(),
   /** Solo en entregas: cuánto se ha devuelto (devoluciones vigentes, no anuladas). */
