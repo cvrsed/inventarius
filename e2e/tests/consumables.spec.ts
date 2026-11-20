@@ -66,12 +66,16 @@ const toast = (page: Page, text: string | RegExp) =>
 const visibleText = (page: Page, text: string | RegExp) =>
   page.getByText(text).locator('visible=true');
 
-/** Elige una bodega en un selector con búsqueda dentro del diálogo. */
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Elige una bodega en el selector del diálogo. Cada opción lleva nombre, ruta y stock (P13): se la busca por su nombre.
+ */
 async function pickWarehouse(page: Page, name: string, label = /^Bodega\*/): Promise<void> {
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('button', { name: label }).click();
   await page.getByPlaceholder(/Buscar…/).fill(name.slice(0, 18));
-  await page.getByRole('option', { name }).click();
+  await page.getByRole('option', { name: new RegExp(escapeRegExp(name)) }).click();
   await expect(page.getByRole('listbox')).toBeHidden();
 }
 
@@ -108,7 +112,7 @@ test.describe('consumables (RF-70 a RF-74)', () => {
     await expect(page.getByRole('heading', { level: 1, name: f.name })).toBeVisible();
     // Sin stock ya está bajo su mínimo (10) y entregar o trasladar no tiene sentido todavía.
     await expect(
-      page.getByText('El total (0 pares) está bajo el mínimo (10 pares).'),
+      page.getByText('El total (0 pares) está bajo el mínimo global (10 pares).'),
     ).toBeVisible();
     await expect(page.getByRole('button', { name: 'Entregar' })).toBeDisabled();
 
@@ -161,7 +165,7 @@ test.describe('consumables (RF-70 a RF-74)', () => {
 
     // Quedan 8 pares (5 + 3): bajo el mínimo de 10 → aviso en Inicio con enlace al listado filtrado.
     await expect(
-      page.getByText('El total (8 pares) está bajo el mínimo (10 pares).'),
+      page.getByText('El total (8 pares) está bajo el mínimo global (10 pares).'),
     ).toBeVisible();
     await page.goto('/');
     const notice = page.getByRole('link', { name: /consumibles? bajo su mínimo/ });
@@ -283,6 +287,294 @@ test.describe('consumables (RF-70 a RF-74)', () => {
     await page.getByRole('button', { name: 'Entregar' }).click();
     await expectNoA11yViolations(page);
     expect(await horizontalOverflow(page)).toBe(false);
+  });
+
+  test('devolución: «Devuelto x de y», tope de lo entregado y la entrega no se anula con devoluciones vigentes (P1)', async ({
+    page,
+  }) => {
+    const f = await createFixture(page);
+    await apiPost(page.request, `/api/v1/consumables/${f.id}/receipts`, {
+      locationId: f.main.id,
+      quantity: '10',
+    });
+    await apiPost(page.request, `/api/v1/consumables/${f.id}/deliveries`, {
+      locationId: f.main.id,
+      quantity: '4',
+      recipientName: 'Persona Inventada',
+      recipientRef: 'ID-777',
+    });
+    await page.goto(`/consumibles/${f.id}`);
+    await expect(page.getByRole('button', { name: /^Anular Entrega/ })).toBeVisible();
+
+    await page.getByRole('button', { name: /^Registrar devolución/ }).click();
+    const dialog = page.getByRole('dialog', { name: 'Registrar devolución' });
+    await expect(dialog).toContainText('Persona Inventada');
+    await expect(dialog).toContainText('Quedan por devolver 4 pares');
+    // Nada en rojo hasta que se interactúa (P15).
+    await expect(dialog.getByText('Este campo es obligatorio')).toHaveCount(0);
+    await dialog.getByLabel('Cantidad a devolver', { exact: false }).fill('5');
+    await dialog.getByRole('button', { name: 'Registrar devolución' }).click();
+    await expect(dialog.getByText('No puede superar lo disponible: 4 pares')).toBeVisible();
+    await dialog.getByLabel('Cantidad a devolver', { exact: false }).fill('1');
+    await dialog.getByRole('button', { name: 'Registrar devolución' }).click();
+    await expect(toast(page, 'Devolución registrada')).toBeVisible();
+
+    await expect(page.getByText('Devuelto 1 par de 4 pares')).toBeVisible();
+    // Con devoluciones vigentes la entrega no se puede anular: primero se anulan las devoluciones.
+    await expect(page.getByText(/anula primero sus devoluciones/)).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Anular Entrega/ })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^Anular Devolución/ })).toBeVisible();
+    // El stock vuelve (+1) y el libro cuadra.
+    const { detail, stock, ledger } = await stockVsLedger(page, f.id);
+    expect(detail.totalStock).toBe('7');
+    for (const [location, quantity] of stock) expect(ledger.get(location) ?? 0).toBe(quantity);
+    await eachTheme(page, () => expectNoA11yViolations(page));
+    expect(await horizontalOverflow(page)).toBe(false);
+  });
+
+  test('permisos separados: quien solo ajusta no anula y quien solo anula no ajusta (P2)', async ({
+    page,
+    playwright,
+  }) => {
+    const f = await createFixture(page);
+    await apiPost(page.request, `/api/v1/consumables/${f.id}/receipts`, {
+      locationId: f.main.id,
+      quantity: '5',
+    });
+    const suffix = uniqueName('rol');
+    for (const [name, permissions] of [
+      [`Solo ajusta ${suffix}`, ['consumables:read', 'consumables:adjust']],
+      [`Solo anula ${suffix}`, ['consumables:read', 'consumables:reverse']],
+    ] as const) {
+      await apiPost(page.request, '/api/v1/roles', {
+        name,
+        description: 'Rol de prueba',
+        permissions,
+      });
+    }
+    const context = () =>
+      playwright.request.newContext({
+        baseURL: process.env['BASE_URL'] ?? 'http://localhost:8080',
+      });
+    const adjuster = await provisionUser(page.request, context, {
+      role: `Solo ajusta ${suffix}`,
+      prefix: 'ajusta',
+    });
+    const reverser = await provisionUser(page.request, context, {
+      role: `Solo anula ${suffix}`,
+      prefix: 'anula',
+    });
+
+    await page.context().clearCookies();
+    await loginViaUi(page, adjuster.email, adjuster.password);
+    await expect(page.getByRole('heading', { level: 1, name: 'Inicio' })).toBeVisible();
+    await page.goto(`/consumibles/${f.id}`);
+    await expect(page.getByRole('button', { name: 'Ajustar' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Anular/ })).toHaveCount(0);
+
+    await page.context().clearCookies();
+    await loginViaUi(page, reverser.email, reverser.password);
+    await expect(page.getByRole('heading', { level: 1, name: 'Inicio' })).toBeVisible();
+    await page.goto(`/consumibles/${f.id}`);
+    await expect(page.getByRole('button', { name: /^Anular Ingreso/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Ajustar' })).toHaveCount(0);
+  });
+
+  test('bodega inactiva con stock: salidas sí, entradas no, y avisa al desactivarla (P7)', async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+    const f = await createFixture(page);
+    await apiPost(page.request, `/api/v1/consumables/${f.id}/receipts`, {
+      locationId: f.main.id,
+      quantity: '10',
+    });
+    // Al desactivarla desde Catálogo, la confirmación dice cuántos consumibles tienen stock en ella.
+    await page.goto(`/catalogo/locations?q=${encodeURIComponent(f.main.name)}`);
+    await visibleText(page, f.main.name).first().waitFor();
+    await page
+      .getByRole('button', { name: `Desactivar ${f.main.name}` })
+      .locator('visible=true')
+      .click();
+    const confirm = page.getByRole('dialog', { name: 'Desactivar bodega con stock' });
+    await expect(confirm).toContainText('hay stock de 1 consumible');
+    await expectNoA11yViolations(page);
+    await confirm.getByRole('button', { name: 'Desactivar' }).click();
+    await expect(toast(page, 'Estado actualizado')).toBeVisible();
+
+    await page.goto(`/consumibles/${f.id}`);
+    await expect(page.getByText('Bodega inactiva').first()).toBeVisible();
+    // Entrada: la bodega inactiva se ve apagada con el motivo, no falla al enviar.
+    await page.getByRole('button', { name: 'Ingresar' }).click();
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: /^Bodega\*/ })
+      .click();
+    const blocked = page.getByRole('option', { name: new RegExp(escapeRegExp(f.main.name)) });
+    await expect(blocked).toHaveAttribute('data-disabled', '');
+    await expect(blocked).toContainText('Bodega inactiva: solo admite salidas');
+    await expectNoA11yViolations(page);
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');
+
+    // Salida: se puede vaciar. La entrega elige sola la única bodega con stock.
+    await page.getByRole('button', { name: 'Entregar' }).click();
+    await expect(page.getByText('Máximo disponible en esta bodega: 10 pares')).toBeVisible();
+    await page.getByLabel('Cantidad', { exact: false }).first().fill('10');
+    await page.getByRole('combobox', { name: 'Quién recibe' }).click();
+    await page.getByRole('option', { name: 'Otra persona (nombre escrito)' }).click();
+    await page.getByLabel('Nombre de quien recibe').fill('Persona Inventada');
+    await page.getByRole('button', { name: 'Registrar entrega' }).click();
+    await expect(toast(page, 'Entrega registrada')).toBeVisible();
+    // Vacía y sin stock: ya no queda nada que sacar de ninguna bodega.
+    await expect(page.getByRole('button', { name: 'Entregar' })).toBeDisabled();
+    const { stock, ledger } = await stockVsLedger(page, f.id);
+    expect(stock.get(f.main.id)).toBe(0);
+    for (const [location, quantity] of stock) expect(ledger.get(location) ?? 0).toBe(quantity);
+  });
+
+  test('fecha pasada: solo el ingreso, hasta 90 días atrás; una más antigua se rechaza y una válida se registra con «Registrado el…» (P6)', async ({
+    page,
+  }) => {
+    const f = await createFixture(page);
+    const daysAgo = (n: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() - n);
+      return d.toLocaleDateString('en-CA');
+    };
+    await page.goto(`/consumibles/${f.id}`);
+    await page.getByRole('button', { name: 'Ingresar' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Ingreso a bodega' });
+    await pickWarehouse(page, f.main.name);
+    await dialog.getByLabel('Cantidad', { exact: false }).first().fill('2');
+    await expect(dialog.getByLabel('Fecha del ingreso')).toHaveAttribute('max', daysAgo(0));
+    await expect(dialog.getByLabel('Fecha del ingreso')).toHaveAttribute('min', daysAgo(90));
+    await dialog.getByLabel('Fecha del ingreso').fill(daysAgo(100));
+    await dialog.getByRole('button', { name: 'Registrar ingreso' }).click();
+    await expect(dialog.getByText('más de 90 días atrás')).toBeVisible();
+    // La API lo rechaza igual si se evita el formulario.
+    const csrf = (await (await page.request.get('/api/v1/auth/csrf')).json()) as { token: string };
+    const direct = await page.request.post(`/api/v1/consumables/${f.id}/receipts`, {
+      data: { locationId: f.main.id, quantity: '1', receivedOn: daysAgo(100) },
+      headers: { 'x-csrf-token': csrf.token },
+    });
+    expect(direct.status()).toBe(422);
+
+    await dialog.getByLabel('Fecha del ingreso').fill(daysAgo(5));
+    await dialog.getByRole('button', { name: 'Registrar ingreso' }).click();
+    await expect(toast(page, 'Ingreso registrado')).toBeVisible();
+    // Fecha sola (sin la hora inventada) y una línea con cuándo se registró y quién.
+    await expect(page.getByText(/Registrado el \d{2}-\d{2}-\d{4} \d{2}:\d{2} por /)).toBeVisible();
+    await expect(
+      page.getByText(
+        new Date(daysAgo(5) + 'T12:00:00')
+          .toLocaleDateString('es-CL', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+          })
+          .replaceAll('/', '-'),
+        { exact: true },
+      ),
+    ).toBeVisible();
+  });
+
+  test('el traslado es una sola entrada, «Ir al movimiento» resalta y los botones de la ficha son del mismo tamaño (P8, P14, P16)', async ({
+    page,
+  }, testInfo) => {
+    const f = await createFixture(page);
+    await apiPost(page.request, `/api/v1/consumables/${f.id}/receipts`, {
+      locationId: f.main.id,
+      quantity: '10',
+    });
+    const transfer = await apiPost<{ movements: { id: string }[] }>(
+      page.request,
+      `/api/v1/consumables/${f.id}/transfers`,
+      { fromLocationId: f.main.id, toLocationId: f.annex.id, quantity: '4' },
+    );
+    await apiPost(
+      page.request,
+      `/api/v1/consumable-movements/${transfer.movements[1]!.id}/reversals`,
+      {
+        reason: 'Bodega equivocada',
+      },
+    );
+    await page.goto(`/consumibles/${f.id}`);
+    // Una entrada por el traslado y otra por su anulación, no cuatro.
+    await expect(page.getByText(`Traslado: ${f.main.name} → ${f.annex.name}, 4 pares`)).toHaveCount(
+      1,
+    );
+    await expect(
+      page.getByText(`Anulación de traslado: ${f.annex.name} → ${f.main.name}, 4 pares`),
+    ).toHaveCount(1);
+
+    // «Ir al movimiento» marca el movimiento con el color primario.
+    await page.getByRole('link', { name: 'Ir al movimiento' }).first().click();
+    const target = page
+      .locator('li[id^="mov-"]')
+      .filter({ hasText: 'Traslado: ' })
+      .filter({ hasNotText: 'Anulación' });
+    await expect(target.first()).toHaveClass(/border-primary/);
+    await eachTheme(page, async () => {
+      await page.getByRole('link', { name: 'Ir al movimiento' }).first().click();
+      await expectNoA11yViolations(page);
+    });
+
+    // Botones de acción: mismo ancho en la grilla de dos columnas a 360 px.
+    if ((page.viewportSize()?.width ?? 1280) < 640) {
+      const group = page.getByRole('group', { name: 'Consumibles' });
+      const boxes = await group.getByRole('button').evaluateAll((els) =>
+        els.map((el) => {
+          const r = el.getBoundingClientRect();
+          return { w: Math.round(r.width), h: Math.round(r.height) };
+        }),
+      );
+      expect(boxes.length).toBeGreaterThanOrEqual(4);
+      expect(new Set(boxes.map((b) => b.w)).size).toBe(1);
+      expect(new Set(boxes.map((b) => b.h)).size).toBe(1);
+      expect(await horizontalOverflow(page)).toBe(false);
+      testInfo.annotations.push({ type: 'p16', description: JSON.stringify(boxes[0]) });
+    }
+  });
+
+  test('Inicio: «Últimos movimientos» incluye los de consumibles (P10)', async ({ page }) => {
+    const f = await createFixture(page);
+    await apiPost(page.request, `/api/v1/consumables/${f.id}/receipts`, {
+      locationId: f.main.id,
+      quantity: '3',
+    });
+    await page.goto('/');
+    const recent = page.locator('#recent-title + ol');
+    await expect(recent.getByText(f.name).first()).toBeVisible();
+    await expect(recent.getByText('Ingreso +3 pares').first()).toBeVisible();
+    await expectNoA11yViolations(page);
+  });
+
+  test('desactivar pide confirmación con ícono de encendido (P18) y el catálogo habla de consumibles (P17)', async ({
+    page,
+  }) => {
+    await page.goto('/catalogo/consumableCategories');
+    await expect(
+      page.getByText(/categorías de consumibles y unidades de medida/i).first(),
+    ).toBeVisible();
+    const name = uniqueName('EPP temporal');
+    await apiPost(page.request, '/api/v1/categories', { name, scope: 'consumable' });
+    await page.goto(`/catalogo/consumableCategories?q=${encodeURIComponent(name)}`);
+    await visibleText(page, name).first().waitFor();
+    const toggle = page.getByRole('button', { name: `Desactivar ${name}` }).locator('visible=true');
+    await toggle.click();
+    const confirm = page.getByRole('dialog', { name: /^Desactivar/ });
+    await expect(confirm).toContainText(`¿Desactivar «${name}»?`);
+    await confirm.getByRole('button', { name: 'Cancelar' }).click();
+    await expect(
+      page.getByRole('button', { name: `Desactivar ${name}` }).locator('visible=true'),
+    ).toBeVisible();
+    await toggle.click();
+    await confirm.getByRole('button', { name: 'Desactivar' }).click();
+    await expect(toast(page, 'Estado actualizado')).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: `Activar ${name}` }).locator('visible=true'),
+    ).toBeVisible();
   });
 
   test('las unidades y las categorías de consumibles se administran en el catálogo', async ({

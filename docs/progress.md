@@ -721,3 +721,4 @@ Fuera de alcance de F3.5; **no se implementa**.
 - Costos y valorización del stock.
 - Lotes y vencimientos.
 - Notificaciones por correo del stock mínimo.
+- Prueba con lector de pantalla real (NVDA, VoiceOver, TalkBack) de los diálogos, los selectores de bodega y el historial de consumibles: hoy solo hay axe y pruebas de roles y nombres accesibles.

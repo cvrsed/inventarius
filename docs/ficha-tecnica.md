@@ -191,7 +191,8 @@ Ninguna dependencia npm ni acción de GitHub: todas son exactas. Quedan sin fija
 
 - **Modelo de datos.** `measure_units`, `consumables`, `consumable_warehouse_minimums`, `consumable_movements` (libro) y
   `consumable_stock` (saldo por consumible y bodega); `categories.scope` separa las categorías de activos de las de
-  consumibles. Migración `0017_consumables.sql` (incluye la semilla de unidades y los permisos).
+  consumibles. Migración `0017_consumables.sql` (incluye la semilla de unidades y los permisos). Revisión: `0018_consumable_returns`
+  (tipo `return` y `returns_id`), `0019_consumables_reverse_permission` y `0020_categories_unique_per_scope`.
 - **Cantidades.** `numeric(14,3)`. En la API y el web son texto; los cálculos usan milésimas en `bigint`
   (`packages/shared/src/consumables.ts`). El servidor nunca convierte una cantidad a `number`.
 - **Libro append-only.** `inventarius_app` no tiene `UPDATE`, `DELETE` ni `TRUNCATE` sobre `consumable_movements` (lo aplica
@@ -201,5 +202,9 @@ Ninguna dependencia npm ni acción de GitHub: todas son exactas. Quedan sin fija
 - **Cuadratura.** `pnpm --filter @inventarius/api cli verify-consumables` (ver `docs/operations.md`).
 - **Rutas** (`/api/v1`): `GET|POST /measure-units`, `PATCH|DELETE /measure-units/:id`, `GET|POST /consumables`,
   `GET|PATCH|DELETE /consumables/:id`, `GET /consumables/:id/movements`, `POST /consumables/:id/{receipts,deliveries,transfers,adjustments}`,
-  `POST /consumable-movements/:id/reversals`, `GET /consumable-recipients`. Cada una declara su permiso `consumables:*`.
-- **Decisiones y preguntas abiertas:** ADR 0008 y `docs/open-questions.md` (Q56 a Q69).
+  `POST /consumable-movements/:id/{returns,reversals}`, `GET /consumable-movements/recent`, `GET /consumable-recipients`. Cada una
+  declara su permiso `consumables:*` (`adjustments` exige `adjust`; `reversals`, `reverse`). `GET /locations` informa
+  `stockedConsumables` por ubicación.
+- **Interfaz.** Un solo selector de bodega (`WarehouseSelect`): nombre, ruta de los padres y stock, con opciones apagadas y su
+  motivo. El orden de los campos de la auditoría de consumibles está en `features/audit/detail.ts` (`FIELD_ORDER`).
+- **Decisiones y preguntas abiertas:** ADR 0008 y `docs/open-questions.md` (Q56 a Q74).
