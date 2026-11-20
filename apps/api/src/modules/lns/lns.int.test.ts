@@ -300,7 +300,7 @@ describe('registro en el LNS (RF-60 a RF-65)', () => {
     const preview = res.json();
     // Sin claves en claro: solo una máscara, de cualquier forma.
     expect(res.body).not.toContain(APP_KEY);
-    expect(preview.appKey).toMatch(/^•+$/);
+    expect(preview.appKey).toBe('•••• (32 hex)');
     expect(preview.nwkKey).toBeNull();
 
     await register(a.id, p.id);
@@ -348,7 +348,7 @@ describe('registro en el LNS (RF-60 a RF-65)', () => {
     const res = await fx.tech.post(`${base}/assets/${a.id}/lns-registration/preview`, {
       profileId: p.id,
     });
-    expect(res.json().nwkKey).toMatch(/^•+$/);
+    expect(res.json().nwkKey).toBe('•••• (32 hex)');
     expect(res.body).not.toContain('0F1E2D3C4B5A');
   });
 

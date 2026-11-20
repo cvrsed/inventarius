@@ -6,6 +6,8 @@ export interface PreviewRow {
   value: string;
   /** Identificadores y claves se muestran en monoespaciado. */
   mono: boolean;
+  /** Las claves enmascaradas no se parten en dos líneas. */
+  nowrap?: boolean;
 }
 
 type T = (key: string, named?: Record<string, unknown>) => string;
@@ -37,8 +39,8 @@ export function previewRows(p: RegistrationPreviewDto, t: T): PreviewRow[] {
     row('description', p.description || none),
     row('devEui', p.devEui, true),
     row('joinEui', p.joinEui, true),
-    row('appKey', p.appKey, true),
-    ...(p.nwkKey ? [row('nwkKey', p.nwkKey, true)] : []),
+    { ...row('appKey', p.appKey, true), nowrap: true },
+    ...(p.nwkKey ? [{ ...row('nwkKey', p.nwkKey, true), nowrap: true }] : []),
     row('deviceProfile', deviceProfile || none),
     row('deviceClass', p.deviceClass ?? none),
     row('lorawanVersion', fromProfile('lorawanVersion', p.lorawanVersion)),

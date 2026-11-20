@@ -21,7 +21,7 @@ const base: RegistrationPreviewDto = {
   externalId: '70b3d57ed0000001',
   devEui: '70B3D57ED0000001',
   joinEui: '8877665544332211',
-  appKey: '••••',
+  appKey: '•••• (32 hex)',
   nwkKey: null,
   deviceClass: null,
   lorawanVersion: '1.0.3',
@@ -48,7 +48,9 @@ describe('previewRows', () => {
 
   it('la NwkKey solo aparece si el servidor la envía (LoRaWAN 1.1)', () => {
     expect(previewRows(base, t).some((r) => r.key === 'nwkKey')).toBe(false);
-    expect(previewRows({ ...base, nwkKey: '••••' }, t).some((r) => r.key === 'nwkKey')).toBe(true);
+    expect(
+      previewRows({ ...base, nwkKey: '•••• (32 hex)' }, t).some((r) => r.key === 'nwkKey'),
+    ).toBe(true);
   });
 
   it('indica de dónde salen la versión y la región que se toman del device profile', () => {
@@ -58,5 +60,15 @@ describe('previewRows', () => {
     expect(by['region']).toBe('AU915, del device profile');
     const some = previewRows({ ...base, fromDeviceProfile: ['region'] }, tNamed);
     expect(some.find((r) => r.key === 'lorawanVersion')!.value).toBe('1.0.3');
+  });
+
+  it('las claves enmascaradas no se parten en dos líneas', () => {
+    const rows = previewRows({ ...base, nwkKey: '•••• (32 hex)' }, t);
+    expect(rows.find((r) => r.key === 'appKey')).toMatchObject({
+      value: '•••• (32 hex)',
+      nowrap: true,
+    });
+    expect(rows.find((r) => r.key === 'nwkKey')!.nowrap).toBe(true);
+    expect(rows.find((r) => r.key === 'devEui')!.nowrap).toBeUndefined();
   });
 });

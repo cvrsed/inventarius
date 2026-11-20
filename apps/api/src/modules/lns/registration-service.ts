@@ -698,8 +698,8 @@ function mismatchError(
   );
 }
 
-/** Máscara de una clave en la confirmación: no revela nada de ella. */
-const MASK = '•'.repeat(32);
+/** Máscara de una clave en la confirmación: no revela nada de ella, solo su formato (32 hex). */
+const MASK = '•••• (32 hex)';
 
 function deviceName(asset: { assetTag: string; name: string }): string {
   return `${asset.assetTag} ${asset.name}`;

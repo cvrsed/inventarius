@@ -135,7 +135,13 @@ function failureText(e: unknown): string {
           <dl class="m-0 grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-[auto_1fr]">
             <template v-for="r in rows" :key="r.key">
               <dt class="text-muted">{{ r.label }}</dt>
-              <dd class="m-0 break-all" :class="r.mono ? 'font-mono' : 'break-words'">
+              <dd
+                class="m-0"
+                :class="[
+                  r.mono ? 'font-mono' : 'break-words',
+                  r.nowrap ? 'whitespace-nowrap' : 'break-all',
+                ]"
+              >
                 {{ r.value }}
               </dd>
             </template>

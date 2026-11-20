@@ -33,6 +33,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). D
 - Botones desactivados con motivo [P17]. Serie única sin distinguir mayúsculas, migración 0014 [P18].
 - Auditoría sin scroll horizontal en escritorio; la IP va al detalle [P21].
 - Registrar toma del device profile la versión y la región que el activo no tiene, y la confirmación lo indica [R1].
+- La AppKey enmascarada de la confirmación se muestra «•••• (32 hex)» en una sola línea [R2].
 - Serie única por (modelo, serie) sin distinguir mayúsculas, migración 0016; el CSV admite la columna opcional «Modelo» [P18b].
 - En producción la app no arranca con la clave de cifrado por defecto de `compose.yml` [P22].
 

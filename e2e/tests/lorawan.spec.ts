@@ -117,7 +117,12 @@ test.describe('LoRaWAN (RF-21, RF-50 a RF-66) contra un ChirpStack v4 real', () 
     await expect(dialog).toContainText('Device profile (en el LNS)');
     await expect(dialog).toContainText('AU915');
     await expect(dialog).toContainText('inventarius_asset_id');
-    await expect(dialog.getByText('•'.repeat(32), { exact: true })).toBeVisible();
+    const mask = dialog.getByText('•••• (32 hex)', { exact: true });
+    await expect(mask).toBeVisible();
+    // La máscara cabe en una sola línea, también a 360 px.
+    const box = await mask.boundingBox();
+    const lineHeight = await mask.evaluate((el) => parseFloat(getComputedStyle(el).lineHeight));
+    expect(box!.height).toBeLessThan(lineHeight * 1.5);
     await expect(dialog.getByText(asset.devEui.toLowerCase(), { exact: true })).toBeVisible();
     await expect(dialog).not.toContainText(asset.appKey);
     expect(await horizontalOverflow(page)).toBe(false);
