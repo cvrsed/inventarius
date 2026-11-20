@@ -1,5 +1,8 @@
 import type { LinkDifferenceDto } from '@inventarius/shared';
 
+/** ChirpStack guarda un JoinEUI en ceros cuando no se definió ninguno. */
+export const isUnsetJoinEui = (v: string | null): boolean => v !== null && /^0{16}$/.test(v);
+
 type T = (key: string, named?: Record<string, unknown>) => string;
 
 /** Una diferencia en lenguaje de persona: «JoinEUI: el activo tiene X y el LNS Y». Las claves nunca muestran su valor. */
@@ -20,6 +23,12 @@ export function describeDifference(
   return {
     field: d.field,
     label: t(`lorawan.linkDialog.rows.${d.field}`),
-    text: t('lorawan.linkDialog.valueDiff', { local: d.local ?? none, remote: d.remote ?? none }),
+    text: t('lorawan.linkDialog.valueDiff', {
+      local: d.local ?? none,
+      remote:
+        d.field === 'joinEui' && isUnsetJoinEui(d.remote)
+          ? t('lorawan.linkDialog.unsetJoinEui')
+          : (d.remote ?? none),
+    }),
   };
 }

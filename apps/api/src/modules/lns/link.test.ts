@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { RemoteDeviceDetails } from './adapter.js';
-import { adoptionFrom, compareRemoteDevice, type LocalDeviceView } from './link.js';
+import type { LinkAdoptField } from '@inventarius/shared';
+import {
+  adoptableFrom,
+  adoptionFrom,
+  compareRemoteDevice,
+  defaultAdoption,
+  type LocalDeviceView,
+} from './link.js';
 
 const KEY_A = 'A1B2C3D4E5F60718293A4B5C6D7E8F90';
 const KEY_B = '0F1E2D3C4B5A69788796A5B4C3D2E1F0';
@@ -77,26 +84,43 @@ describe('compareRemoteDevice (vincular, RF-64)', () => {
   });
 });
 
+const adopted = (l: LocalDeviceView, r: RemoteDeviceDetails, sel?: LinkAdoptField[]) =>
+  adoptionFrom(l, r, sel).values;
+
 describe('adoptionFrom: qué se copia al activo al adoptar los datos del LNS', () => {
   it('copia JoinEUI y claves que el LNS tiene y difieren', () => {
-    expect(adoptionFrom(local(), remote({ joinEui: 'AABBCCDDEEFF0011', appKey: KEY_B }))).toEqual({
+    expect(adopted(local(), remote({ joinEui: 'AABBCCDDEEFF0011', appKey: KEY_B }))).toEqual({
       joinEui: 'AABBCCDDEEFF0011',
       appKey: KEY_B,
     });
   });
 
   it('lo que el LNS no tiene no se borra del activo', () => {
-    expect(adoptionFrom(local(), remote({ joinEui: null, appKey: null }))).toEqual({});
+    expect(adopted(local(), remote({ joinEui: null, appKey: null }))).toEqual({});
   });
 
   it('nada que copiar si coincide', () => {
-    expect(adoptionFrom(local(), remote())).toEqual({});
+    expect(adopted(local(), remote())).toEqual({});
   });
 
   it('la NwkKey solo se adopta en 1.1', () => {
-    expect(adoptionFrom(local(), remote({ nwkKey: KEY_B }))).toEqual({});
-    expect(adoptionFrom(local({ usesNwkKey: true }), remote({ nwkKey: KEY_B }))).toEqual({
+    expect(adopted(local(), remote({ nwkKey: KEY_B }))).toEqual({});
+    expect(adopted(local({ usesNwkKey: true }), remote({ nwkKey: KEY_B }))).toEqual({
       nwkKey: KEY_B,
     });
+  });
+
+  it('un JoinEUI en ceros (sin definir) se ofrece pero no se adopta por defecto', () => {
+    const r = remote({ joinEui: '0000000000000000', appKey: KEY_B });
+    expect(adoptableFrom(local(), r)).toEqual({ joinEui: '0000000000000000', appKey: KEY_B });
+    expect(defaultAdoption(adoptableFrom(local(), r))).toEqual(['appKey']);
+    expect(adopted(local(), r)).toEqual({ appKey: KEY_B });
+  });
+
+  it('con selección explícita se adopta solo lo elegido, y lo no adoptable se informa', () => {
+    const r = remote({ joinEui: '0000000000000000', appKey: KEY_B });
+    expect(adopted(local(), r, ['joinEui'])).toEqual({ joinEui: '0000000000000000' });
+    expect(adopted(local(), r, [])).toEqual({});
+    expect(adoptionFrom(local(), r, ['nwkKey']).invalid).toEqual(['nwkKey']);
   });
 });

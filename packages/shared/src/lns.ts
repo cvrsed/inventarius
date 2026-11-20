@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { remoteDeviceSchema } from './lorawan.js';
+import { linkAdoptFieldSchema, remoteDeviceSchema } from './lorawan.js';
 
 /** Proveedores de LNS soportados (sección 5.1). */
 export const LNS_KINDS = ['chirpstack', 'ttn'] as const;
@@ -160,7 +160,9 @@ export const linkPreviewSchema = z.object({
   externalId: z.string(),
   remote: remoteDeviceSchema,
   differences: z.array(linkDifferenceSchema),
-  /** Datos del activo que se reemplazan al adoptar los del LNS (`joinEui`, `appKey`, `nwkKey`). */
-  adopts: z.array(z.enum(['joinEui', 'appKey', 'nwkKey'])),
+  /** Datos del activo que el usuario puede elegir reemplazar con los del LNS (los que el LNS tiene y difieren). */
+  adoptable: z.array(linkAdoptFieldSchema),
+  /** Los que se adoptan si el usuario no elige: `adoptable` salvo un JoinEUI sin definir (en ceros). */
+  adopts: z.array(linkAdoptFieldSchema),
 });
 export type LinkPreviewDto = z.infer<typeof linkPreviewSchema>;

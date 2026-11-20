@@ -123,7 +123,7 @@ const askCancel = () =>
     t('lorawan.confirmCancel'),
     t('lorawan.actions.cancel'),
     true,
-    () => resolve.mutateAsync('cancel'),
+    () => resolve.mutateAsync({ action: 'cancel' }),
     t('lorawan.done.cancel'),
   );
 async function doRetry(): Promise<void> {

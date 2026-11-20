@@ -583,6 +583,7 @@ describe('registro en el LNS (RF-60 a RF-65)', () => {
         'appKey',
         'name',
       ]);
+      expect(body.adoptable).toEqual(['joinEui']);
       expect(body.differences.find((d: { field: string }) => d.field === 'appKey')).toEqual({
         field: 'appKey',
         local: 'present',
@@ -620,6 +621,60 @@ describe('registro en el LNS (RF-60 a RF-65)', () => {
         expect.arrayContaining(['lorawan.update', 'lns.link']),
       );
       expect(audit.rows.map((r) => r.d).join()).not.toContain(NWK);
+    });
+
+    describe('un JoinEUI en ceros (sin definir en ChirpStack) no pisa el del activo por defecto (R4)', () => {
+      const ZEROS = '0000000000000000';
+      const resolveWith = (assetId: string, adopt?: string[]) =>
+        fx.tech.post(`${base}/assets/${assetId}/lns-registration/resolve`, {
+          action: 'link',
+          ...(adopt ? { adopt } : {}),
+        });
+
+      it('la lectura previa lo muestra como diferencia, lo ofrece pero no lo adopta por defecto', async () => {
+        const { a } = await conflicted({ joinEui: ZEROS, appKey: NWK });
+        const body = (await linkPreview(a.id)).json();
+        expect(body.differences.map((d: { field: string }) => d.field)).toContain('joinEui');
+        expect(body.adoptable).toEqual(['joinEui', 'appKey']);
+        expect(body.adopts).toEqual(['appKey']);
+      });
+
+      it('vincular sin elegir conserva el JoinEUI del activo y adopta lo demás', async () => {
+        const { a } = await conflicted({ joinEui: ZEROS, appKey: NWK });
+        const before = (await lorawan(a.id)).joinEui;
+        expect((await resolveWith(a.id)).statusCode).toBe(200);
+        const lw = await lorawan(a.id);
+        expect(lw.joinEui).toBe(before);
+        expect(lw.joinEui).not.toBe(ZEROS);
+        expect((await fx.admin.post(`${base}/assets/${a.id}/lorawan/reveal`)).json().appKey).toBe(
+          NWK,
+        );
+      });
+
+      it('el usuario elige por campo: solo lo elegido se adopta (también el JoinEUI en ceros)', async () => {
+        const one = await conflicted({ joinEui: 'AABBCCDDEEFF0011', appKey: NWK });
+        expect((await resolveWith(one.a.id, [])).statusCode).toBe(200);
+        const none = await lorawan(one.a.id);
+        expect(none.joinEui).toBe(JOIN_EUI);
+        expect(
+          (await fx.admin.post(`${base}/assets/${one.a.id}/lorawan/reveal`)).json().appKey,
+        ).toBe(APP_KEY);
+
+        const two = await conflicted({ joinEui: ZEROS, appKey: NWK });
+        expect((await resolveWith(two.a.id, ['joinEui'])).statusCode).toBe(200);
+        expect((await lorawan(two.a.id)).joinEui).toBe(ZEROS);
+        expect(
+          (await fx.admin.post(`${base}/assets/${two.a.id}/lorawan/reveal`)).json().appKey,
+        ).toBe(APP_KEY);
+      });
+
+      it('elegir un campo que no se puede adoptar se rechaza sin vincular', async () => {
+        const { a } = await conflicted({ appKey: NWK });
+        const res = await resolveWith(a.id, ['nwkKey']);
+        expect(res.statusCode, res.body).toBe(422);
+        expect(res.json().errors.adopt[0]).toContain('nwkKey');
+        expect((await lorawan(a.id)).registration.status).toBe('conflict');
+      });
     });
 
     it('lo que el LNS no tiene no se borra del activo; la ficha muestra que no está en el LNS', async () => {

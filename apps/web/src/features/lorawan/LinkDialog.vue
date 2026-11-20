@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import UAlert from '@nuxt/ui/components/Alert.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
+import UCheckboxGroup from '@nuxt/ui/components/CheckboxGroup.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';
 import { useToast } from '@nuxt/ui/composables/useToast';
-import { computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { errorMessage } from '@/features/auth/errors';
 import ReasonButton from '@/shared/ui/ReasonButton.vue';
 import { useLorawanMutations } from './api';
-import { describeDifference } from './link';
+import type { LinkAdoptField } from '@inventarius/shared';
+import { describeDifference, isUnsetJoinEui } from './link';
 
 /**
  * Vincular (RF-64): lee el dispositivo que ya existe en el LNS y muestra en qué difiere del activo antes de confirmar.
@@ -40,12 +42,23 @@ const preview = computed(() => linkPreview.data.value);
 const differences = computed(() =>
   (preview.value?.differences ?? []).map((d) => describeDifference(d, t)),
 );
-const adopts = computed(() => (preview.value?.adopts ?? []).map((f) => t(`lorawan.fields.${f}`)));
+// Lo que se adopta: parte de lo que el servidor propone y el usuario lo ajusta campo por campo.
+const selected = ref<LinkAdoptField[]>([]);
+watch(preview, (p) => (selected.value = p ? [...p.adopts] : []));
+const adoptItems = computed(() =>
+  (preview.value?.adoptable ?? []).map((f) => ({
+    value: f,
+    label: t(`lorawan.fields.${f}`),
+    ...(f === 'joinEui' && isUnsetJoinEui(preview.value?.remote.joinEui ?? null)
+      ? { description: t('lorawan.linkDialog.unsetJoinEuiHint') }
+      : {}),
+  })),
+);
 const failure = computed(() => (resolve.error.value ? errorMessage(resolve.error.value, t) : ''));
 
 async function adopt(): Promise<void> {
   try {
-    await resolve.mutateAsync('link');
+    await resolve.mutateAsync({ action: 'link', adopt: selected.value });
     toast.add({ title: t('lorawan.done.link'), color: 'success', duration: 4000 });
     visible.value = false;
   } catch {
@@ -132,14 +145,20 @@ async function adopt(): Promise<void> {
             </ul>
           </section>
 
+          <section v-if="adoptItems.length">
+            <UCheckboxGroup
+              v-model="selected"
+              :legend="t('lorawan.linkDialog.adoptLegend')"
+              :items="adoptItems"
+              value-key="value"
+            />
+            <p class="m-0 mt-1 text-sm text-muted">{{ t('lorawan.linkDialog.adoptHelp') }}</p>
+          </section>
           <UAlert
+            v-else
             color="info"
             variant="subtle"
-            :description="
-              adopts.length
-                ? t('lorawan.linkDialog.willAdopt', { fields: adopts.join(', ') })
-                : t('lorawan.linkDialog.nothingToAdopt')
-            "
+            :description="t('lorawan.linkDialog.nothingToAdopt')"
           />
           <p class="m-0 text-sm text-muted">{{ t('lorawan.linkDialog.readOnly') }}</p>
         </template>

@@ -1,5 +1,6 @@
 import {
   missingForRegistration,
+  type LinkAdoptField,
   type LinkPreviewDto,
   type LnsKind,
   type LnsRegistrationDto,
@@ -22,7 +23,13 @@ import {
   type LorawanDeviceSecrets,
   type RemoteDeviceDetails,
 } from './adapter.js';
-import { adoptionFrom, compareRemoteDevice, type LocalDeviceView } from './link.js';
+import {
+  adoptableFrom,
+  adoptionFrom,
+  compareRemoteDevice,
+  defaultAdoption,
+  type LocalDeviceView,
+} from './link.js';
 import {
   compareWithDeviceProfile,
   fillFromDeviceProfile,
@@ -359,12 +366,14 @@ export class RegistrationService implements RegistrationReader {
    */
   async linkPreview(assetId: string): Promise<LinkPreviewDto> {
     const view = await this.readForLink(assetId);
+    const adoptable = adoptableFrom(view.local, view.remote);
     return {
       profile: view.profile,
       externalId: view.remote.externalId,
       remote: toRemoteDto(view.remote),
       differences: compareRemoteDevice(view.local, view.remote),
-      adopts: Object.keys(adoptionFrom(view.local, view.remote)) as LinkPreviewDto['adopts'],
+      adoptable: Object.keys(adoptable) as LinkPreviewDto['adoptable'],
+      adopts: defaultAdoption(adoptable),
     };
   }
 
@@ -417,8 +426,17 @@ export class RegistrationService implements RegistrationReader {
     actor: Actor,
     assetId: string,
     action: 'link' | 'cancel',
+    adopt?: readonly LinkAdoptField[],
   ): Promise<LnsRegistrationDto | null> {
     const view = action === 'link' ? await this.readForLink(assetId) : null;
+    if (view) {
+      const { invalid } = adoptionFrom(view.local, view.remote, adopt);
+      if (invalid.length) {
+        throw new ValidationError('Hay campos que el LNS no permite adoptar', {
+          adopt: [`El LNS no tiene un valor distinto para: ${invalid.join(', ')}`],
+        });
+      }
+    }
     return this.db.transaction(async (tx) => {
       const asset = await this.requireAsset(tx, assetId);
       await this.repo.lockByAsset(tx, assetId);
@@ -440,7 +458,7 @@ export class RegistrationService implements RegistrationReader {
       }
       const { local, remote } = view!;
       // El estado sigue siendo `conflict`: la identidad del activo todavía se puede editar para adoptar los datos.
-      const adopted = adoptionFrom(local, remote);
+      const { values: adopted } = adoptionFrom(local, remote, adopt);
       if (Object.keys(adopted).length) await this.lorawan.apply(tx, actor, assetId, adopted);
       await this.repo.update(tx, row.id, {
         status: 'registered',

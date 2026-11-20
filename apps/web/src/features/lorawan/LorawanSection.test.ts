@@ -85,6 +85,7 @@ async function mountSection(permissions: Permission[], lorawan: LorawanDto) {
         hasNwkKey: false,
       },
       differences: [],
+      adoptable: [],
       adopts: [],
     }),
     [`POST /api/v1/assets/${ID}/lorawan/reveal`]: () => ({

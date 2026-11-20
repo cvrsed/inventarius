@@ -610,8 +610,12 @@ export const messages = {
       remoteTitle: 'Lo que tiene el LNS',
       diffTitle: 'Diferencias con el activo',
       same: 'El dispositivo del LNS coincide con el activo.',
-      willAdopt:
-        'Al adoptar los datos del LNS se reemplazan en el activo: {fields}. Lo que el LNS no tiene no se borra del activo.',
+      adoptLegend: 'Datos del LNS que se adoptan en el activo',
+      adoptHelp:
+        'Lo elegido reemplaza el dato del activo con el del LNS. Lo que el LNS no tiene no se borra del activo.',
+      unsetJoinEui: 'sin definir en el LNS (todo ceros)',
+      unsetJoinEuiHint:
+        'En el LNS está sin definir (todo ceros): no se adopta salvo que lo elijas, para no borrar el del activo.',
       nothingToAdopt: 'No hay datos que reemplazar en el activo.',
       readOnly: 'Vincular no modifica el dispositivo en el LNS.',
       adopt: 'Adoptar los datos del LNS y vincular',

@@ -237,7 +237,18 @@ export const revealKeysResultSchema = z.object({
 export type RevealKeysResult = z.infer<typeof revealKeysResultSchema>;
 
 export const registerInLnsSchema = z.object({ profileId: z.uuid() });
-export const resolveConflictSchema = z.object({ action: z.enum(['link', 'cancel']) });
+/** Datos del activo que se pueden reemplazar con los del LNS al vincular. */
+export const linkAdoptFieldSchema = z.enum(['joinEui', 'appKey', 'nwkKey']);
+export type LinkAdoptField = z.infer<typeof linkAdoptFieldSchema>;
+
+/**
+ * `adopt` (solo con `link`): qué campos adoptar del LNS. Sin él se adopta lo que la lectura previa propone por defecto
+ * (`adopts`); con `[]` no se adopta nada.
+ */
+export const resolveConflictSchema = z.object({
+  action: z.enum(['link', 'cancel']),
+  adopt: z.array(linkAdoptFieldSchema).optional(),
+});
 
 // --- Importación CSV (RF-66) ---
 

@@ -526,6 +526,6 @@ Segunda revisión manual del PR #6 (2026-11-19). Cada punto va en su propio comm
 - [x] R1 Versión LoRaWAN y región faltantes en el activo se toman del device profile al registrar
 - [x] R2 AppKey enmascarada de la confirmación sin partirse en dos líneas
 - [x] R3 Las pruebas contra ChirpStack real borran lo que crean, usan prefijo por corrida y exigen endpoint marcado como de prueba
-- [ ] R4 Vincular: un JoinEUI en ceros no pisa el local; el usuario elige por campo qué adoptar
+- [x] R4 Vincular: un JoinEUI en ceros no pisa el local; el usuario elige por campo qué adoptar
 - [ ] R5 Vincular muestra el device profile con nombre, versión y región
 - [ ] R6 Vincular advierte si el dispositivo remoto no tiene AppKey/NwkKey (no podrá hacer join)

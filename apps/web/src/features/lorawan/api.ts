@@ -1,4 +1,5 @@
 import {
+  type LinkAdoptField,
   lnsKindSchema,
   linkPreviewSchema,
   lnsRegistrationSchema,
@@ -92,10 +93,10 @@ export function useLorawanMutations(assetId: Ref<string>) {
       onSuccess: refresh,
     }),
     resolve: useMutation({
-      mutationFn: (action: 'link' | 'cancel') =>
+      mutationFn: (vars: { action: 'link' | 'cancel'; adopt?: LinkAdoptField[] }) =>
         api(`${base()}/lns-registration/resolve`, lnsRegistrationSchema.nullable(), {
           method: 'POST',
-          body: { action },
+          body: vars,
         }),
       onSuccess: refresh,
     }),

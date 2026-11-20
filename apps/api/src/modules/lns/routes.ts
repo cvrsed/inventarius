@@ -180,6 +180,7 @@ export const lnsRoutes: FastifyPluginAsyncZod<{
         response: { 200: lnsRegistrationSchema.nullable() },
       },
     },
-    async (req) => registrations.resolveConflict(actorOf(req), req.params.id, req.body.action),
+    async (req) =>
+      registrations.resolveConflict(actorOf(req), req.params.id, req.body.action, req.body.adopt),
   );
 };

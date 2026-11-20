@@ -28,6 +28,7 @@ const preview = (over: Record<string, unknown> = {}) => ({
     { field: 'appKey', local: 'present', remote: 'absent' },
     { field: 'name', local: 'INV-1 Sensor', remote: 'Medidor ajeno' },
   ],
+  adoptable: ['joinEui'],
   adopts: ['joinEui'],
   ...over,
 });
@@ -50,6 +51,14 @@ async function open(body: object, resolve: () => Response | object = () => ({}))
 
 const button = (label: string) =>
   [...document.body.querySelectorAll('button')].find((b) => b.textContent?.includes(label))!;
+/** El checkbox (rol `checkbox`) que acompaña a la etiqueta; su estado se lee de `aria-checked`. */
+const checkbox = (label: string) => {
+  const l = [...document.body.querySelectorAll('label')].find(
+    (x) => x.textContent?.trim() === label,
+  )!;
+  return document.getElementById(l.htmlFor)!;
+};
+const isChecked = (label: string) => checkbox(label).getAttribute('aria-checked') === 'true';
 const calls = (w: Awaited<ReturnType<typeof open>>, path: string) =>
   w.fetchMock.mock.calls.filter(([u]) => String(u).endsWith(path));
 
@@ -65,7 +74,8 @@ describe('LinkDialog: vincular (P6)', () => {
     expect(text).toContain('JoinEUI: el activo tiene 8877665544332211 y el LNS AABBCCDDEEFF0011');
     expect(text).toContain('AppKey: no está en el LNS (en el activo: cargada)');
     expect(text).toContain('Nombre: el activo tiene INV-1 Sensor y el LNS Medidor ajeno');
-    expect(text).toContain('se reemplazan en el activo: JoinEUI');
+    expect(text).toContain('Datos del LNS que se adoptan en el activo');
+    expect(isChecked('JoinEUI')).toBe(true);
     expect(text).toContain('Vincular no modifica el dispositivo en el LNS');
   });
 
@@ -93,11 +103,52 @@ describe('LinkDialog: vincular (P6)', () => {
     button('Adoptar los datos del LNS y vincular').click();
     await flushPromises();
     const [, init] = calls(w, '/resolve')[0]!;
-    expect(JSON.parse(String(init!.body))).toEqual({ action: 'link' });
+    expect(JSON.parse(String(init!.body))).toEqual({ action: 'link', adopt: ['joinEui'] });
+  });
+
+  it('un JoinEUI sin definir (ceros) se muestra como tal, no se adopta por defecto y el usuario puede elegirlo', async () => {
+    const zeros = '0000000000000000';
+    const w = await open(
+      preview({
+        remote: { ...preview().remote, joinEui: zeros },
+        differences: [{ field: 'joinEui', local: '8877665544332211', remote: zeros }],
+        adoptable: ['joinEui', 'appKey'],
+        adopts: ['appKey'],
+      }),
+      () => ({}),
+    );
+    const text = document.body.textContent ?? '';
+    expect(text).toContain(
+      'el activo tiene 8877665544332211 y el LNS sin definir en el LNS (todo ceros)',
+    );
+    expect(text).toContain('no se adopta salvo que lo elijas');
+    expect(isChecked('JoinEUI')).toBe(false);
+    expect(isChecked('AppKey')).toBe(true);
+    button('Adoptar los datos del LNS y vincular').click();
+    await flushPromises();
+    expect(JSON.parse(String(calls(w, '/resolve')[0]![1]!.body))).toEqual({
+      action: 'link',
+      adopt: ['appKey'],
+    });
+  });
+
+  it('el usuario elige por campo qué adoptar', async () => {
+    const w = await open(
+      preview({ adoptable: ['joinEui', 'appKey'], adopts: ['joinEui', 'appKey'] }),
+      () => ({}),
+    );
+    checkbox('AppKey').click();
+    await flushPromises();
+    button('Adoptar los datos del LNS y vincular').click();
+    await flushPromises();
+    expect(JSON.parse(String(calls(w, '/resolve')[0]![1]!.body))).toEqual({
+      action: 'link',
+      adopt: ['joinEui'],
+    });
   });
 
   it('sin diferencias lo dice y no hay nada que reemplazar', async () => {
-    await open(preview({ differences: [], adopts: [] }));
+    await open(preview({ differences: [], adoptable: [], adopts: [] }));
     const text = document.body.textContent ?? '';
     expect(text).toContain('coincide con el activo');
     expect(text).toContain('No hay datos que reemplazar');
