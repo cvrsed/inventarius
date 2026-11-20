@@ -131,6 +131,17 @@ Cómo repetirlo: `pnpm gitleaks` (historial completo), `scripts/gitleaks.sh stag
 - **Pruebas:** todo identificador de prueba es inventado; el ChirpStack de prueba usa credenciales ficticias (`deploy/chirpstack/`)
   y no debe exponerse fuera de la red de Compose.
 
+## Consumibles (F3.5)
+
+- **Permisos separados** (`consumables:read|manage|receive|deliver|transfer|adjust`); ajustar y anular el stock es solo del
+  Administrador por defecto. `permissions.int.test.ts` recorre cada ruta nueva contra los cuatro roles y el anónimo.
+- **Libro append-only:** `inventarius_app` no tiene `UPDATE`, `DELETE` ni `TRUNCATE` sobre `consumable_movements`; un test
+  intenta ambos como la app y espera `42501`. Un movimiento solo se «corrige» con una anulación ligada, con motivo y actor.
+- **Integridad:** saldo con `CHECK (quantity >= 0)`, anulación única por `UNIQUE (reverses_id)` y concurrencia con bloqueo de
+  fila; todo verificado con pruebas simultáneas reales. `cli verify-consumables` detecta un saldo editado a mano.
+- **Datos personales:** el receptor de una entrega puede ser un nombre y un identificador en texto libre; son datos de una
+  persona, así que no se exportan ni se usan fuera del historial del consumible y la auditoría.
+
 ## Excepciones de vulnerabilidades
 
 Cada hallazgo que el CI ignora está aquí, con motivo y fecha de revisión. Al vencer la fecha el CI vuelve a fallar

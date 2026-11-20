@@ -5,6 +5,22 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). D
 
 ## [Sin publicar]
 
+### F3.5 — Consumibles por cantidad
+
+- Consumibles con categoría, unidad de medida y stock mínimo global y por bodega (RF-70, D9); con movimientos no se borran,
+  se desactivan (D10).
+- Libro de movimientos append-only como fuente de verdad (D2): ingreso, entrega, ajuste, traslado atómico entre bodegas y
+  anulación ligada al original, con saldo por (consumible, bodega) bloqueado `FOR UPDATE` y `CHECK` de no negativo (D3).
+  `cli verify-consumables` cuadra cada saldo con el libro (RF-71 a RF-73).
+- Cantidades decimales según la unidad (0 a 3 decimales), como texto y enteros escalados, nunca `number`; catálogo de unidades
+  administrable con semilla (unidad, par, caja, litro, metro, kilogramo) (D4).
+- Entrega a un usuario del sistema o a una persona en texto libre con identificador opcional (D5).
+- Ajuste con motivo (nota obligatoria con «otro») y anulación con motivo, solo con `consumables:adjust`, que por defecto es del
+  Administrador; la confirmación muestra el saldo antes y después (D6, D7).
+- Aviso de stock mínimo en el listado, la ficha e Inicio, con el filtro «Bajo mínimo» (RF-74).
+- Seis permisos `consumables:*`; cada movimiento y cambio de catálogo queda en la auditoría con textos traducidos (D12, D13).
+- Categorías de consumibles reutilizan el catálogo con un ámbito (D11). Migración 0017. ADR 0008.
+
 ### F3 — LoRaWAN
 
 - Datos LoRaWAN del activo (DevEUI, JoinEUI, AppKey, NwkKey, clase, versión, región): opcionales al crear, obligatorios solo al

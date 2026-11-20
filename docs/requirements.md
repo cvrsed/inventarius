@@ -127,11 +127,11 @@ Cada requerimiento tiene ID para trazarlo en issues, commits y tests (`RF-xx`).
 
 Ítems que se manejan por **cantidad** y no uno a uno (p. ej. EPP: guantes, cascos). Van en una fase propia después de F3.
 
-- **RF-70** CRUD de **consumibles**: nombre, categoría, unidad de medida y **stock mínimo** (global o por bodega). Un consumible en uso no se borra, solo se desactiva.
+- **RF-70** CRUD de **consumibles**: nombre, categoría (del ámbito consumibles), unidad de medida (catálogo administrable con 0 a 3 decimales) y **stock mínimo** (global y/o por bodega). Un consumible con movimientos no se borra, solo se desactiva; desactivado no admite ingresos, entregas ni traslados, pero sí ajustes y anulaciones.
 - **RF-71** **Ingreso a bodega**: suma cantidad a una bodega con fecha, proveedor opcional y nota.
-- **RF-72** **Entrega a una persona**: descuenta de una bodega y deja constancia de quién recibió, cuánto y cuándo; no permite entregar más que el stock de esa bodega.
-- **RF-73** **Stock por bodega**: cantidad disponible de cada consumible en cada bodega, derivada del libro de movimientos (ingresos, entregas, ajustes), con historial por consumible.
-- **RF-74** **Stock mínimo**: aviso visible (listado e Inicio) cuando el stock de un consumible queda por debajo de su mínimo.
+- **RF-72** **Entrega a una persona**: descuenta de una bodega y deja constancia de quién recibió (un usuario del sistema o un nombre en texto libre con identificador opcional), cuánto y cuándo; no permite entregar más que el stock de esa bodega, ni siquiera con entregas simultáneas.
+- **RF-73** **Stock por bodega**: cantidad disponible de cada consumible en cada bodega, derivada del libro de movimientos (ingresos, entregas, ajustes, traslados y anulaciones; append-only), con historial por consumible filtrable por bodega, tipo y fecha. Los ajustes (con motivo) y las anulaciones (con motivo, ligadas al movimiento original) exigen `consumables:adjust`; un traslado entre bodegas es atómico.
+- **RF-74** **Stock mínimo**: aviso visible (listado, ficha e Inicio) cuando el stock de un consumible queda por debajo de su mínimo: el mínimo de una bodega se compara con el saldo de esa bodega y el global con el total de todas.
 
 ## 5. Integración LoRaWAN
 

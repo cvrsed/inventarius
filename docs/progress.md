@@ -8,7 +8,7 @@
 | F1 Identidad     | Pendiente   | —                        |
 | F2 Inventario    | En revisión | `phase/f2-inventario`    |
 | F3 LoRaWAN       | En curso    | `phase/f3-lorawan`       |
-| F3.5 Consumibles | En curso    | `phase/f3.5-consumibles` |
+| F3.5 Consumibles | En revisión | `phase/f3.5-consumibles` |
 | F4 Cierre        | Pendiente   | —                        |
 
 ## Bitácora
@@ -571,7 +571,95 @@ Alcance: RF-70 a RF-74 y las decisiones D1 a D14 del prompt de arranque. Decisio
 - [x] UI: anular con motivo y enlace entre movimientos
 - [x] Aviso de stock mínimo en Inicio
 - [x] Traducciones de auditoría e historial para todos los eventos nuevos
-- [ ] Responsive 360 px y axe sin violaciones en las pantallas nuevas
-- [ ] e2e del ciclo ingreso → entrega → traslado → ajuste → anulación → aviso de mínimo, verificando que el stock mostrado cuadra con el libro
-- [ ] Documentación: requirements (si precisas algo), ficha técnica, ADR 0008 de consumibles, CHANGELOG, open-questions
-- [ ] Resumen, decisiones provisionales, cómo probar y sección de revisión manual en docs/progress.md
+- [x] Responsive 360 px y axe sin violaciones en las pantallas nuevas
+- [x] e2e del ciclo ingreso → entrega → traslado → ajuste → anulación → aviso de mínimo, verificando que el stock mostrado cuadra con el libro
+- [x] Documentación: requirements (si precisas algo), ficha técnica, ADR 0008 de consumibles, CHANGELOG, open-questions
+- [x] Resumen, decisiones provisionales, cómo probar y sección de revisión manual en docs/progress.md
+
+### Resumen de F3.5 (2026-11-20)
+
+- **Qué hay:** consumibles con categoría (catálogo reutilizado con ámbito), unidad de medida administrable (0 a 3 decimales) y
+  mínimo global y por bodega; ingreso, entrega (usuario o texto libre), traslado atómico, ajuste y anulación sobre un libro de
+  movimientos append-only; saldo por (consumible, bodega) bloqueado `FOR UPDATE` con `CHECK` de no negativo; aviso de mínimo en
+  listado, ficha e Inicio; auditoría traducida; `cli verify-consumables`. Migración 0017, ADR 0008, Q56 a Q69.
+- **Pruebas:** shared 55, API 206 unitarias + 295 de integración con Postgres 18 (46 son de consumibles: permisos por rol,
+  decimales, concurrencia real, anulaciones, libro vs saldo, append-only, auditoría), web 398. e2e (Playwright + axe, escritorio y
+  360 px, claro y oscuro) sobre un stack limpio: **137 pasaron y 3 se omiten** (los mismos de antes); 10 son nuevas
+  (`consumables.spec.ts`): el ciclo completo con comprobación de que el stock de la pantalla es la suma del libro, el rechazo de
+  anular un ingreso ya entregado, permisos por rol, y desborde y axe del listado, la ficha y los diálogos.
+- **Cosas que encontraron las pruebas** (corregidas):
+  - El hover del botón primario sólido (primario al 75 %) daba 3,35:1 de contraste con el texto (WCAG AA pide 4,5:1): axe lo
+    midió en el diálogo de anular con el puntero encima. Se oscurece en claro y se aclara en oscuro (`theme.ts`).
+  - La barra inferior móvil pasó de 4 a 5 destinos al agregar «Consumibles»; el e2e lo refleja y no hay desborde a 360 px.
+  - La base de e2e es compartida: un test que esperaba su consumible en el listado «Bajo mínimo» ahora lo acota por nombre.
+- **Decisiones provisionales** (detalle en `docs/open-questions.md`, Q56 a Q69): la bodega es una ubicación de tipo bodega; la
+  unidad lleva nombre en plural para decir «1 par»/«12 pares» (D4 no lo pedía); una unidad en uso no baja de decimales; las
+  categorías de consumibles se escriben con `catalog:write`; «bajo mínimo» es estrictamente menor y los desactivados no
+  avisan; un traslado se anula entero desde cualquiera de sus lados; Q60 (qué otros roles deberían tener `consumables:adjust`)
+  queda **abierta para Rodrigo**.
+- **Fuera de alcance** (en el backlog de abajo): importación CSV de ingresos, exportación de stock, devoluciones como tipo propio,
+  costos y valorización, lotes y vencimientos, correos por stock mínimo.
+
+**Cómo probarlo**
+
+```bash
+pnpm install
+pnpm lint && pnpm typecheck && pnpm test                 # unitarios (shared, api, web)
+pnpm --filter @inventarius/api test:int src/modules/consumables   # integración (Postgres 18 en Docker)
+docker compose -f compose.e2e.yml up -d --build --wait web worker
+docker compose -f compose.e2e.yml run --rm --build e2e pnpm exec playwright test consumables
+docker compose -f compose.e2e.yml down --volumes
+docker compose exec api pnpm --filter @inventarius/api cli verify-consumables   # cuadratura libro vs saldo
+```
+
+**Pendiente / no verificado**
+
+- El CI de GitHub no se esperó (instrucción del responsable): los checks del PR los revisa el responsable.
+- `assets.perf.int` (RNF-06) falló una vez con `pnpm test:coverage` mientras corría el stack de e2e en la misma máquina (p95 de
+  395 ms por la carga); aislado pasa. No toca código de F3.5.
+- No se probó con un lector de pantalla real, solo axe.
+
+### Revisión manual de F3.5
+
+Para que Rodrigo recorra la fase en su entorno de desarrollo.
+
+- **Levantar:** `docker compose up --build` (no hace falta ningún perfil; el perfil `chirpstack` es de F3). Web en
+  http://localhost:5173, API en http://localhost:3000, Postgres en `127.0.0.1:5432`.
+- **Usuarios de prueba** (datos inventados):
+  1. Administrador (tiene `consumables:adjust`): `docker compose exec api pnpm --filter @inventarius/api cli create-admin --email admin@example.test --name "Admin de prueba"`.
+  2. Operador **sin** `consumables:adjust`: en Usuarios, «Nuevo usuario» con rol Operador (por ejemplo `operador@example.test`);
+     entra con la contraseña temporal y la cambia.
+  3. Para probar un rol con `consumables:adjust` que no sea Administrador: en Roles, crea uno con solo `consumables:read` y
+     `consumables:adjust` (Q60).
+- **Datos de ejemplo** (todo por la interfaz):
+  1. Catálogo → Ubicaciones: «Bodega central» y «Bodega anexo», tipo Bodega.
+  2. Catálogo → Categorías de consumibles: «EPP».
+  3. Catálogo → Unidades de medida: ya están unidad, par, caja, litro, metro y kilogramo.
+  4. Consumibles → Nuevo: «Guantes de nitrilo», EPP, par, mínimo global 20 y mínimo de 5 en la Bodega anexo. Otro: «Alcohol gel»,
+     litro (admite 3 decimales), mínimo 2.
+- **Qué mirar:**
+  - Ingresa 12 pares a la central: el listado dice «12 pares» y «Bajo mínimo» (12 < 20); Inicio muestra el aviso con el enlace al
+    listado filtrado. Con 2,5 litros de alcohol se lee «2,5 L».
+  - Intenta ingresar «2,5» pares: la unidad no admite decimales. Intenta entregar más de lo que hay: el tope se ve en el diálogo.
+  - Entrega 3 pares a «Persona Inventada» con identificador libre y a un usuario del sistema; traslada 4 a la anexo; mira el
+    historial (fechas `dd-mm-aaaa HH:mm`, «Ver más», filtros por bodega, tipo y fecha).
+  - Como Operador: no ves «Ajustar» ni «Anular». Como Administrador: ajusta con motivo «Otro» (la nota es obligatoria) y mira la
+    confirmación con el saldo antes y después.
+  - Anula la entrega: el historial enlaza «Anulado por…» y «Anula a…». Intenta anular un ingreso cuyo stock ya se entregó: lo
+    rechaza diciendo que dejaría el stock negativo. Anula un traslado: se revierten las dos bodegas.
+  - Desactiva un consumible: ingresar, entregar y trasladar se ven apagados con el motivo al pasar el cursor; ajustar sigue.
+    «Eliminar» está apagado si tiene movimientos.
+  - Auditoría: filtra por entidad «Consumible»; todos los eventos salen en español, con cantidades en coma decimal.
+  - 360 px: listado y ficha en tarjetas, sin scroll horizontal; la barra inferior tiene cinco destinos.
+  - `docker compose exec api pnpm --filter @inventarius/api cli verify-consumables` debe decir que cuadra.
+
+### Backlog post-F3.5
+
+Fuera de alcance de F3.5; **no se implementa**.
+
+- Importación CSV de ingresos.
+- Exportación de stock.
+- Devoluciones de entregas como tipo de movimiento propio (hoy se anula la entrega).
+- Costos y valorización del stock.
+- Lotes y vencimientos.
+- Notificaciones por correo del stock mínimo.
