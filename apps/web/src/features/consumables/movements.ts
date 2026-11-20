@@ -18,6 +18,16 @@ export const MOVEMENT_ICONS: Record<MovementKind, string> = {
   reversal: 'i-lucide-ban',
 };
 
+/** Ícono de cada acción de la ficha: el mismo que el del movimiento que registra (P12). */
+export const ACTION_ICONS = {
+  receive: MOVEMENT_ICONS.receipt,
+  deliver: MOVEMENT_ICONS.delivery,
+  return: MOVEMENT_ICONS.return,
+  transfer: MOVEMENT_ICONS.transfer_out,
+  adjust: MOVEMENT_ICONS.adjustment,
+  reverse: MOVEMENT_ICONS.reversal,
+} as const;
+
 /** `+24 pares` / `−3 pares`: con signo (menos tipográfico) y la unidad. */
 export function signedQuantity(delta: string, unit: UnitRef): string {
   const negative = delta.startsWith('-');

@@ -32,7 +32,7 @@ import {
 import ConsumableFormDialog from './ConsumableFormDialog.vue';
 import MovementDialog, { type MovementKindForm } from './MovementDialog.vue';
 import { lowStockLabel } from './lowStock';
-import { MOVEMENT_ICONS, describeMovement } from './movements';
+import { ACTION_ICONS, MOVEMENT_ICONS, describeMovement } from './movements';
 import ReturnDialog from './ReturnDialog.vue';
 import ReverseDialog from './ReverseDialog.vue';
 
@@ -265,21 +265,21 @@ async function goTo(movementId: string): Promise<void> {
       >
         <ReasonButton
           v-if="auth.can('consumables:receive')"
-          icon="i-lucide-package-plus"
+          :icon="ACTION_ICONS.receive"
           :label="t('consumables.actions.receive')"
           :reason="reasonFor('receipt')"
           @click="movementKind = 'receipt'"
         />
         <ReasonButton
           v-if="auth.can('consumables:deliver')"
-          icon="i-lucide-hand-helping"
+          :icon="ACTION_ICONS.deliver"
           :label="t('consumables.actions.deliver')"
           :reason="reasonFor('delivery')"
           @click="movementKind = 'delivery'"
         />
         <ReasonButton
           v-if="auth.can('consumables:transfer')"
-          icon="i-lucide-arrow-right-left"
+          :icon="ACTION_ICONS.transfer"
           color="neutral"
           variant="outline"
           :label="t('consumables.actions.transfer')"
@@ -288,7 +288,7 @@ async function goTo(movementId: string): Promise<void> {
         />
         <ReasonButton
           v-if="auth.can('consumables:adjust')"
-          icon="i-lucide-scale"
+          :icon="ACTION_ICONS.adjust"
           color="neutral"
           variant="outline"
           :label="t('consumables.actions.adjust')"
@@ -577,7 +577,7 @@ async function goTo(movementId: string): Promise<void> {
               <div class="mt-2 flex flex-wrap gap-2">
                 <UButton
                   v-if="m.returnable && !inactive && auth.can('consumables:deliver')"
-                  icon="i-lucide-undo-2"
+                  :icon="ACTION_ICONS.return"
                   :label="t('consumables.actions.return')"
                   :aria-label="`${t('consumables.actions.return')}: ${view.headline}`"
                   color="neutral"
@@ -587,7 +587,7 @@ async function goTo(movementId: string): Promise<void> {
                 />
                 <UButton
                   v-if="m.reversible && auth.can('consumables:reverse')"
-                  icon="i-lucide-ban"
+                  :icon="ACTION_ICONS.reverse"
                   :label="t('consumables.actions.reverse')"
                   :aria-label="`${t('consumables.actions.reverse')} ${view.headline}`"
                   color="neutral"

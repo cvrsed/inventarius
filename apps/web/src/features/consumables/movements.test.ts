@@ -1,7 +1,8 @@
 import type { MovementDto } from '@inventarius/shared';
 import { describe, expect, it } from 'vitest';
 import { messages } from '@/app/i18n/es-CL';
-import { describeMovement, signedQuantity } from './movements';
+import { APP_ICONS } from '@/theme/theme';
+import { ACTION_ICONS, MOVEMENT_ICONS, describeMovement, signedQuantity } from './movements';
 
 const lookup = (key: string): string =>
   key.split('.').reduce<unknown>((o, k) => (o as Record<string, unknown>)[k], messages) as string;
@@ -113,5 +114,40 @@ describe('historial de movimientos', () => {
     );
     expect(v.title).toBe('Anulación');
     expect(v.lines).toEqual([{ label: 'Motivo de la anulación', value: 'Entrega duplicada' }]);
+  });
+});
+
+describe('íconos por tipo de movimiento (P12)', () => {
+  it('ingreso, entrega, devolución, traslado, ajuste y anulación tienen cada uno el suyo', () => {
+    const kinds = [
+      'receipt',
+      'delivery',
+      'return',
+      'transfer_out',
+      'adjustment',
+      'reversal',
+    ] as const;
+    const icons = kinds.map((k) => MOVEMENT_ICONS[k]);
+    expect(new Set(icons).size).toBe(kinds.length);
+    // Las dos filas de un traslado comparten ícono: en el historial son una sola entrada.
+    expect(MOVEMENT_ICONS.transfer_in).toBe(MOVEMENT_ICONS.transfer_out);
+  });
+
+  it('el botón de cada acción usa el mismo ícono que su movimiento en el historial', () => {
+    expect(ACTION_ICONS).toEqual({
+      receive: MOVEMENT_ICONS.receipt,
+      deliver: MOVEMENT_ICONS.delivery,
+      return: MOVEMENT_ICONS.return,
+      transfer: MOVEMENT_ICONS.transfer_out,
+      adjust: MOVEMENT_ICONS.adjustment,
+      reverse: MOVEMENT_ICONS.reversal,
+    });
+  });
+
+  it('todos están empaquetados en APP_ICONS: nada se pide a otro dominio en runtime', () => {
+    const bundled = new Set<string>(APP_ICONS);
+    for (const icon of new Set(Object.values(MOVEMENT_ICONS))) {
+      expect(bundled.has(icon.replace('i-lucide-', 'lucide:')), icon).toBe(true);
+    }
   });
 });

@@ -669,7 +669,7 @@ marca aquí junto con su commit. Cómo probar cada uno: ver «Cómo probar la re
 - [x] P9 «Bajo mínimo» explícito (motivo en la insignia y bodegas nombradas en la ficha)
 - [x] P10 Inicio: «Últimos movimientos» incluye consumibles
 - [x] P11 Auditoría de consumibles con orden fijo de campos y «Bodega»
-- [ ] P12 Íconos distintos por tipo de movimiento
+- [x] P12 Íconos distintos por tipo de movimiento
 - [ ] P13 Selectores de bodega con nombre, ruta y stock, sin truncar
 - [ ] P14 Resaltado visible de «Ir al movimiento»
 - [ ] P15 Validación de obligatorios solo tras interactuar o enviar
@@ -704,6 +704,7 @@ marca aquí junto con su commit. Cómo probar cada uno: ver «Cómo probar la re
 - **P9:** en el listado, un consumible con 27 pares, mínimo global 20 y 1 bodega bajo su mínimo muestra la insignia «1 bodega bajo mínimo» (no «Bajo mínimo» a secas); si es el total el que está bajo, dice «Bajo mínimo global» (con ambos, «Bajo mínimo global · 2 bodegas bajo mínimo»). En la ficha, la alerta nombra cada bodega: «En «Bodega anexo» hay 2 pares y su mínimo es 5 pares.»
 - **P10:** en Inicio, «Últimos movimientos» mezcla por fecha los eventos de activos y los movimientos de consumibles (ordenados por cuándo se registraron), con el formato del historial («Entrega −3 pares · Guantes de nitrilo», «Traslado: origen → destino, 2 pares»); cada uno enlaza a su consumible. Un rol con solo `consumables:read` ve solo los de consumibles; uno sin ese permiso no los ve.
 - **P11:** en Auditoría, entidad «Consumible», los eventos de movimientos listan siempre: (tipo / movimiento anulado), cantidad, unidad, bodega (o bodega de origen y de destino), saldo antes, saldo después, receptor, motivo, nota y fechas, en ese orden; el lugar se rotula «Bodega», no «Ubicación». Un traslado trae el saldo antes y después de las dos bodegas; una devolución, «Devuelto 1 par de 3 pares».
+- **P12:** en la ficha de un consumible con movimientos, los botones Ingresar (caja con +), Entregar (mano), Registrar devolución (flecha de regreso), Trasladar (flechas cruzadas), Ajustar (balanza) y Anular (círculo tachado) tienen cada uno su ícono, y el historial usa el mismo ícono para cada tipo de movimiento. Todos están en `APP_ICONS` (la prueba de íconos empaquetados lo verifica).
 
 ### Backlog post-F3.5
 

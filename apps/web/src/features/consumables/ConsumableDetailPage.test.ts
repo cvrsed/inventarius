@@ -266,4 +266,37 @@ describe('ficha del consumible (RF-73, RF-74)', () => {
       expect(labels).toContain('Devolución');
     });
   });
+
+  describe('íconos (P12)', () => {
+    it('cada botón de acción dibuja un ícono distinto', async () => {
+      const w = await mountPage(ALL, consumable(), [
+        movement({
+          id: '0190d1a0-0000-7000-8000-0000000000f6',
+          kind: 'delivery',
+          delta: '-4',
+          recipient: { userId: null, name: 'Persona Inventada', ref: null },
+          returned: '0',
+          returnable: true,
+        }),
+      ]);
+      // Los íconos van empaquetados como SVG en línea: lo que distingue a uno de otro es su trazado.
+      const drawing = (label: string) =>
+        w
+          .findAll('button')
+          .find((x) => x.text().includes(label))!
+          .find('svg')
+          .html();
+      const labels = [
+        'Ingresar',
+        'Entregar',
+        'Trasladar',
+        'Ajustar',
+        'Registrar devolución',
+        'Anular',
+      ];
+      const drawings = labels.map(drawing);
+      expect(drawings.every((d) => d.includes('<path'))).toBe(true);
+      expect(new Set(drawings).size).toBe(labels.length);
+    });
+  });
 });
