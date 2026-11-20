@@ -120,6 +120,34 @@
       "when": 1795136916483,
       "tag": "0016_asset_serial_per_model",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1795152873222,
+      "tag": "0017_consumables",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1795185684488,
+      "tag": "0018_consumable_returns",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1795186149125,
+      "tag": "0019_consumables_reverse_permission",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1795186706663,
+      "tag": "0020_categories_unique_per_scope",
+      "breakpoints": true
     }
   ]
 }

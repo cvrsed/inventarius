@@ -44,13 +44,19 @@ test.describe('página de inicio (con sesión)', () => {
     await expect(page).toHaveURL(/cambiar-contrasena/);
   });
 
-  test('en móvil la barra inferior tiene 4 destinos y «Más» abre el resto, con axe', async ({
+  test('en móvil la barra inferior tiene 5 destinos y «Más» abre el resto, con axe', async ({
     page,
   }) => {
     test.skip((page.viewportSize()?.width ?? 0) >= 768, 'solo en móvil');
     await page.goto('/');
     const bar = page.locator('.app-bottom-nav');
-    await expect(bar.locator('li')).toHaveText(['Inicio', 'Activos', 'Catálogo', 'Más']);
+    await expect(bar.locator('li')).toHaveText([
+      'Inicio',
+      'Activos',
+      'Consumibles',
+      'Catálogo',
+      'Más',
+    ]);
     await bar.getByRole('button', { name: 'Más' }).click();
     const sheet = page.getByRole('dialog', { name: 'Más' });
     for (const name of ['Usuarios', 'Roles', 'Auditoría']) {

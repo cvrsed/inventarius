@@ -46,4 +46,29 @@ describe('useListQuery', () => {
     await flushPromises();
     expect(router.currentRoute.value.query).toEqual({});
   });
+
+  it('un cambio de filtro con retardo no cancela una navegación a otra página que ya está en curso', async () => {
+    // Al escribir en el buscador el cambio se aplica 300 ms después; si en ese lapso la persona pulsa otro enlace y la nueva
+    // página tarda en cargar, `router.replace` la cancelaba y la URL volvía al listado.
+    const list = await setup('/activos?q=router');
+    const guard = router.beforeEach(async (to) => {
+      if (to.path === '/') await new Promise((r) => setTimeout(r, 40));
+      return true;
+    });
+    const leaving = router.push('/');
+    await new Promise((r) => setTimeout(r, 5)); // la navegación ya empezó y espera a la página nueva
+    void list.update({ q: 'tarde' });
+    await leaving;
+    await flushPromises();
+    guard();
+    expect(router.currentRoute.value.path).toBe('/');
+  });
+
+  it('después de esa navegación los cambios de filtro vuelven a aplicarse', async () => {
+    const list = await setup('/activos?q=router');
+    await router.push('/activos?q=otro');
+    await list.update({ statusId: 'z' });
+    await flushPromises();
+    expect(router.currentRoute.value.query).toEqual({ q: 'otro', statusId: 'z' });
+  });
 });

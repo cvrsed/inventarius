@@ -32,11 +32,33 @@ describe('matriz de permisos semilla', () => {
   });
 
   it('el lector solo consulta', () => {
-    expect(byName('Lector')).toEqual(['asset:read', 'lorawan:read']);
+    expect(byName('Lector')).toEqual(['asset:read', 'lorawan:read', 'consumables:read']);
   });
 
   it('isPermission distingue valores válidos', () => {
     expect(isPermission('asset:read')).toBe(true);
     expect(isPermission('asset:fly')).toBe(false);
+  });
+});
+
+describe('permisos de consumibles (D12)', () => {
+  const holders = (p: (typeof PERMISSIONS)[number]) =>
+    SEED_ROLES.filter((r) => r.permissions.includes(p)).map((r) => r.name);
+
+  it('ajustar es del Administrador y del Operador; anular cualquier movimiento, solo del Administrador (P2)', () => {
+    expect(holders('consumables:adjust')).toEqual(['Administrador', 'Operador']);
+    expect(holders('consumables:reverse')).toEqual(['Administrador']);
+  });
+
+  it('todos consultan; el técnico entrega pero no ingresa ni traslada', () => {
+    expect(holders('consumables:read')).toHaveLength(4);
+    expect(holders('consumables:deliver')).toEqual([
+      'Administrador',
+      'Operador',
+      'Técnico de campo',
+    ]);
+    expect(holders('consumables:receive')).toEqual(['Administrador', 'Operador']);
+    expect(holders('consumables:transfer')).toEqual(['Administrador', 'Operador']);
+    expect(holders('consumables:manage')).toEqual(['Administrador', 'Operador']);
   });
 });

@@ -272,3 +272,127 @@ describe('describeAuditDetail (RF-31)', () => {
     });
   });
 });
+
+describe('consumibles: movimientos sin claves crudas', () => {
+  it('muestra cantidades con coma decimal y el motivo del ajuste traducido', () => {
+    const rows = describeAuditDetail(
+      {
+        location: 'Bodega central',
+        direction: 'subtract',
+        quantity: '2.5',
+        unit: 'litro',
+        reason: 'waste_damage',
+        stockBefore: '1234.5',
+        stockAfter: '1232',
+      },
+      text,
+      { entity: 'consumable' },
+    );
+    const by = Object.fromEntries(rows.map((r) => [r.field, r.value]));
+    expect(by['quantity']).toBe('2,5');
+    expect(by['stockBefore']).toBe('1.234,5');
+    expect(by['direction']).toBe('Resta');
+    expect(by['reason']).toBe('Merma o daño');
+    expect(by['location']).toBe('Bodega central');
+  });
+});
+
+describe('consumibles: anulación con el detalle del movimiento anulado (P3)', () => {
+  it('traduce el motivo original, muestra las fechas y el saldo del origen y del destino', () => {
+    const rows = describeAuditDetail(
+      {
+        originalKind: 'transfer_out',
+        quantity: '3',
+        unit: 'par',
+        fromLocation: 'Bodega central',
+        toLocation: 'Bodega anexo',
+        fromStockBefore: '1234.5',
+        toStockBefore: '3',
+        originalReason: 'loss',
+        originalNote: 'Se cayó la caja',
+        reversalReason: 'Error de bodega',
+        originalActor: 'Olga Operadora',
+        movementDate: '2026-11-18',
+        registeredAt: '2026-11-20T15:30:00.000Z',
+      },
+      text,
+      { entity: 'consumable' },
+    );
+    const by = Object.fromEntries(rows.map((r) => [r.label, r.value]));
+    expect(by['Movimiento anulado']).toBe('Traslado (salida)');
+    expect(by['Saldo del origen antes']).toBe('1.234,5');
+    expect(by['Saldo del destino antes']).toBe('3');
+    expect(by['Motivo del movimiento']).toBe('Pérdida');
+    expect(by['Nota del movimiento']).toBe('Se cayó la caja');
+    expect(by['Motivo de la anulación']).toBe('Error de bodega');
+    expect(by['Registrado por']).toBe('Olga Operadora');
+    expect(by['Fecha del movimiento']).toBe('18-11-2026');
+    expect(by['Registrado el']).toBe('20-11-2026 12:30');
+  });
+});
+
+describe('consumibles: orden fijo de campos y «Bodega» (P11)', () => {
+  const labels = (diff: Record<string, unknown>) =>
+    describeAuditDetail(diff, text, { entity: 'consumable' }).map((r) => r.label);
+
+  it('muestra tipo, cantidad, unidad, bodega, saldos, receptor, motivo, nota y fechas, aunque lleguen desordenados', () => {
+    // Postgres devuelve el jsonb con las claves en otro orden: el orden de lectura lo pone la web.
+    expect(
+      labels({
+        registeredAt: '2026-11-20T15:30:00.000Z',
+        note: 'Cambio de turno',
+        stockAfter: '6',
+        unit: 'par',
+        recipient: 'Persona Inventada',
+        stockBefore: '10',
+        location: 'Bodega central',
+        quantity: '4',
+        receivedOn: '2026-11-18',
+      }),
+    ).toEqual([
+      'Cantidad',
+      'Unidad',
+      'Bodega',
+      'Saldo antes',
+      'Saldo después',
+      'Recibe',
+      'Nota',
+      'Fecha del ingreso',
+      'Registrado el',
+    ]);
+  });
+
+  it('un traslado usa origen y destino con sus saldos, y una anulación pone el tipo primero', () => {
+    expect(
+      labels({
+        toStockAfter: '4',
+        reversalReason: 'Error',
+        fromLocation: 'Bodega central',
+        quantity: '4',
+        toStockBefore: '0',
+        originalKind: 'transfer_out',
+        fromStockAfter: '10',
+        toLocation: 'Bodega anexo',
+        fromStockBefore: '6',
+        unit: 'par',
+      }),
+    ).toEqual([
+      'Movimiento anulado',
+      'Cantidad',
+      'Unidad',
+      'Bodega de origen',
+      'Bodega de destino',
+      'Saldo del origen antes',
+      'Saldo del origen después',
+      'Saldo del destino antes',
+      'Saldo del destino después',
+      'Motivo de la anulación',
+    ]);
+  });
+
+  it('en los eventos de consumibles la ubicación se llama «Bodega»; en el resto, no', () => {
+    expect(labels({ location: 'Bodega central' })).toEqual(['Bodega']);
+    const other = describeAuditDetail({ location: 'Sala 1' }, text, { entity: 'asset' });
+    expect(other[0]!.label).not.toBe('Bodega');
+  });
+});

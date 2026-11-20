@@ -1,4 +1,4 @@
-import { computed, type ComputedRef } from 'vue';
+import { computed, onScopeDispose, type ComputedRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { parseListQuery, serializeListQuery, type ListDefaults } from './listQuery';
 
@@ -11,7 +11,23 @@ export function useListQuery<D extends ListDefaults>(defaults: D) {
   const router = useRouter();
   const query: ComputedRef<D> = computed(() => parseListQuery(route.query, defaults));
 
+  // Mientras hay una navegación a otra ruta en curso (la página nueva puede tardar en cargar) no se reescribe la URL:
+  // un cambio de filtro con retardo (el buscador espera 300 ms) la cancelaría y la persona se quedaría en el listado.
+  let leaving = false;
+  const stopBefore = router.beforeEach((to, from) => {
+    if (to.path !== from.path) leaving = true;
+    return true;
+  });
+  const stopAfter = router.afterEach(() => {
+    leaving = false;
+  });
+  onScopeDispose(() => {
+    stopBefore();
+    stopAfter();
+  });
+
   function replace(next: D): Promise<unknown> {
+    if (leaving) return Promise.resolve();
     return router.replace({ query: serializeListQuery(next, defaults) });
   }
   return {

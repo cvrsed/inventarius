@@ -2,13 +2,14 @@
 
 ## Estado
 
-| Fase           | Estado      | Rama / PR              |
-| -------------- | ----------- | ---------------------- |
-| F0 Fundaciones | En curso    | `phase/f0-fundaciones` |
-| F1 Identidad   | Pendiente   | —                      |
-| F2 Inventario  | En revisión | `phase/f2-inventario`  |
-| F3 LoRaWAN     | En curso    | `phase/f3-lorawan`     |
-| F4 Cierre      | Pendiente   | —                      |
+| Fase             | Estado      | Rama / PR                |
+| ---------------- | ----------- | ------------------------ |
+| F0 Fundaciones   | En curso    | `phase/f0-fundaciones`   |
+| F1 Identidad     | Pendiente   | —                        |
+| F2 Inventario    | En revisión | `phase/f2-inventario`    |
+| F3 LoRaWAN       | En curso    | `phase/f3-lorawan`       |
+| F3.5 Consumibles | En revisión | `phase/f3.5-consumibles` |
+| F4 Cierre        | Pendiente   | —                        |
 
 ## Bitácora
 
@@ -546,3 +547,202 @@ Segunda revisión manual del PR #6 (2026-11-19). Cada punto va en su propio comm
 - El CI de GitHub no se esperó (instrucción del responsable).
 - Una instalación con series repetidas dentro de un mismo modelo hará abortar la migración 0016; el mensaje las lista.
 - TTN: las lecturas para vincular siguen sin probarse contra una aplicación real (Q48).
+
+## F3.5 — Consumibles por cantidad (rama `phase/f3.5-consumibles`, desde `main`)
+
+Alcance: RF-70 a RF-74 y las decisiones D1 a D14 del prompt de arranque. Decisiones provisionales en `docs/open-questions.md`
+(Q56 en adelante) y ADR 0008.
+
+- [x] Migraciones: unidades de medida, consumibles, mínimos por bodega, libro de movimientos (con FK de anulación y de traslado), saldos si aplica, CHECK de no negativo
+- [x] Semilla de unidades y permisos nuevos con mapeo a roles
+- [x] Esquemas Zod compartidos con validación de decimales por unidad
+- [x] Dominio y servicio de consumibles (CRUD, desactivar, borrar solo sin movimientos), TDD
+- [x] Servicio de movimientos: ingreso, entrega, ajuste, traslado, anulación, TDD
+- [x] Bloqueo por (consumible, bodega) y test de concurrencia
+- [x] Test y CLI de cuadratura libro vs saldo
+- [x] Rutas de la API con permisos y auditoría
+- [x] Catálogo de unidades administrable (API y UI)
+- [x] UI: listado de consumibles con stock total, filtro «Bajo mínimo» e inactivos
+- [x] UI: ficha del consumible con stock por bodega, mínimos e historial filtrable
+- [x] UI: ingreso a bodega
+- [x] UI: entrega (usuario o texto libre) con tope de stock visible
+- [x] UI: traslado entre bodegas
+- [x] UI: ajuste con motivo y confirmación antes/después
+- [x] UI: anular con motivo y enlace entre movimientos
+- [x] Aviso de stock mínimo en Inicio
+- [x] Traducciones de auditoría e historial para todos los eventos nuevos
+- [x] Responsive 360 px y axe sin violaciones en las pantallas nuevas
+- [x] e2e del ciclo ingreso → entrega → traslado → ajuste → anulación → aviso de mínimo, verificando que el stock mostrado cuadra con el libro
+- [x] Documentación: requirements (si precisas algo), ficha técnica, ADR 0008 de consumibles, CHANGELOG, open-questions
+- [x] Resumen, decisiones provisionales, cómo probar y sección de revisión manual en docs/progress.md
+
+### Resumen de F3.5 (2026-11-20)
+
+- **Qué hay:** consumibles con categoría (catálogo reutilizado con ámbito), unidad de medida administrable (0 a 3 decimales) y
+  mínimo global y por bodega; ingreso, entrega (usuario o texto libre), traslado atómico, ajuste y anulación sobre un libro de
+  movimientos append-only; saldo por (consumible, bodega) bloqueado `FOR UPDATE` con `CHECK` de no negativo; aviso de mínimo en
+  listado, ficha e Inicio; auditoría traducida; `cli verify-consumables`. Migración 0017, ADR 0008, Q56 a Q69.
+- **Pruebas** (al cerrar la fase, antes de la revisión): shared 55, API 206 unitarias + 295 de integración con Postgres 18 (46 son de consumibles: permisos por rol,
+  decimales, concurrencia real, anulaciones, libro vs saldo, append-only, auditoría), web 398. e2e (Playwright + axe, escritorio y
+  360 px, claro y oscuro) sobre un stack limpio: **137 pasaron y 3 se omiten** (los mismos de antes); 10 son nuevas
+  (`consumables.spec.ts`): el ciclo completo con comprobación de que el stock de la pantalla es la suma del libro, el rechazo de
+  anular un ingreso ya entregado, permisos por rol, y desborde y axe del listado, la ficha y los diálogos.
+- **Cosas que encontraron las pruebas** (corregidas):
+  - El hover del botón primario sólido (primario al 75 %) daba 3,35:1 de contraste con el texto (WCAG AA pide 4,5:1): axe lo
+    midió en el diálogo de anular con el puntero encima. Se oscurece en claro y se aclara en oscuro (`theme.ts`).
+  - La barra inferior móvil pasó de 4 a 5 destinos al agregar «Consumibles»; el e2e lo refleja y no hay desborde a 360 px.
+  - La base de e2e es compartida: un test que esperaba su consumible en el listado «Bajo mínimo» ahora lo acota por nombre.
+- **Decisiones provisionales** (detalle en `docs/open-questions.md`, Q56 a Q69): la bodega es una ubicación de tipo bodega; la
+  unidad lleva nombre en plural para decir «1 par»/«12 pares» (D4 no lo pedía); una unidad en uso no baja de decimales; las
+  categorías de consumibles se escriben con `catalog:write`; «bajo mínimo» es estrictamente menor y los desactivados no
+  avisan; un traslado se anula entero desde cualquiera de sus lados; Q60 (qué otros roles deberían tener `consumables:adjust`)
+  queda **abierta para Rodrigo**.
+- **Fuera de alcance** (en el backlog de abajo): importación CSV de ingresos, exportación de stock, devoluciones como tipo propio,
+  costos y valorización, lotes y vencimientos, correos por stock mínimo.
+
+**Cómo probarlo**
+
+```bash
+pnpm install
+pnpm lint && pnpm typecheck && pnpm test                 # unitarios (shared, api, web)
+pnpm --filter @inventarius/api test:int src/modules/consumables   # integración (Postgres 18 en Docker)
+docker compose -f compose.e2e.yml up -d --build --wait web worker
+docker compose -f compose.e2e.yml run --rm --build e2e pnpm exec playwright test consumables
+docker compose -f compose.e2e.yml down --volumes
+docker compose exec api pnpm --filter @inventarius/api cli verify-consumables   # cuadratura libro vs saldo
+```
+
+**Pendiente / no verificado**
+
+- El CI de GitHub no se esperó (instrucción del responsable): los checks del PR los revisa el responsable.
+- `assets.perf.int` (RNF-06) falló una vez con `pnpm test:coverage` mientras corría el stack de e2e en la misma máquina (p95 de
+  395 ms por la carga); aislado pasa. No toca código de F3.5.
+- No se probó con un lector de pantalla real, solo axe.
+
+### Revisión manual de F3.5
+
+Para que Rodrigo recorra la fase en su entorno de desarrollo.
+
+- **Levantar:** `docker compose up --build` (no hace falta ningún perfil; el perfil `chirpstack` es de F3). Web en
+  http://localhost:5173, API en http://localhost:3000, Postgres en `127.0.0.1:5432`.
+- **Usuarios de prueba** (datos inventados):
+  1. Administrador (tiene `consumables:adjust` y `consumables:reverse`): `docker compose exec api pnpm --filter @inventarius/api cli create-admin --email admin@example.test --name "Admin de prueba"`.
+  2. Operador (ajusta, pero no anula): en Usuarios, «Nuevo usuario» con rol Operador (por ejemplo `operador@example.test`);
+     entra con la contraseña temporal y la cambia.
+  3. Para probar los permisos por separado (P2), en Roles crea uno con solo `consumables:read` y `consumables:adjust`, y otro
+     con solo `consumables:read` y `consumables:reverse`.
+- **Datos de ejemplo** (todo por la interfaz):
+  1. Catálogo → Ubicaciones: «Bodega central» y «Bodega anexo», tipo Bodega.
+  2. Catálogo → Categorías de consumibles: «EPP».
+  3. Catálogo → Unidades de medida: ya están unidad, par, caja, litro, metro y kilogramo.
+  4. Consumibles → Nuevo: «Guantes de nitrilo», EPP, par, mínimo global 20 y mínimo de 5 en la Bodega anexo. Otro: «Alcohol gel»,
+     litro (admite 3 decimales), mínimo 2.
+- **Qué mirar:**
+  - Ingresa 12 pares a la central: el listado dice «12 pares» y «Bajo mínimo» (12 < 20); Inicio muestra el aviso con el enlace al
+    listado filtrado. Con 2,5 litros de alcohol se lee «2,5 L».
+  - Intenta ingresar «2,5» pares: la unidad no admite decimales. Intenta entregar más de lo que hay: el tope se ve en el diálogo.
+  - Entrega 3 pares a «Persona Inventada» con identificador libre y a un usuario del sistema; traslada 4 a la anexo; mira el
+    historial (fechas `dd-mm-aaaa HH:mm`, «Ver más», filtros por bodega, tipo y fecha).
+  - Como Operador: ves «Ajustar» pero no «Anular». Como Administrador: ajusta con motivo «Otro» (la nota es obligatoria) y mira la
+    confirmación con el saldo antes y después.
+  - Anula una entrega sin devoluciones: el historial enlaza «Anulado por…» y «Anula a…». Intenta anular un ingreso cuyo stock ya se entregó: lo
+    rechaza diciendo que dejaría el stock negativo. Anula un traslado: se revierten las dos bodegas.
+  - Desactiva un consumible: ingresar, entregar y trasladar se ven apagados con el motivo al pasar el cursor; ajustar sigue.
+    «Eliminar» está apagado si tiene movimientos.
+  - Auditoría: filtra por entidad «Consumible»; todos los eventos salen en español, con cantidades en coma decimal.
+  - 360 px: listado y ficha en tarjetas, sin scroll horizontal; la barra inferior tiene cinco destinos.
+  - `docker compose exec api pnpm --filter @inventarius/api cli verify-consumables` debe decir que cuadra.
+
+## F3.5 revisión
+
+Revisión manual del PR #7 (decisiones de Rodrigo, mandan sobre las provisionales de Q56 a Q69). Un commit por punto; cada punto se
+marca aquí junto con su commit. Cómo probar cada uno: ver «Cómo probar la revisión» al final de esta sección.
+
+- [x] P1 Devolución como movimiento propio (`return`)
+- [x] P2 Permisos separados: `consumables:adjust` y `consumables:reverse`
+- [x] P3 Auditoría de la anulación con el detalle completo del movimiento anulado
+- [x] P4 Categorías de consumibles con `consumables:manage` y unicidad por (ámbito, nombre)
+- [x] P5 Concurrencia del primer movimiento en una bodega sin fila de saldo
+- [x] P6 Fecha pasada solo en el ingreso (máx. 90 días) y «Registrado el…» en el historial
+- [x] P7 Bodega inactiva con stock: salidas sí, entradas no
+- [x] P8 Traslado como una sola entrada del historial
+- [x] P9 «Bajo mínimo» explícito (motivo en la insignia y bodegas nombradas en la ficha)
+- [x] P10 Inicio: «Últimos movimientos» incluye consumibles
+- [x] P11 Auditoría de consumibles con orden fijo de campos y «Bodega»
+- [x] P12 Íconos distintos por tipo de movimiento
+- [x] P13 Selectores de bodega con nombre, ruta y stock, sin truncar
+- [x] P14 Resaltado visible de «Ir al movimiento»
+- [x] P15 Validación de obligatorios solo tras interactuar o enviar
+- [x] P16 Botones de la ficha a 360 px: grilla de dos columnas del mismo tamaño
+- [x] P17 Subtítulo de Catálogo
+- [x] P18 Activar/desactivar inequívoco en las tablas del catálogo
+
+### Resultado de la revisión (2026-11-20)
+
+- **Pruebas:** shared 57, API 208 unitarias + 330 de integración con Postgres 18 (incluye las migraciones 0018 a 0020 sobre
+  datos existentes, la concurrencia del primer movimiento y los permisos por rol), web 462. e2e (Playwright + axe, escritorio y 360
+  px, claro y oscuro) sobre un stack limpio: **todo en verde** (los 3 omitidos de siempre); casos nuevos de devolución, permisos
+  separados, bodega inactiva, fecha fuera de rango, traslado único con resaltado y botones del mismo tamaño, Inicio y
+  confirmación de desactivar.
+- **Cosas que encontraron las pruebas** (corregidas, cada una con su test):
+  - El motivo de anulación salía en rojo al abrir: Nuxt UI trata cualquier `error` distinto de `undefined` (también `''`) como
+    error; el mismo defecto estaba en el diálogo de acciones de activos [P15].
+  - Con más de 100 bodegas en la base compartida del e2e, una quedaba fuera del selector: ahora se piden todas las páginas [P13].
+  - En móvil, la tarjeta de stock no mostraba «Bodega inactiva» [P7].
+  - Un defecto latente que el e2e `catalog-navigation` destapó en móvil (50 % de fallos): el buscador aplica su cambio 300 ms
+    después y, si en ese lapso se pulsaba «Inicio» y Inicio tardaba en cargar (ahora importa más módulos), `router.replace`
+    cancelaba la navegación y la URL volvía al listado. `useListQuery` ya no reescribe la URL mientras hay una navegación a otra
+    ruta en curso.
+  - El historial devuelve un traslado como una sola fila: el helper de cuadratura del e2e (stock = suma del libro) aplica la
+    cantidad a las dos bodegas.
+- **Decisiones registradas** (`docs/open-questions.md`): Q57, Q60, Q63 y Q65 cerradas o modificadas; Q70 a Q74 nuevas (bodega
+  inactiva, traslado en el historial, Inicio, orden de la auditoría, selector de bodega). Las dudas se resolvieron por lo
+  conservador: anular sigue sin mirar si la bodega está activa; un consumible inactivo no admite devoluciones; la migración 0019 no
+  quita la anulación a quien ya podía anular.
+- **Fuera de alcance:** prueba con lector de pantalla real (ver el backlog).
+
+### Cómo probar la revisión
+
+- **P1:** ingresa 10, entrega 4 a una persona, «Registrar devolución» en la fila de la entrega: 1 → la entrega dice «Devuelto 1 par de
+  4 pares»; intenta devolver 4 (rechaza: solo quedan 3); elige otra bodega activa; intenta anular la entrega (rechaza: primero
+  anula la devolución); anula la devolución y luego la entrega. Como Lector: no aparece la acción.
+- **P2:** como Operador ves «Ajustar» pero no «Anular»; como Administrador ves ambos. En Roles crea uno con solo
+  `consumables:adjust` (ajusta, no anula) y otro con solo `consumables:reverse` (anula, no ajusta).
+- **P3:** anula una entrega con identificador, un ajuste con nota y un traslado; en Auditoría, entidad «Consumible», cada
+  «Anulación de movimiento» lista el tipo, cantidad, unidad, bodega(s), saldos antes y después, receptor, motivo y nota
+  originales, motivo de la anulación, quién registró el movimiento y sus fechas.
+- **P4:** con un rol que solo tenga `consumables:read` y `consumables:manage`, Catálogo → Categorías de consumibles permite
+  crear, editar y desactivar; Categorías (de activos) no ofrece alta. Con `asset:read` y `catalog:write` (sin `manage`) ocurre
+  lo contrario. «Cables» se puede crear una vez como categoría de activos y otra como de consumibles, pero no dos veces en el mismo ámbito.
+- **P5:** no hay nada que probar a mano: `pnpm --filter @inventarius/api test:int` incluye ocho ingresos simultáneos y ocho traslados
+  simultáneos hacia una bodega sin fila de saldo. `lockStock` ya hacía `INSERT ... ON CONFLICT DO NOTHING` antes del
+  `FOR UPDATE`, así que las pruebas pasaron sin cambiar código: quedan como guarda contra una regresión.
+- **P6:** Ingresar con fecha de hace 10 días: el historial muestra solo «10-11-2026» y debajo «Registrado el … por …»; uno de
+  hoy muestra fecha y hora. Fecha de hace más de 90 días o futura: el diálogo y la API la rechazan. Entrega, traslado y ajuste no
+  tienen campo de fecha. En Auditoría, el ingreso muestra «Fecha del ingreso» y «Registrado el».
+- **P7:** con 10 unidades en una bodega, desactívala en Catálogo → Ubicaciones: la confirmación dice «hay stock de 1
+  consumible…». Después, en la ficha del consumible: Entregar, Trasladar (como origen) y Ajustar restando siguen eligiéndola (con
+  el aviso «Bodega inactiva: solo se puede sacar stock»); Ingresar, el destino de un traslado, la devolución y Ajustar sumando la
+  muestran apagada con «Bodega inactiva: solo admite salidas». Una bodega sin stock aparece apagada al sacar («Sin stock»).
+- **P8:** traslada 4 de la central al anexo: el historial muestra una sola entrada «Traslado: Bodega central → Bodega anexo, 4 pares» con un botón «Anular»; al anularla aparece una sola entrada «Anulación de traslado: Bodega anexo → Bodega central, 4 pares». Filtra por la central y por el anexo: el traslado sale en las dos. El filtro de tipo tiene un solo «Traslado». El libro sigue con dos filas por traslado (`cli verify-consumables` cuadra).
+- **P9:** en el listado, un consumible con 27 pares, mínimo global 20 y 1 bodega bajo su mínimo muestra la insignia «1 bodega bajo mínimo» (no «Bajo mínimo» a secas); si es el total el que está bajo, dice «Bajo mínimo global» (con ambos, «Bajo mínimo global · 2 bodegas bajo mínimo»). En la ficha, la alerta nombra cada bodega: «En «Bodega anexo» hay 2 pares y su mínimo es 5 pares.»
+- **P10:** en Inicio, «Últimos movimientos» mezcla por fecha los eventos de activos y los movimientos de consumibles (ordenados por cuándo se registraron), con el formato del historial («Entrega −3 pares · Guantes de nitrilo», «Traslado: origen → destino, 2 pares»); cada uno enlaza a su consumible. Un rol con solo `consumables:read` ve solo los de consumibles; uno sin ese permiso no los ve.
+- **P11:** en Auditoría, entidad «Consumible», los eventos de movimientos listan siempre: (tipo / movimiento anulado), cantidad, unidad, bodega (o bodega de origen y de destino), saldo antes, saldo después, receptor, motivo, nota y fechas, en ese orden; el lugar se rotula «Bodega», no «Ubicación». Un traslado trae el saldo antes y después de las dos bodegas; una devolución, «Devuelto 1 par de 3 pares».
+- **P12:** en la ficha de un consumible con movimientos, los botones Ingresar (caja con +), Entregar (mano), Registrar devolución (flecha de regreso), Trasladar (flechas cruzadas), Ajustar (balanza) y Anular (círculo tachado) tienen cada uno su ícono, y el historial usa el mismo ícono para cada tipo de movimiento. Todos están en `APP_ICONS` (la prueba de íconos empaquetados lo verifica).
+- **P13:** todos los selectores de bodega (ingreso, entrega, traslado origen y destino, ajuste, devolución, mínimos por bodega y filtro del historial) usan el mismo selector: nombre destacado, ruta de los padres en una segunda línea más chica y el stock de ese consumible a la derecha; los nombres largos pasan a otra línea (también el valor elegido en el campo) en escritorio y a 360 px. Abre «Trasladar» y compara origen y destino: tienen el mismo formato.
+- **P14:** anula un movimiento y, en la anulación, pulsa «Ir al movimiento»: el movimiento original se marca con borde y fondo del color primario durante unos 3,5 s y se desvanece (con «reducir movimiento» del sistema, se apaga sin fundido); el foco queda en él. El contraste del texto sobre ese fondo es AA en claro y oscuro (comprobado en `theme.test.ts`).
+- **P15:** abre «Anular» en un movimiento (y cada diálogo de consumibles: ingreso, entrega, traslado, ajuste, devolución, alta y edición): ningún campo aparece en rojo ni hay mensajes hasta que escribes o pulsas el botón; recién al enviar vacío el motivo se marca y dice «Este campo es obligatorio». Causa: Nuxt UI pinta de error cualquier `error` distinto de `undefined`, también `''`; el mismo defecto estaba en el diálogo de acciones de activos (también corregido).
+- **P16:** abre la ficha de un consumible a 360 px con un rol que tenga todos los permisos: los botones (Ingresar, Entregar, Trasladar, Ajustar, Editar, Desactivar, Eliminar) forman una grilla de dos columnas a ancho completo, todos del mismo tamaño y con los primarios (Ingresar y Entregar) primero; desde 640 px vuelven a ser una fila de botones. Un botón apagado conserva el tamaño y explica el motivo.
+- **P17:** en Catálogo, el subtítulo dice «Categorías, fabricantes, modelos, ubicaciones y estados de los activos; categorías de consumibles y unidades de medida.»
+- **P18:** en Catálogo (tabla y tarjetas) y en la ficha de un consumible, activar/desactivar usa los íconos de encendido (apagar para «Desactivar», encender para «Activar») con su tooltip, en lugar del ojo. Desactivar siempre pide confirmación diciendo qué implica (en una bodega con stock, cuántos consumibles); activar no pregunta. Usuarios no tiene este botón: se desactiva desde su formulario, con su propio aviso.
+
+### Backlog post-F3.5
+
+Fuera de alcance de F3.5; **no se implementa**.
+
+- Importación CSV de ingresos.
+- Exportación de stock.
+- Costos y valorización del stock.
+- Lotes y vencimientos.
+- Notificaciones por correo del stock mínimo.
+- Prueba con lector de pantalla real (NVDA, VoiceOver, TalkBack) de los diálogos, los selectores de bodega y el historial de consumibles: hoy solo hay axe y pruebas de roles y nombres accesibles.

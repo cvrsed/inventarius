@@ -65,6 +65,18 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   'lns.link': 'Vinculado a un dispositivo existente en LNS',
   'lns.unlink': 'Desvinculado del LNS (no se borró nada en el LNS)',
   'lns.cancel': 'Registro en LNS cancelado',
+  'measure_unit.create': 'Alta de unidad de medida',
+  'measure_unit.update': 'Edición de unidad de medida',
+  'measure_unit.delete': 'Eliminación de unidad de medida',
+  'consumable.create': 'Alta de consumible',
+  'consumable.update': 'Edición de consumible',
+  'consumable.delete': 'Eliminación de consumible',
+  'consumable.receive': 'Ingreso a bodega',
+  'consumable.deliver': 'Entrega',
+  'consumable.return': 'Devolución',
+  'consumable.adjust': 'Ajuste de stock',
+  'consumable.transfer': 'Traslado entre bodegas',
+  'consumable.reverse': 'Anulación de movimiento',
 };
 
 export const AUDIT_ENTITY_LABELS: Record<AuditEntity, string> = {
@@ -79,6 +91,8 @@ export const AUDIT_ENTITY_LABELS: Record<AuditEntity, string> = {
   status_label: 'Estado',
   lns_profile: 'Perfil LNS',
   lorawan_import: 'Importación LoRaWAN',
+  measure_unit: 'Unidad de medida',
+  consumable: 'Consumible',
 };
 
 /** Texto de una acción; un código desconocido (p. ej. de una versión futura) se muestra tal cual. */
@@ -163,6 +177,35 @@ export const AUDIT_FIELD_LABELS: Record<string, string> = {
   // `hasAppKey`/`appKeyChanged` (y sus pares de NwkKey) se muestran como una línea «AppKey: cargada/actualizada».
   appKey: 'AppKey',
   nwkKey: 'NwkKey',
+  // Consumibles
+  scope: 'Ámbito',
+  plural: 'Nombre en plural',
+  abbreviation: 'Abreviatura',
+  decimals: 'Decimales permitidos',
+  unit: 'Unidad',
+  minStock: 'Stock mínimo',
+  warehouseMinimums: 'Mínimos por bodega',
+  quantity: 'Cantidad',
+  stockBefore: 'Saldo antes',
+  stockAfter: 'Saldo después',
+  fromStockAfter: 'Saldo del origen después',
+  toStockAfter: 'Saldo del destino después',
+  recipient: 'Recibe',
+  recipientRef: 'Identificador del receptor',
+  direction: 'Sentido',
+  fromLocation: 'Bodega de origen',
+  toLocation: 'Bodega de destino',
+  originalKind: 'Movimiento anulado',
+  fromStockBefore: 'Saldo del origen antes',
+  toStockBefore: 'Saldo del destino antes',
+  originalReason: 'Motivo del movimiento',
+  originalNote: 'Nota del movimiento',
+  reversalReason: 'Motivo de la anulación',
+  originalActor: 'Registrado por',
+  movementDate: 'Fecha del movimiento',
+  registeredAt: 'Registrado el',
+  receivedOn: 'Fecha del ingreso',
+  returned: 'Devuelto',
 };
 
 /**
@@ -171,6 +214,8 @@ export const AUDIT_FIELD_LABELS: Record<string, string> = {
  */
 const ENTITY_FIELD_LABELS: Partial<Record<AuditEntity, Record<string, string>>> = {
   lns_profile: { kind: 'Tipo de LNS' },
+  // En consumibles el lugar es siempre una bodega (P11).
+  consumable: { location: 'Bodega' },
 };
 
 export const auditFieldLabel = (field: string, entity?: string): string =>
@@ -213,6 +258,29 @@ export const AUDIT_VALUE_LABELS: {
     as: 'Application Server',
   },
   keys: { appKey: 'AppKey', nwkKey: 'NwkKey' },
+  scope: { asset: 'Activos', consumable: 'Consumibles' },
+  direction: { add: 'Suma', subtract: 'Resta' },
+  reason: {
+    physical_count: 'Conteo físico',
+    waste_damage: 'Merma o daño',
+    loss: 'Pérdida',
+    other: 'Otro',
+  },
+  originalReason: {
+    physical_count: 'Conteo físico',
+    waste_damage: 'Merma o daño',
+    loss: 'Pérdida',
+    other: 'Otro',
+  },
+  originalKind: {
+    receipt: 'Ingreso',
+    delivery: 'Entrega',
+    return: 'Devolución',
+    adjustment: 'Ajuste',
+    transfer_out: 'Traslado (salida)',
+    transfer_in: 'Traslado (entrada)',
+    reversal: 'Anulación',
+  },
 };
 
 /** Valores que dependen de la entidad (ver `ENTITY_FIELD_LABELS`). */

@@ -45,9 +45,14 @@ const summary = (over: Partial<DashboardSummary> = {}): DashboardSummary => ({
   ...over,
 });
 
-async function mountHome(data: DashboardSummary, permissions: Permission[]) {
+async function mountHome(
+  data: DashboardSummary,
+  permissions: Permission[],
+  extra: Record<string, () => unknown> = {},
+) {
   const fetchMock = mockApi({
     'GET /api/v1/dashboard': () => data,
+    ...extra,
     'GET /api/health/ready': () => ({
       status: 'ok',
       checks: { database: 'up', queue: 'up' },
@@ -206,5 +211,83 @@ describe('HomePage (RF-28)', () => {
     const w = mount(HomePage, { global });
     await flushPromises();
     expect(w.get('[role="alert"]').text()).toContain('Reintentar');
+  });
+});
+
+describe('Inicio: últimos movimientos de consumibles (P10)', () => {
+  const par = { id: uuid(40), name: 'par', plural: 'pares', abbreviation: 'par', decimals: 0 };
+  const movement = (over: Record<string, unknown>) => ({
+    id: uuid(50),
+    kind: 'delivery',
+    location: { id: uuid(60), name: 'Bodega central' },
+    delta: '-3',
+    occurredAt: '2026-11-16T17:00:00.000Z',
+    registeredAt: '2026-11-16T17:00:00.000Z',
+    backdated: false,
+    actor: { id: uuid(70), name: 'Olga Operadora' },
+    supplier: null,
+    note: null,
+    reason: null,
+    recipient: { userId: null, name: 'Persona Inventada', ref: null },
+    counterpartLocation: null,
+    reversedBy: null,
+    reverses: null,
+    reversible: true,
+    returned: '0',
+    returnable: true,
+    returnOf: null,
+    ...over,
+  });
+  const recent = () => [
+    {
+      movement: movement({}),
+      consumable: { id: uuid(80), name: 'Guantes de nitrilo', unit: par },
+    },
+    {
+      movement: movement({
+        id: uuid(51),
+        kind: 'transfer_out',
+        delta: '-2',
+        occurredAt: '2026-11-16T12:00:00.000Z',
+        registeredAt: '2026-11-16T12:00:00.000Z',
+        recipient: null,
+        counterpartLocation: { id: uuid(61), name: 'Bodega anexo' },
+      }),
+      consumable: { id: uuid(81), name: 'Casco', unit: par },
+    },
+  ];
+
+  it('mezcla activos y consumibles por fecha, con el mismo formato que el historial', async () => {
+    const { w } = await mountHome(summary(), ['asset:read', 'consumables:read'], {
+      'GET /api/v1/consumable-movements/recent': recent,
+    });
+    const items = w.findAll('#recent-title + ol li').map((li) => li.text());
+    expect(items).toHaveLength(3);
+    // Orden por fecha: la entrega (17:00), el movimiento de activos (15:00) y el traslado (12:00).
+    expect(items[0]).toContain('Entrega −3 pares');
+    expect(items[0]).toContain('Guantes de nitrilo');
+    expect(items[0]).toContain('Bodega central');
+    expect(items[0]).toContain('por Olga Operadora');
+    expect(items[1]).toContain('INV-000003');
+    expect(items[2]).toContain('Traslado: Bodega central → Bodega anexo, 2 pares');
+    expect(items[2]).toContain('Casco');
+    const links = w.findAll('#recent-title + ol a').map((a) => a.attributes('href'));
+    expect(links[0]).toBe(`/consumibles/${uuid(80)}`);
+  });
+
+  it('sin consumables:read no pide ni muestra los de consumibles', async () => {
+    const { w, fetchMock } = await mountHome(summary(), ['asset:read']);
+    expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('consumable-movements'))).toBe(
+      false,
+    );
+    expect(w.findAll('#recent-title + ol li')).toHaveLength(1);
+  });
+
+  it('quien solo lee consumibles ve sus movimientos, sin el resumen de activos', async () => {
+    const { w } = await mountHome(summary(), ['consumables:read'], {
+      'GET /api/v1/consumable-movements/recent': recent,
+    });
+    expect(w.findAll('#recent-title + ol li')).toHaveLength(2);
+    expect(w.text()).not.toContain('INV-000003');
   });
 });

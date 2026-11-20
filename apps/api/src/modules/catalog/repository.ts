@@ -5,6 +5,10 @@ import {
   assetAssignments,
   assets,
   categories,
+  consumableMovements,
+  consumables,
+  consumableStock,
+  consumableWarehouseMinimums,
   locations,
   manufacturers,
   models,
@@ -15,6 +19,8 @@ export interface ListOptions {
   /** Solo ubicaciones: deja solo ese tipo, o saca ese tipo. */
   type?: string | undefined;
   excludeType?: string | undefined;
+  /** Solo categorías: `asset` o `consumable`. */
+  scope?: string | undefined;
   q?: string | undefined;
   active?: boolean | undefined;
   sort?: string | undefined;
@@ -53,6 +59,8 @@ export type LocationRow = {
   type: string;
   address: string | null;
   active: boolean;
+  /** Consumibles con saldo mayor que cero en esta ubicación (solo tiene sentido en una bodega). */
+  stockedConsumables: number;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -91,6 +99,7 @@ export class CatalogRepository {
     const where = and(
       o.q ? ilike(categories.name, `%${escapeLike(o.q)}%`) : undefined,
       o.active === undefined ? undefined : eq(categories.active, o.active),
+      o.scope ? eq(categories.scope, o.scope) : undefined,
     );
     const [rows, totals] = await Promise.all([
       exec
@@ -100,7 +109,12 @@ export class CatalogRepository {
         .orderBy(
           ...orderBy(
             o.sort,
-            { name: categories.name, extension: categories.extension, active: categories.active },
+            {
+              name: categories.name,
+              extension: categories.extension,
+              scope: categories.scope,
+              active: categories.active,
+            },
             'name',
             categories.id,
           ),
@@ -114,7 +128,7 @@ export class CatalogRepository {
   async getCategory(exec: Executor, id: string): Promise<CategoryRow | undefined> {
     return (await exec.select().from(categories).where(eq(categories.id, id)).limit(1))[0];
   }
-  async insertCategory(exec: Executor, v: { name: string; extension: string }) {
+  async insertCategory(exec: Executor, v: { name: string; extension: string; scope: string }) {
     return (await exec.insert(categories).values(v).returning())[0]!;
   }
   async updateCategory(
@@ -134,9 +148,11 @@ export class CatalogRepository {
     await exec.delete(categories).where(eq(categories.id, id));
   }
   async categoryInUse(exec: Executor, id: string): Promise<boolean> {
-    return (
-      pairCount(await exec.select({ n: count() }).from(models).where(eq(models.categoryId, id))) > 0
-    );
+    const [asModels, asConsumables] = await Promise.all([
+      exec.select({ n: count() }).from(models).where(eq(models.categoryId, id)),
+      exec.select({ n: count() }).from(consumables).where(eq(consumables.categoryId, id)),
+    ]);
+    return pairCount(asModels) + pairCount(asConsumables) > 0;
   }
 
   // --- Fabricantes ---
@@ -296,7 +312,9 @@ export class CatalogRepository {
     )`;
   private readonly locationSelect = sql`
     SELECT l.id, l.name, l.parent_id AS "parentId", p.name AS "parentName", tree.path,
-           l.type, l.address, l.active, l.created_at AS "createdAt", l.updated_at AS "updatedAt"
+           l.type, l.address, l.active, l.created_at AS "createdAt", l.updated_at AS "updatedAt",
+           (SELECT COUNT(*)::int FROM consumable_stock s
+             WHERE s.location_id = l.id AND s.quantity > 0) AS "stockedConsumables"
     FROM locations l
     JOIN tree ON tree.id = l.id
     LEFT JOIN locations p ON p.id = l.parent_id`;
@@ -372,19 +390,38 @@ export class CatalogRepository {
   }
   async locationInUse(exec: Executor, id: string): Promise<boolean> {
     const n = async (q: Promise<{ n: number }[]>) => pairCount(await q);
-    const [children, located, based, assigned, assignments] = await Promise.all([
-      n(exec.select({ n: count() }).from(locations).where(eq(locations.parentId, id))),
-      n(exec.select({ n: count() }).from(assets).where(eq(assets.locationId, id))),
-      n(exec.select({ n: count() }).from(assets).where(eq(assets.baseLocationId, id))),
-      n(exec.select({ n: count() }).from(assets).where(eq(assets.assignedLocationId, id))),
-      n(
-        exec
-          .select({ n: count() })
-          .from(assetAssignments)
-          .where(eq(assetAssignments.locationId, id)),
-      ),
-    ]);
-    return children + located + based + assigned + assignments > 0;
+    const [children, located, based, assigned, assignments, stock, minimums, movements] =
+      await Promise.all([
+        n(exec.select({ n: count() }).from(locations).where(eq(locations.parentId, id))),
+        n(exec.select({ n: count() }).from(assets).where(eq(assets.locationId, id))),
+        n(exec.select({ n: count() }).from(assets).where(eq(assets.baseLocationId, id))),
+        n(exec.select({ n: count() }).from(assets).where(eq(assets.assignedLocationId, id))),
+        n(
+          exec
+            .select({ n: count() })
+            .from(assetAssignments)
+            .where(eq(assetAssignments.locationId, id)),
+        ),
+        n(
+          exec
+            .select({ n: count() })
+            .from(consumableStock)
+            .where(eq(consumableStock.locationId, id)),
+        ),
+        n(
+          exec
+            .select({ n: count() })
+            .from(consumableWarehouseMinimums)
+            .where(eq(consumableWarehouseMinimums.locationId, id)),
+        ),
+        n(
+          exec
+            .select({ n: count() })
+            .from(consumableMovements)
+            .where(eq(consumableMovements.locationId, id)),
+        ),
+      ]);
+    return children + located + based + assigned + assignments + stock + minimums + movements > 0;
   }
 
   // --- Estados ---

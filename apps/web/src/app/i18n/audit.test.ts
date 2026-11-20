@@ -97,6 +97,31 @@ describe('traducción de la auditoría (RNF-05)', () => {
       'deviceProfileId',
       'appKey',
       'nwkKey',
+      'scope',
+      'plural',
+      'abbreviation',
+      'decimals',
+      'unit',
+      'minStock',
+      'warehouseMinimums',
+      'quantity',
+      'stockBefore',
+      'stockAfter',
+      'recipient',
+      'recipientRef',
+      'direction',
+      'fromLocation',
+      'toLocation',
+      'originalKind',
+      'originalReason',
+      'originalNote',
+      'reversalReason',
+      'originalActor',
+      'movementDate',
+      'registeredAt',
+      'fromStockBefore',
+      'toStockBefore',
+      'receivedOn',
     ];
     for (const f of fields) expect(auditFieldLabel(f), f).not.toBe(f);
   });
@@ -126,6 +151,11 @@ describe('traducción de la auditoría (RNF-05)', () => {
     expect(auditValueLabel('kind', 'chirpstack', 'lns_profile')).toBe('ChirpStack');
     expect(auditValueLabel('kind', 'ttn', 'lns_profile')).toBe('TTN');
     expect(auditValueLabel('kind', 'ttn')).toBeUndefined();
+  });
+
+  it('el motivo de un ajuste se traduce y el de una anulación (texto libre) se deja tal cual', () => {
+    expect(auditValueLabel('reason', 'physical_count')).toBe('Conteo físico');
+    expect(auditValueLabel('reason', 'Se ingresó dos veces')).toBeUndefined();
   });
 
   it('un valor desconocido no tiene traducción (se mostrará tal cual)', () => {

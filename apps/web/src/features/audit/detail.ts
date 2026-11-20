@@ -1,5 +1,6 @@
 import { auditFieldLabel, auditValueLabel } from '@/app/i18n/audit';
-import { formatDateOnly } from '@/shared/format/format';
+import { formatDecimal, type AuditEntity } from '@inventarius/shared';
+import { formatDateOnly, formatDateTime } from '@/shared/format/format';
 
 /** Una línea del detalle: un valor, o un antes/después cuando el campo cambió. */
 export interface DetailRow {
@@ -77,7 +78,97 @@ export const EVENT_FIELDS: ReadonlySet<string> = new Set([
   'returnedTo',
   'assignedTo',
   'assignedToType',
+  'quantity',
+  'unit',
+  'stockBefore',
+  'stockAfter',
+  'fromStockAfter',
+  'toStockAfter',
+  'recipient',
+  'recipientRef',
+  'direction',
+  'fromLocation',
+  'toLocation',
+  'originalKind',
+  'originalReason',
+  'originalNote',
+  'reversalReason',
+  'originalActor',
+  'movementDate',
+  'registeredAt',
+  'receivedOn',
+  'supplier',
+  'location',
 ]);
+
+/** Campos de cantidad: llegan como texto con punto decimal y se muestran en es-CL (coma decimal). */
+const QUANTITY_FIELDS: ReadonlySet<string> = new Set([
+  'quantity',
+  'minStock',
+  'stockBefore',
+  'stockAfter',
+  'fromStockAfter',
+  'toStockAfter',
+  'fromStockBefore',
+  'toStockBefore',
+]);
+
+/** Fechas sin hora de los eventos de consumibles. */
+const DATE_ONLY_FIELDS: ReadonlySet<string> = new Set(['receivedOn', 'movementDate']);
+
+/**
+ * Orden de lectura de los campos de un evento, por entidad (P11). La base guarda el detalle como jsonb, que no conserva
+ * el orden de las claves, así que lo fija la web. Lo que no figura va al final, en su orden original.
+ */
+const FIELD_ORDER: Partial<Record<AuditEntity, readonly string[]>> = {
+  // tipo, cantidad, unidad, bodega (o origen y destino), saldo antes, saldo después, receptor, motivo, nota y fechas.
+  consumable: [
+    'originalKind',
+    'direction',
+    'quantity',
+    'unit',
+    'location',
+    'fromLocation',
+    'toLocation',
+    'stockBefore',
+    'stockAfter',
+    'fromStockBefore',
+    'fromStockAfter',
+    'toStockBefore',
+    'toStockAfter',
+    'recipient',
+    'recipientRef',
+    'reason',
+    'originalReason',
+    'reversalReason',
+    'supplier',
+    'note',
+    'originalNote',
+    'returned',
+    'originalActor',
+    'receivedOn',
+    'movementDate',
+    'registeredAt',
+  ],
+};
+
+const orderedEntries = (
+  entries: [string, unknown][],
+  entity: string | undefined,
+): [string, unknown][] => {
+  const order = entity
+    ? (FIELD_ORDER as Record<string, readonly string[] | undefined>)[entity]
+    : undefined;
+  if (!order) return entries;
+  const rank = (f: string) => {
+    const i = order.indexOf(f);
+    return i === -1 ? order.length : i;
+  };
+  return entries
+    .map((e, i) => ({ e, i }))
+    .sort((a, b) => rank(a.e[0]) - rank(b.e[0]) || a.i - b.i)
+    .map((x) => x.e);
+};
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -113,6 +204,10 @@ export function formatDetailValue(
   if (typeof value === 'string') {
     const enumerated = auditValueLabel(field, value, entity);
     if (enumerated !== undefined) return enumerated;
+    if (QUANTITY_FIELDS.has(field) && /^\d+(\.\d+)?$/.test(value)) return formatDecimal(value);
+    if (DATE_ONLY_FIELDS.has(field) && /^\d{4}-\d{2}-\d{2}$/.test(value))
+      return formatDateOnly(value);
+    if (field === 'registeredAt' && /^\d{4}-\d{2}-\d{2}T/.test(value)) return formatDateTime(value);
     if (
       (field === 'purchaseDate' || field === 'expectedReturnOn') &&
       /^\d{4}-\d{2}-\d{2}$/.test(value)
@@ -172,7 +267,7 @@ export function describeAuditDetail(
   }
   const single = after ?? before ?? diff;
   return [
-    ...Object.entries(single)
+    ...orderedEntries(Object.entries(single), entity)
       .filter(([f]) => (single !== diff || f !== 'context') && !hide(f))
       .map(([f, v]) => ({ ...row(f), value: fmt(f, v) })),
     ...keys.rows,
