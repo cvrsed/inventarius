@@ -16,6 +16,7 @@ import LorawanFormDialog from './LorawanFormDialog.vue';
 import ReasonButton from '@/shared/ui/ReasonButton.vue';
 import RegisterLnsDialog from './RegisterLnsDialog.vue';
 import RevealKeysDialog from './RevealKeysDialog.vue';
+import { deviceProfileText } from './link';
 import { lnsActions, lnsStatusColor, lnsStatusKey } from './status';
 
 /** Sección LoRaWAN de la ficha (RF-21, RF-41): datos del dispositivo y su registro en el LNS (RF-60 a RF-64). */
@@ -299,8 +300,14 @@ async function doRetry(): Promise<void> {
               {{ registration.remote.joinEui ?? t('lorawan.notSet') }}
             </dd>
             <dt class="text-muted">{{ t('lorawan.linkDialog.rows.deviceProfile') }}</dt>
-            <dd class="m-0 font-mono break-all">
-              {{ registration.remote.deviceProfileId ?? t('lorawan.notSet') }}
+            <dd class="m-0 break-words">
+              {{
+                deviceProfileText(
+                  registration.remote.deviceProfile,
+                  registration.remote.deviceProfileId,
+                  t('lorawan.notSet'),
+                )
+              }}
             </dd>
             <dt class="text-muted">{{ t('lorawan.fields.appKey') }}</dt>
             <dd class="m-0">

@@ -42,14 +42,18 @@ export class FakeLnsAdapter implements LnsAdapter {
   /** Fallo programado de `describeDeviceProfile` (se consume en la próxima llamada). */
   describeOutcome: LnsOperationError | null = null;
 
-  async describeDeviceProfile() {
+  /** Device profiles por id (los que no estén aquí responden `deviceProfile`): sirve para distinguir el local del remoto. */
+  deviceProfilesById = new Map<string, DeviceProfileInfo>();
+
+  async describeDeviceProfile(profile?: { deviceDefaults: { deviceProfileId?: string } }) {
     this.calls.push('describe');
+    const byId = this.deviceProfilesById.get(profile?.deviceDefaults.deviceProfileId ?? '');
     if (this.describeOutcome) {
       const e = this.describeOutcome;
       this.describeOutcome = null;
       throw e;
     }
-    return this.deviceProfile;
+    return byId ?? this.deviceProfile;
   }
 
   /**

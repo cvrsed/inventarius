@@ -242,6 +242,9 @@ test.describe('LoRaWAN (RF-21, RF-50 a RF-66) contra un ChirpStack v4 real', () 
     await expect(dialog.getByTestId('link-differences')).toContainText(
       'AppKey: es distinta en el LNS y en el activo',
     );
+    // El device profile se muestra con nombre, versión y región, no como UUID (R5).
+    await expect(dialog).toContainText('Inventarius pruebas · LoRaWAN 1.0.3 · AU915');
+    await expect(dialog).not.toContainText(chirpstack.deviceProfileId);
     // Nunca se muestra el valor de una clave, ni la del LNS ni la del activo.
     await expect(dialog).not.toContainText(foreign.appKey);
     await expect(dialog).not.toContainText(asset.appKey);
@@ -253,6 +256,7 @@ test.describe('LoRaWAN (RF-21, RF-50 a RF-66) contra un ChirpStack v4 real', () 
     await expect(section.getByText('Vinculado (ya existía en el LNS)')).toBeVisible();
     const remote = section.getByTestId('lorawan-remote');
     await expect(remote).toContainText(foreign.joinEui);
+    await expect(remote).toContainText('Inventarius pruebas · LoRaWAN 1.0.3 · AU915');
     await expect(remote).toContainText('AppKey');
     await expect(remote).toContainText('cargada en el LNS');
     await expect(section.getByText(foreign.joinEui).first()).toBeVisible();

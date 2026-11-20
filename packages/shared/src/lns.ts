@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { linkAdoptFieldSchema, remoteDeviceSchema } from './lorawan.js';
+import { deviceProfileLabelSchema, linkAdoptFieldSchema, remoteDeviceSchema } from './lorawan.js';
 
 /** Proveedores de LNS soportados (sección 5.1). */
 export const LNS_KINDS = ['chirpstack', 'ttn'] as const;
@@ -132,11 +132,7 @@ export const registrationPreviewSchema = z.object({
   /** Destino en el LNS (tenant y aplicación, o aplicación). */
   target: z.record(z.string(), z.string()),
   /** Device profile del LNS al que irá el dispositivo, tal como lo tiene el LNS. */
-  deviceProfile: z.object({
-    name: z.string().nullable(),
-    version: z.string().nullable(),
-    region: z.string().nullable(),
-  }),
+  deviceProfile: deviceProfileLabelSchema,
   /** Si no está vacío, el registro se rechaza hasta que activo y device profile coincidan. */
   mismatches: z.array(profileMismatchSchema),
   /** Campos que el activo no tiene y se tomarán del device profile al registrar (se guardan en el activo). */
@@ -160,6 +156,8 @@ export const linkPreviewSchema = z.object({
   externalId: z.string(),
   remote: remoteDeviceSchema,
   differences: z.array(linkDifferenceSchema),
+  /** El device profile del perfil LNS (con el que se registraría), para comparar con el del remoto en `remote.deviceProfile`. */
+  localDeviceProfile: deviceProfileLabelSchema.nullable(),
   /** Datos del activo que el usuario puede elegir reemplazar con los del LNS (los que el LNS tiene y difieren). */
   adoptable: z.array(linkAdoptFieldSchema),
   /** Los que se adoptan si el usuario no elige: `adoptable` salvo un JoinEUI sin definir (en ceros). */

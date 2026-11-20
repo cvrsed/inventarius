@@ -183,11 +183,21 @@ export function missingForRegistration(d: LorawanReadinessInput): string[] {
   return missing;
 }
 
+/** Un device profile del LNS en lenguaje de persona: nombre, versión y región tal como los tiene el LNS. */
+export const deviceProfileLabelSchema = z.object({
+  name: z.string().nullable(),
+  version: z.string().nullable(),
+  region: z.string().nullable(),
+});
+export type DeviceProfileLabelDto = z.infer<typeof deviceProfileLabelSchema>;
+
 /** Lo que el LNS tiene de un dispositivo, sin claves: solo si están o no (vincular, RF-64). */
 export const remoteDeviceSchema = z.object({
   name: z.string(),
   joinEui: z.string().nullable(),
   deviceProfileId: z.string().nullable(),
+  /** Nombre, versión y región de ese device profile; `null` si el LNS no lo tiene o no se pudo leer. */
+  deviceProfile: deviceProfileLabelSchema.nullable().default(null),
   hasAppKey: z.boolean(),
   hasNwkKey: z.boolean(),
 });

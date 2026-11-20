@@ -20,11 +20,14 @@ const preview = (over: Record<string, unknown> = {}) => ({
     name: 'Medidor ajeno',
     joinEui: 'AABBCCDDEEFF0011',
     deviceProfileId: 'dp-remoto',
+    deviceProfile: { name: 'Perfil EU868', version: 'LoRaWAN 1.0.2', region: 'EU868' },
     hasAppKey: false,
     hasNwkKey: false,
   },
+  localDeviceProfile: { name: 'Perfil AU915', version: 'LoRaWAN 1.0.3', region: 'AU915' },
   differences: [
     { field: 'joinEui', local: '8877665544332211', remote: 'AABBCCDDEEFF0011' },
+    { field: 'deviceProfile', local: 'dp-local', remote: 'dp-remoto' },
     { field: 'appKey', local: 'present', remote: 'absent' },
     { field: 'name', local: 'INV-1 Sensor', remote: 'Medidor ajeno' },
   ],
@@ -74,6 +77,13 @@ describe('LinkDialog: vincular (P6)', () => {
     expect(text).toContain('JoinEUI: el activo tiene 8877665544332211 y el LNS AABBCCDDEEFF0011');
     expect(text).toContain('AppKey: no está en el LNS (en el activo: cargada)');
     expect(text).toContain('Nombre: el activo tiene INV-1 Sensor y el LNS Medidor ajeno');
+    // El device profile con nombre, versión y región; el UUID no aparece.
+    expect(text).toContain('Perfil EU868 · LoRaWAN 1.0.2 · EU868');
+    expect(text).toContain(
+      'el activo tiene Perfil AU915 · LoRaWAN 1.0.3 · AU915 y el LNS Perfil EU868 · LoRaWAN 1.0.2 · EU868',
+    );
+    expect(text).not.toContain('dp-remoto');
+    expect(text).not.toContain('dp-local');
     expect(text).toContain('Datos del LNS que se adoptan en el activo');
     expect(isChecked('JoinEUI')).toBe(true);
     expect(text).toContain('Vincular no modifica el dispositivo en el LNS');

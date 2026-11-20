@@ -1,4 +1,5 @@
 import {
+  type DeviceProfileLabelDto,
   missingForRegistration,
   type LinkAdoptField,
   type LinkPreviewDto,
@@ -20,6 +21,7 @@ import {
   LNS_NAME_MAX,
   LnsOperationError,
   type AdapterRegistry,
+  type LnsProfile,
   type LorawanDeviceSecrets,
   type RemoteDeviceDetails,
 } from './adapter.js';
@@ -58,11 +60,15 @@ export interface RegistrationSettings {
 
 const WORKER = { actorId: null, ip: null, actorLabel: 'worker' } as const;
 
-function toRemoteDto(r: RemoteDeviceDetails): RemoteDeviceDto {
+function toRemoteDto(
+  r: RemoteDeviceDetails,
+  deviceProfile: DeviceProfileLabelDto | null = null,
+): RemoteDeviceDto {
   return {
     name: r.name,
     joinEui: r.joinEui,
     deviceProfileId: r.deviceProfileId,
+    deviceProfile,
     hasAppKey: r.appKey !== null,
     hasNwkKey: r.nwkKey !== null,
   };
@@ -78,7 +84,10 @@ function toDto(r: RegistrationRow): LnsRegistrationDto {
     orphans: r.orphans,
     attempts: r.attempts,
     registeredAt: r.registeredAt?.toISOString() ?? null,
-    remote: r.remoteSnapshot,
+    remote: r.remoteSnapshot && {
+      ...r.remoteSnapshot,
+      deviceProfile: r.remoteSnapshot.deviceProfile ?? null,
+    },
     updatedAt: r.updatedAt.toISOString(),
   };
 }
@@ -367,10 +376,15 @@ export class RegistrationService implements RegistrationReader {
   async linkPreview(assetId: string): Promise<LinkPreviewDto> {
     const view = await this.readForLink(assetId);
     const adoptable = adoptableFrom(view.local, view.remote);
+    const [remoteProfile, localProfile] = await Promise.all([
+      this.deviceProfileLabel(view.lnsProfile, view.remote.deviceProfileId),
+      this.deviceProfileLabel(view.lnsProfile, view.local.deviceProfileId),
+    ]);
     return {
       profile: view.profile,
       externalId: view.remote.externalId,
-      remote: toRemoteDto(view.remote),
+      remote: toRemoteDto(view.remote, remoteProfile),
+      localDeviceProfile: localProfile,
       differences: compareRemoteDevice(view.local, view.remote),
       adoptable: Object.keys(adoptable) as LinkPreviewDto['adoptable'],
       adopts: defaultAdoption(adoptable),
@@ -412,9 +426,31 @@ export class RegistrationService implements RegistrationReader {
     };
     return {
       profile: { id: row.profileId, name: row.profileName, kind: row.profileKind as LnsKind },
+      lnsProfile: profile,
       local,
       remote,
     };
+  }
+
+  /**
+   * Nombre, versión y región de un device profile del LNS, para mostrarlos en vez de su UUID. Es solo presentación: si
+   * el LNS no responde se devuelve `null` y la pantalla cae al identificador, sin impedir leer ni vincular.
+   */
+  private async deviceProfileLabel(
+    profile: LnsProfile,
+    deviceProfileId: string | null,
+  ): Promise<DeviceProfileLabelDto | null> {
+    if (!deviceProfileId) return null;
+    try {
+      const info = await this.adapters[profile.kind].describeDeviceProfile({
+        ...profile,
+        deviceDefaults: { ...profile.deviceDefaults, deviceProfileId },
+      });
+      return { name: info.name, version: info.versionLabel, region: info.regionLabel };
+    } catch (e) {
+      if (!(e instanceof LnsOperationError)) throw e;
+      return null;
+    }
   }
 
   /**
@@ -429,6 +465,10 @@ export class RegistrationService implements RegistrationReader {
     adopt?: readonly LinkAdoptField[],
   ): Promise<LnsRegistrationDto | null> {
     const view = action === 'link' ? await this.readForLink(assetId) : null;
+    // Nombre del device profile para el snapshot de la ficha: se lee antes de abrir la transacción.
+    const remoteProfile = view
+      ? await this.deviceProfileLabel(view.lnsProfile, view.remote.deviceProfileId)
+      : null;
     if (view) {
       const { invalid } = adoptionFrom(view.local, view.remote, adopt);
       if (invalid.length) {
@@ -468,7 +508,7 @@ export class RegistrationService implements RegistrationReader {
         stepsDone: [COMPLETE],
         registeredAt: new Date(),
         lastOperation: 'register',
-        remoteSnapshot: { ...toRemoteDto(remote), readAt: new Date().toISOString() },
+        remoteSnapshot: { ...toRemoteDto(remote, remoteProfile), readAt: new Date().toISOString() },
       });
       await this.audit.record(tx, {
         ...actor,

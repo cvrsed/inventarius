@@ -84,6 +84,7 @@ const reset = () => {
     f.registerOutcomes = [];
     f.deregisterOutcomes = [];
     f.deviceProfile = { ...DEFAULT_DEVICE_PROFILE };
+    f.deviceProfilesById.clear();
     f.describeOutcome = null;
   }
 };
@@ -574,6 +575,7 @@ describe('registro en el LNS (RF-60 a RF-65)', () => {
         name: 'Medidor de otra persona',
         joinEui: 'AABBCCDDEEFF0011',
         deviceProfileId: 'dp-remoto',
+        deviceProfile: { name: 'Perfil AU915', version: 'LoRaWAN 1.0.3', region: 'AU915' },
         hasAppKey: false,
         hasNwkKey: false,
       });
@@ -590,7 +592,7 @@ describe('registro en el LNS (RF-60 a RF-65)', () => {
         remote: 'absent',
       });
       // Solo lectura: nada se escribe en el LNS, y las claves no viajan en la respuesta.
-      expect(chirp.calls).toEqual(['read']);
+      expect(chirp.calls.filter((c) => c !== 'describe')).toEqual(['read']);
       expect(res.body).not.toContain(APP_KEY);
       // Sigue en conflicto: ver no vincula.
       expect((await lorawan(a.id)).registration.status).toBe('conflict');
@@ -606,7 +608,7 @@ describe('registro en el LNS (RF-60 a RF-65)', () => {
         origin: 'linked',
         remote: { joinEui: 'AABBCCDDEEFF0011', hasAppKey: true, hasNwkKey: false },
       });
-      expect(chirp.calls).toEqual(['read']); // nada de register ni deregister
+      expect(chirp.calls.filter((c) => c !== 'describe')).toEqual(['read']); // nada de register ni deregister
       const lw = await lorawan(a.id);
       expect(lw.joinEui).toBe('AABBCCDDEEFF0011');
       expect((await fx.admin.post(`${base}/assets/${a.id}/lorawan/reveal`)).json().appKey).toBe(
@@ -674,6 +676,40 @@ describe('registro en el LNS (RF-60 a RF-65)', () => {
         expect(res.statusCode, res.body).toBe(422);
         expect(res.json().errors.adopt[0]).toContain('nwkKey');
         expect((await lorawan(a.id)).registration.status).toBe('conflict');
+      });
+    });
+
+    describe('el device profile del remoto se muestra con nombre, versión y región, no como UUID (R5)', () => {
+      const REMOTE_PROFILE = {
+        ...DEFAULT_DEVICE_PROFILE,
+        id: 'dp-remoto',
+        name: 'Perfil remoto EU868',
+        versionLabel: 'LoRaWAN 1.0.2',
+        regionLabel: 'EU868',
+      };
+      const label = { name: 'Perfil remoto EU868', version: 'LoRaWAN 1.0.2', region: 'EU868' };
+
+      it('la lectura previa trae el device profile del remoto y el del perfil LNS, y la ficha guarda el del remoto', async () => {
+        const { a } = await conflicted();
+        chirp.deviceProfilesById.set('dp-remoto', REMOTE_PROFILE);
+        const body = (await linkPreview(a.id)).json();
+        expect(body.remote.deviceProfile).toEqual(label);
+        expect(body.localDeviceProfile).toEqual({
+          name: 'Perfil AU915',
+          version: 'LoRaWAN 1.0.3',
+          region: 'AU915',
+        });
+        expect((await resolve(a.id, 'link')).json().remote.deviceProfile).toEqual(label);
+        expect((await lorawan(a.id)).registration.remote.deviceProfile).toEqual(label);
+      });
+
+      it('si el LNS no responde por el device profile, la lectura sigue y queda sin nombre', async () => {
+        const { a } = await conflicted();
+        chirp.describeOutcome = transient('No se pudo conectar con ChirpStack');
+        const res = await linkPreview(a.id);
+        expect(res.statusCode, res.body).toBe(200);
+        expect(res.json().remote.deviceProfile).toBeNull();
+        expect(res.json().remote.deviceProfileId).toBe('dp-remoto');
       });
     });
 

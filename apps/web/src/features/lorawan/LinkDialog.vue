@@ -10,7 +10,7 @@ import { errorMessage } from '@/features/auth/errors';
 import ReasonButton from '@/shared/ui/ReasonButton.vue';
 import { useLorawanMutations } from './api';
 import type { LinkAdoptField } from '@inventarius/shared';
-import { describeDifference, isUnsetJoinEui } from './link';
+import { describeDifference, deviceProfileText, isUnsetJoinEui } from './link';
 
 /**
  * Vincular (RF-64): lee el dispositivo que ya existe en el LNS y muestra en qué difiere del activo antes de confirmar.
@@ -40,7 +40,12 @@ watch(visible, async (open) => {
 
 const preview = computed(() => linkPreview.data.value);
 const differences = computed(() =>
-  (preview.value?.differences ?? []).map((d) => describeDifference(d, t)),
+  (preview.value?.differences ?? []).map((d) =>
+    describeDifference(d, t, {
+      local: preview.value?.localDeviceProfile,
+      remote: preview.value?.remote.deviceProfile,
+    }),
+  ),
 );
 // Lo que se adopta: parte de lo que el servidor propone y el usuario lo ajusta campo por campo.
 const selected = ref<LinkAdoptField[]>([]);
@@ -104,8 +109,14 @@ async function adopt(): Promise<void> {
                 {{ preview.remote.joinEui ?? t('lorawan.notSet') }}
               </dd>
               <dt class="text-muted">{{ t('lorawan.linkDialog.rows.deviceProfile') }}</dt>
-              <dd class="m-0 font-mono break-all">
-                {{ preview.remote.deviceProfileId ?? t('lorawan.notSet') }}
+              <dd class="m-0 break-words">
+                {{
+                  deviceProfileText(
+                    preview.remote.deviceProfile,
+                    preview.remote.deviceProfileId,
+                    t('lorawan.notSet'),
+                  )
+                }}
               </dd>
               <dt class="text-muted">{{ t('lorawan.fields.appKey') }}</dt>
               <dd class="m-0">

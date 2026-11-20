@@ -296,6 +296,7 @@ describe('LorawanSection (RF-21, RF-41, RF-60)', () => {
       name: 'Medidor ajeno',
       joinEui: 'AABBCCDDEEFF0011',
       deviceProfileId: 'dp-remoto',
+      deviceProfile: { name: 'Perfil EU868', version: 'LoRaWAN 1.0.2', region: 'EU868' },
       hasAppKey: false,
       hasNwkKey: false,
       readAt: '2026-11-19T12:00:00.000Z',
@@ -315,7 +316,8 @@ describe('LorawanSection (RF-21, RF-41, RF-60)', () => {
       const block = w.get('[data-testid="lorawan-remote"]');
       expect(block.text()).toContain('Lo que tiene el LNS');
       expect(block.text()).toContain('AABBCCDDEEFF0011');
-      expect(block.text()).toContain('dp-remoto');
+      expect(block.text()).toContain('Perfil EU868 · LoRaWAN 1.0.2 · EU868');
+      expect(block.text()).not.toContain('dp-remoto');
       expect(block.text()).toContain('no está en el LNS');
       expect(w.text()).toContain('Guardada (cifrada)'); // la local, en el bloque de datos del activo
     });

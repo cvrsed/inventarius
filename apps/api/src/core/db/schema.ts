@@ -407,6 +407,8 @@ export const lnsRegistrations = pgTable(
       name: string;
       joinEui: string | null;
       deviceProfileId: string | null;
+      /** Ausente en snapshots anteriores a la revisión 2. */
+      deviceProfile?: { name: string | null; version: string | null; region: string | null } | null;
       hasAppKey: boolean;
       hasNwkKey: boolean;
       readAt: string;
