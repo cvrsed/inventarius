@@ -46,6 +46,8 @@ export const AUDIT_ENUM_FIELDS = {
   /** El motivo de una baja o de una anulación es texto libre; solo los del ajuste se traducen. */
   reason: ADJUSTMENT_REASONS,
   originalKind: MOVEMENT_KINDS,
+  /** Motivo (de ajuste) del movimiento que se anuló. */
+  originalReason: ADJUSTMENT_REASONS,
 } as const;
 export type AuditEnumField = keyof typeof AUDIT_ENUM_FIELDS;
 

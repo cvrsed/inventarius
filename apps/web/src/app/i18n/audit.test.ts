@@ -113,6 +113,14 @@ describe('traducción de la auditoría (RNF-05)', () => {
       'fromLocation',
       'toLocation',
       'originalKind',
+      'originalReason',
+      'originalNote',
+      'reversalReason',
+      'originalActor',
+      'movementDate',
+      'registeredAt',
+      'fromStockBefore',
+      'toStockBefore',
       'receivedOn',
     ];
     for (const f of fields) expect(auditFieldLabel(f), f).not.toBe(f);

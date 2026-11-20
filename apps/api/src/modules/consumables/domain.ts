@@ -34,3 +34,13 @@ export function remainingToReturn(delivered: string, returned: string): string {
     ? '0'
     : subtractQuantities(delivered, returned);
 }
+
+/** Día calendario (`aaaa-mm-dd`) de un instante en la zona horaria dada. */
+export function localDay(at: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(at);
+}

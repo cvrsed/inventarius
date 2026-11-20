@@ -1,6 +1,6 @@
 import { auditFieldLabel, auditValueLabel } from '@/app/i18n/audit';
 import { formatDecimal } from '@inventarius/shared';
-import { formatDateOnly } from '@/shared/format/format';
+import { formatDateOnly, formatDateTime } from '@/shared/format/format';
 
 /** Una línea del detalle: un valor, o un antes/después cuando el campo cambió. */
 export interface DetailRow {
@@ -90,6 +90,12 @@ export const EVENT_FIELDS: ReadonlySet<string> = new Set([
   'fromLocation',
   'toLocation',
   'originalKind',
+  'originalReason',
+  'originalNote',
+  'reversalReason',
+  'originalActor',
+  'movementDate',
+  'registeredAt',
   'receivedOn',
   'supplier',
   'location',
@@ -103,7 +109,12 @@ const QUANTITY_FIELDS: ReadonlySet<string> = new Set([
   'stockAfter',
   'fromStockAfter',
   'toStockAfter',
+  'fromStockBefore',
+  'toStockBefore',
 ]);
+
+/** Fechas sin hora de los eventos de consumibles. */
+const DATE_ONLY_FIELDS: ReadonlySet<string> = new Set(['receivedOn', 'movementDate']);
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -140,7 +151,9 @@ export function formatDetailValue(
     const enumerated = auditValueLabel(field, value, entity);
     if (enumerated !== undefined) return enumerated;
     if (QUANTITY_FIELDS.has(field) && /^\d+(\.\d+)?$/.test(value)) return formatDecimal(value);
-    if (field === 'receivedOn' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return formatDateOnly(value);
+    if (DATE_ONLY_FIELDS.has(field) && /^\d{4}-\d{2}-\d{2}$/.test(value))
+      return formatDateOnly(value);
+    if (field === 'registeredAt' && /^\d{4}-\d{2}-\d{2}T/.test(value)) return formatDateTime(value);
     if (
       (field === 'purchaseDate' || field === 'expectedReturnOn') &&
       /^\d{4}-\d{2}-\d{2}$/.test(value)

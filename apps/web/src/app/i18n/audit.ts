@@ -196,6 +196,14 @@ export const AUDIT_FIELD_LABELS: Record<string, string> = {
   fromLocation: 'Bodega de origen',
   toLocation: 'Bodega de destino',
   originalKind: 'Movimiento anulado',
+  fromStockBefore: 'Saldo del origen antes',
+  toStockBefore: 'Saldo del destino antes',
+  originalReason: 'Motivo del movimiento',
+  originalNote: 'Nota del movimiento',
+  reversalReason: 'Motivo de la anulación',
+  originalActor: 'Registrado por',
+  movementDate: 'Fecha del movimiento',
+  registeredAt: 'Registrado el',
   receivedOn: 'Fecha del ingreso',
 };
 
@@ -250,6 +258,12 @@ export const AUDIT_VALUE_LABELS: {
   scope: { asset: 'Activos', consumable: 'Consumibles' },
   direction: { add: 'Suma', subtract: 'Resta' },
   reason: {
+    physical_count: 'Conteo físico',
+    waste_damage: 'Merma o daño',
+    loss: 'Pérdida',
+    other: 'Otro',
+  },
+  originalReason: {
     physical_count: 'Conteo físico',
     waste_damage: 'Merma o daño',
     loss: 'Pérdida',

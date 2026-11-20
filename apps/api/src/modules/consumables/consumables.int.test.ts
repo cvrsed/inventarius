@@ -1156,7 +1156,78 @@ describe('auditoría (D13)', () => {
     });
     expect(byAction['consumable.reverse'].diff).toMatchObject({
       originalKind: 'adjustment',
-      reason: 'Ajuste duplicado',
+      reversalReason: 'Ajuste duplicado',
+    });
+  });
+
+  it('la anulación deja el detalle completo del movimiento anulado y los saldos antes y después (P3)', async () => {
+    const c = await newConsumable({ name: 'Detalle de anulación' });
+    await receive(c.id, ids.main, '10');
+    const del = await move(tech, c.id, 'deliveries', {
+      locationId: ids.main,
+      quantity: '4',
+      recipientName: 'Persona Inventada',
+      recipientRef: 'ID-123',
+      note: 'Cambio de turno',
+    });
+    const undo = (id: string, reason: string) =>
+      admin.post(`${base}/consumable-movements/${id}/reversals`, { reason });
+    expect((await undo(del.json().movements[0].id, 'Entrega duplicada')).statusCode).toBe(201);
+    const audit = async () =>
+      ((await admin.get(`${base}/audit?entity=consumable&pageSize=100`)).json().data as Json[])
+        .filter((e) => e.entityId === c.id && e.action === 'consumable.reverse')
+        .map((e) => e.diff as Json);
+    const [delivery] = await audit();
+    expect(delivery).toMatchObject({
+      originalKind: 'delivery',
+      quantity: '4',
+      unit: 'par',
+      location: 'Bodega central',
+      stockBefore: '6',
+      stockAfter: '10',
+      recipient: 'Persona Inventada',
+      recipientRef: 'ID-123',
+      originalNote: 'Cambio de turno',
+      reversalReason: 'Entrega duplicada',
+      originalActor: 'Tomás Técnico',
+    });
+    expect(delivery!['movementDate']).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(delivery!['registeredAt']).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    // Postgres guarda el diff como jsonb y no conserva el orden de las claves: el orden de lectura lo fija la web (P11).
+
+    const adj = await move(admin, c.id, 'adjustments', {
+      locationId: ids.main,
+      direction: 'subtract',
+      quantity: '2',
+      reason: 'loss',
+      note: 'Se cayó la caja',
+    });
+    await undo(adj.json().movements[0].id, 'Ajuste errado');
+    const tr = await move(operator, c.id, 'transfers', {
+      fromLocationId: ids.main,
+      toLocationId: ids.annex,
+      quantity: '3',
+    });
+    await undo(tr.json().movements[1].id, 'Traslado al lugar equivocado');
+    const all = await audit();
+    expect(all.find((d) => d['originalKind'] === 'adjustment')).toMatchObject({
+      quantity: '2',
+      stockBefore: '8',
+      stockAfter: '10',
+      originalReason: 'loss',
+      originalNote: 'Se cayó la caja',
+      reversalReason: 'Ajuste errado',
+    });
+    expect(all.find((d) => d['originalKind'] === 'transfer_out')).toMatchObject({
+      quantity: '3',
+      fromLocation: 'Bodega central',
+      toLocation: 'Bodega anexo',
+      fromStockBefore: '7',
+      fromStockAfter: '10',
+      toStockBefore: '3',
+      toStockAfter: '0',
+      reversalReason: 'Traslado al lugar equivocado',
+      originalActor: 'Olga Operadora',
     });
   });
 

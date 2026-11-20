@@ -3,6 +3,7 @@ import { ValidationError } from '../../core/errors.js';
 import {
   assertQuantityFitsUnit,
   isBelowMinimum,
+  localDay,
   remainingToReturn,
   signedDelta,
 } from './domain.js';
@@ -44,5 +45,11 @@ describe('dominio de consumibles', () => {
     expect(remainingToReturn('10', '4')).toBe('6');
     expect(remainingToReturn('2.5', '2.5')).toBe('0');
     expect(remainingToReturn('2.5', '1.25')).toBe('1.25');
+  });
+
+  it('el día de un instante es el de la zona horaria de la instalación, no el de UTC', () => {
+    const late = new Date('2026-11-21T01:30:00Z');
+    expect(localDay(late, 'America/Santiago')).toBe('2026-11-20');
+    expect(localDay(late, 'UTC')).toBe('2026-11-21');
   });
 });

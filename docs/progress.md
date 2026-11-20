@@ -660,7 +660,7 @@ marca aquí junto con su commit. Cómo probar cada uno: ver «Cómo probar la re
 
 - [x] P1 Devolución como movimiento propio (`return`)
 - [x] P2 Permisos separados: `consumables:adjust` y `consumables:reverse`
-- [ ] P3 Auditoría de la anulación con el detalle completo del movimiento anulado
+- [x] P3 Auditoría de la anulación con el detalle completo del movimiento anulado
 - [ ] P4 Categorías de consumibles con `consumables:manage` y unicidad por (ámbito, nombre)
 - [ ] P5 Concurrencia del primer movimiento en una bodega sin fila de saldo
 - [ ] P6 Fecha pasada solo en el ingreso (máx. 90 días) y «Registrado el…» en el historial
@@ -684,6 +684,9 @@ marca aquí junto con su commit. Cómo probar cada uno: ver «Cómo probar la re
   anula la devolución); anula la devolución y luego la entrega. Como Lector: no aparece la acción.
 - **P2:** como Operador ves «Ajustar» pero no «Anular»; como Administrador ves ambos. En Roles crea uno con solo
   `consumables:adjust` (ajusta, no anula) y otro con solo `consumables:reverse` (anula, no ajusta).
+- **P3:** anula una entrega con identificador, un ajuste con nota y un traslado; en Auditoría, entidad «Consumible», cada
+  «Anulación de movimiento» lista el tipo, cantidad, unidad, bodega(s), saldos antes y después, receptor, motivo y nota
+  originales, motivo de la anulación, quién registró el movimiento y sus fechas.
 
 ### Backlog post-F3.5
 

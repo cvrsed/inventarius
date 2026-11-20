@@ -37,6 +37,7 @@ import type { CatalogService } from '../catalog/service.js';
 import {
   assertQuantityFitsUnit,
   isBelowMinimum,
+  localDay,
   remainingToReturn,
   signedDelta,
 } from './domain.js';
@@ -739,6 +740,10 @@ export class ConsumablesService {
           balances.push({ locationId: leg.locationId, quantity: after.get(leg.locationId)! });
         }
         const quantity = normalizeDelta(original.delta).replace('-', '');
+        const author = (await this.people.namesByIds([original.actorId])).get(original.actorId);
+        const recipient = await this.recipientLabel(tx, original);
+        const before = (id: string) => normalizeQuantity(locked.get(id)!);
+        // Orden de lectura de los eventos de consumibles: tipo, cantidad, unidad, bodega(s), saldos, receptor, motivos, fechas.
         await this.audit.record(tx, {
           ...actor,
           action: 'consumable.reverse',
@@ -747,24 +752,30 @@ export class ConsumablesService {
           entityLabel: consumable.name,
           diff: {
             originalKind: sibling ? 'transfer_out' : original.kind,
+            quantity,
+            unit: unit.name,
             ...(sibling
               ? {
                   fromLocation: pathOf(legs[0]!.locationId),
                   toLocation: pathOf(legs[1]!.locationId),
-                }
-              : { location: pathOf(original.locationId) }),
-            quantity,
-            unit: unit.name,
-            reason: input.reason,
-            ...(sibling
-              ? {
+                  fromStockBefore: before(legs[0]!.locationId),
                   fromStockAfter: after.get(legs[0]!.locationId),
+                  toStockBefore: before(legs[1]!.locationId),
                   toStockAfter: after.get(legs[1]!.locationId),
                 }
               : {
-                  stockBefore: normalizeQuantity(locked.get(original.locationId)!),
+                  location: pathOf(original.locationId),
+                  stockBefore: before(original.locationId),
                   stockAfter: after.get(original.locationId),
                 }),
+            recipient: recipient || null,
+            recipientRef: original.recipientRef,
+            originalReason: original.reason,
+            originalNote: original.note,
+            reversalReason: input.reason,
+            originalActor: author ?? null,
+            movementDate: localDay(original.occurredAt, this.timezone),
+            registeredAt: iso(original.createdAt),
           },
         });
         return { ids, balances };
