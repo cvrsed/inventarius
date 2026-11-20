@@ -54,6 +54,8 @@ export const APP_ICONS = [
   'lucide:refresh-cw',
   'lucide:eye',
   'lucide:eye-off',
+  'lucide:power',
+  'lucide:power-off',
   'lucide:chevron-right',
   'lucide:chevron-down',
   'lucide:box',

@@ -297,6 +297,9 @@ export const messages = {
     deleteConfirm: '¿Eliminar «{name}»? Si está en uso no se podrá; en ese caso desactívalo.',
     deactivate: 'Desactivar',
     activate: 'Activar',
+    deactivateTitle: 'Desactivar {section}',
+    deactivateConfirm:
+      '¿Desactivar «{name}»? Dejará de poder elegirse en registros nuevos; lo ya registrado se conserva y puedes volver a activarlo.',
     toggled: 'Estado actualizado',
     deactivateWarehouseTitle: 'Desactivar bodega con stock',
     deactivateWarehouseStock:
@@ -459,6 +462,9 @@ export const messages = {
       created: 'Consumible creado',
       saved: 'Consumible actualizado',
       toggled: 'Estado actualizado',
+      deactivateTitle: 'Desactivar consumible',
+      deactivateConfirm:
+        '¿Desactivar «{name}»? Dejará de admitir ingresos, entregas, devoluciones y traslados (los ajustes y las anulaciones sí) y de avisar bajo mínimo. Su historial se conserva y puedes volver a activarlo.',
       deleted: 'Consumible eliminado',
       deleteTitle: 'Eliminar consumible',
       deleteConfirm: '¿Eliminar «{name}»? Solo se puede mientras no tenga movimientos.',

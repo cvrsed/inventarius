@@ -675,7 +675,7 @@ marca aquí junto con su commit. Cómo probar cada uno: ver «Cómo probar la re
 - [x] P15 Validación de obligatorios solo tras interactuar o enviar
 - [x] P16 Botones de la ficha a 360 px: grilla de dos columnas del mismo tamaño
 - [x] P17 Subtítulo de Catálogo
-- [ ] P18 Activar/desactivar inequívoco en las tablas del catálogo
+- [x] P18 Activar/desactivar inequívoco en las tablas del catálogo
 
 ### Cómo probar la revisión
 
@@ -710,6 +710,7 @@ marca aquí junto con su commit. Cómo probar cada uno: ver «Cómo probar la re
 - **P15:** abre «Anular» en un movimiento (y cada diálogo de consumibles: ingreso, entrega, traslado, ajuste, devolución, alta y edición): ningún campo aparece en rojo ni hay mensajes hasta que escribes o pulsas el botón; recién al enviar vacío el motivo se marca y dice «Este campo es obligatorio». Causa: Nuxt UI pinta de error cualquier `error` distinto de `undefined`, también `''`; el mismo defecto estaba en el diálogo de acciones de activos (también corregido).
 - **P16:** abre la ficha de un consumible a 360 px con un rol que tenga todos los permisos: los botones (Ingresar, Entregar, Trasladar, Ajustar, Editar, Desactivar, Eliminar) forman una grilla de dos columnas a ancho completo, todos del mismo tamaño y con los primarios (Ingresar y Entregar) primero; desde 640 px vuelven a ser una fila de botones. Un botón apagado conserva el tamaño y explica el motivo.
 - **P17:** en Catálogo, el subtítulo dice «Categorías, fabricantes, modelos, ubicaciones y estados de los activos; categorías de consumibles y unidades de medida.»
+- **P18:** en Catálogo (tabla y tarjetas) y en la ficha de un consumible, activar/desactivar usa los íconos de encendido (apagar para «Desactivar», encender para «Activar») con su tooltip, en lugar del ojo. Desactivar siempre pide confirmación diciendo qué implica (en una bodega con stock, cuántos consumibles); activar no pregunta. Usuarios no tiene este botón: se desactiva desde su formulario, con su propio aviso.
 
 ### Backlog post-F3.5
 

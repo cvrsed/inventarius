@@ -126,17 +126,23 @@ const stockedIn = (i: CatalogItem): number =>
     ? ((i as { stockedConsumables?: number }).stockedConsumables ?? 0)
     : 0;
 
-/** Desactivar una bodega con stock avisa antes qué pasa con él (P7): solo seguirá admitiendo salidas. */
+/**
+ * Activar es inocuo y no pregunta. Desactivar siempre confirma (P18), y en una bodega con stock avisa además qué pasa con
+ * él (P7): solo seguirá admitiendo salidas.
+ */
 function onToggle(item: CatalogItem): void {
+  if (!item.active) return void toggleActive(item);
+  const name = displayCells(section.value, item, t).title;
   const n = stockedIn(item);
-  if (!item.active || n === 0) return void toggleActive(item);
   confirm.require({
-    title: t('catalog.deactivateWarehouseTitle'),
-    message: t(
-      'catalog.deactivateWarehouseStock',
-      { name: displayCells(section.value, item, t).title, n },
-      n,
-    ),
+    title:
+      n > 0
+        ? t('catalog.deactivateWarehouseTitle')
+        : t('catalog.deactivateTitle', { section: t(`catalog.singular.${section.value}`) }),
+    message:
+      n > 0
+        ? t('catalog.deactivateWarehouseStock', { name, n }, n)
+        : t('catalog.deactivateConfirm', { name }),
     acceptLabel: t('catalog.deactivate'),
     rejectLabel: t('common.cancel'),
     accept: () => toggleActive(item),
@@ -254,7 +260,7 @@ function onToggle(item: CatalogItem): void {
           />
           <IconAction
             v-if="!isSystem(row.original)"
-            :icon="row.original.active ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+            :icon="row.original.active ? 'i-lucide-power-off' : 'i-lucide-power'"
             :label="row.original.active ? t('catalog.deactivate') : t('catalog.activate')"
             :target="displayCells(section, row.original).title"
             @click="onToggle(row.original)"
@@ -312,7 +318,7 @@ function onToggle(item: CatalogItem): void {
           />
           <UButton
             v-if="!isSystem(item)"
-            :icon="item.active ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+            :icon="item.active ? 'i-lucide-power-off' : 'i-lucide-power'"
             :label="item.active ? t('catalog.deactivate') : t('catalog.activate')"
             :aria-label="`${item.active ? t('catalog.deactivate') : t('catalog.activate')} ${displayCells(section, item).title}`"
             color="neutral"

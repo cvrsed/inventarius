@@ -3,12 +3,14 @@ import type { Permission } from '@inventarius/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { router } from '@/app/router';
 import { useAuthStore } from '@/features/auth/useAuthStore';
+import { useConfirm } from '@/shared/ui/useConfirm';
 import { mockApi, pagePlugins } from '@/test-utils';
 import ConsumableDetailPage from './ConsumableDetailPage.vue';
 import { consumable, ids, movement } from './fixtures';
 
 const mounted: VueWrapper[] = [];
 afterEach(() => {
+  useConfirm().close();
   mounted.splice(0).forEach((w) => w.unmount());
   document.body.innerHTML = '';
   vi.unstubAllGlobals();
@@ -393,6 +395,45 @@ describe('ficha del consumible (RF-73, RF-74)', () => {
       const solid = buttons.map((b) => b.classes().includes('bg-primary'));
       expect(solid.slice(0, 2)).toEqual([true, true]);
       expect(solid.slice(2).some(Boolean)).toBe(false);
+    });
+  });
+
+  describe('activar y desactivar (P18)', () => {
+    it('desactivar pide confirmación con lo que implica y solo entonces manda el PATCH', async () => {
+      const fetchMock = mockApi({
+        [`GET /api/v1/consumables/${ids.consumable}`]: () => consumable(),
+        [`GET /api/v1/consumables/${ids.consumable}/movements`]: () => ({
+          data: [],
+          meta: { page: 1, pageSize: 10, total: 0 },
+        }),
+        [`PATCH /api/v1/consumables/${ids.consumable}`]: () => consumable({ active: false }),
+      });
+      const global = pagePlugins();
+      useAuthStore(global.plugins![0] as never).user = {
+        id: ids.user,
+        email: 'x@y.cl',
+        name: 'X',
+        mustChangePassword: false,
+        roles: [],
+        permissions: ALL,
+      };
+      await router.push(`/consumibles/${ids.consumable}`);
+      await router.isReady();
+      const w = mount(ConsumableDetailPage, { global, attachTo: document.body });
+      mounted.push(w);
+      await flushPromises();
+      await button(w, 'Desactivar')!.trigger('click');
+      await flushPromises();
+      const confirm = useConfirm();
+      expect(confirm.state.open).toBe(true);
+      expect(confirm.state.options?.message).toContain('Guantes de nitrilo');
+      expect(confirm.state.options?.message).toContain(
+        'ingresos, entregas, devoluciones y traslados',
+      );
+      expect(fetchMock.mock.calls.some((c) => c[1]?.method === 'PATCH')).toBe(false);
+      await confirm.state.options!.accept();
+      await flushPromises();
+      expect(fetchMock.mock.calls.some((c) => c[1]?.method === 'PATCH')).toBe(true);
     });
   });
 });

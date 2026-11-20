@@ -11,6 +11,7 @@ import CatalogPage from './CatalogPage.vue';
 const mounted: { unmount: () => void }[] = [];
 afterEach(() => {
   mounted.splice(0).forEach((w) => w.unmount());
+  useConfirm().close();
   vi.unstubAllGlobals();
 });
 
@@ -175,7 +176,7 @@ describe('CatalogPage (RF-10 a RF-14)', () => {
     expect(urls.some((u) => u.includes('active=false') && u.includes('q=acme'))).toBe(true);
   });
 
-  it('desactivar y activar mandan PATCH con la versión', async () => {
+  it('desactivar pide confirmación y manda PATCH con la versión solo si se acepta; activar no pregunta (P18)', async () => {
     const item = status({});
     const { wrapper, fetchMock } = await mountSection(
       'statuses',
@@ -185,11 +186,60 @@ describe('CatalogPage (RF-10 a RF-14)', () => {
         [`PATCH /api/v1/status-labels/${item.id}`]: () => ({ ...item, active: false }),
       },
     );
+    const patches = () => fetchMock.mock.calls.filter((c) => c[1]?.method === 'PATCH');
     await wrapper.get('button[aria-label="Desactivar Disponible"]').trigger('click');
     await flushPromises();
-    const call = fetchMock.mock.calls.find((c) => c[1]?.method === 'PATCH')!;
+    const confirm = useConfirm();
+    expect(confirm.state.open).toBe(true);
+    expect(confirm.state.options?.title).toBe('Desactivar estado');
+    expect(confirm.state.options?.message).toContain('¿Desactivar «Disponible»?');
+    expect(confirm.state.options?.message).toContain('puedes volver a activarlo');
+    expect(patches()).toHaveLength(0);
+    await confirm.state.options!.accept();
+    await flushPromises();
+    const call = patches()[0]!;
     expect(JSON.parse(String(call[1]!.body))).toEqual({ active: false });
     expect((call[1]!.headers as Record<string, string>)['if-match']).toBe(`"${item.updatedAt}"`);
+  });
+
+  it('activar un registro inactivo no pide confirmación', async () => {
+    const item = status({ active: false });
+    const { wrapper, fetchMock } = await mountSection(
+      'statuses',
+      [item],
+      ['asset:read', 'catalog:write'],
+      {
+        [`PATCH /api/v1/status-labels/${item.id}`]: () => ({ ...item, active: true }),
+      },
+    );
+    await wrapper.get('button[aria-label="Activar Disponible"]').trigger('click');
+    await flushPromises();
+    expect(useConfirm().state.open).toBe(false);
+    const call = fetchMock.mock.calls.find((c) => c[1]?.method === 'PATCH')!;
+    expect(JSON.parse(String(call[1]!.body))).toEqual({ active: true });
+  });
+
+  it('el botón de activar/desactivar usa un ícono de encendido, no el ojo que se confunde con «ver» (P18)', async () => {
+    const { wrapper } = await mountSection(
+      'statuses',
+      [
+        status({}),
+        status({ id: '018f0000-0000-7000-8000-000000000009', name: 'Inactivo', active: false }),
+      ],
+      ['asset:read', 'catalog:write'],
+    );
+    const drawing = (label: string) => wrapper.get(`button[aria-label="${label}"] svg`).html();
+    const off = drawing('Desactivar Disponible');
+    const on = drawing('Activar Inactivo');
+    expect(off).not.toBe(on);
+    const eye = [
+      // Trazados del ojo y del ojo tachado de Lucide: ninguno de los dos botones los dibuja.
+      'M2.062 12.348',
+      'm2 2 20 20',
+    ];
+    for (const d of [off, on]) for (const part of eye) expect(d).not.toContain(part);
+    // El tooltip dice lo mismo que el nombre accesible.
+    expect(wrapper.html()).toContain('Desactivar Disponible');
   });
 
   it('desactivar una bodega con stock avisa cuántos consumibles hay y solo sigue si se confirma (P7)', async () => {

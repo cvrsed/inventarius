@@ -106,6 +106,17 @@ const toggleActive = () =>
       }),
     'consumables.form.toggled',
   );
+/** Activar no pregunta; desactivar sí (P18), diciendo qué deja de admitir. */
+function onToggle(): void {
+  if (!consumable.value!.active) return void toggleActive();
+  confirm.require({
+    title: t('consumables.form.deactivateTitle'),
+    message: t('consumables.form.deactivateConfirm', { name: consumable.value!.name }),
+    acceptLabel: t('consumables.actions.deactivate'),
+    rejectLabel: t('common.cancel'),
+    accept: toggleActive,
+  });
+}
 function askDelete(): void {
   confirm.require({
     title: t('consumables.form.deleteTitle'),
@@ -322,7 +333,7 @@ async function goTo(movementId: string): Promise<void> {
           />
           <UButton
             class="w-full justify-center sm:w-auto"
-            :icon="consumable.active ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+            :icon="consumable.active ? 'i-lucide-power-off' : 'i-lucide-power'"
             :label="
               consumable.active
                 ? t('consumables.actions.deactivate')
@@ -330,7 +341,7 @@ async function goTo(movementId: string): Promise<void> {
             "
             color="neutral"
             variant="outline"
-            @click="toggleActive"
+            @click="onToggle"
           />
           <ReasonButton
             block
