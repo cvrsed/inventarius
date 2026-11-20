@@ -1,4 +1,5 @@
 import {
+  missingForRegistration,
   type LinkPreviewDto,
   type LnsKind,
   type LnsRegistrationDto,
@@ -22,7 +23,11 @@ import {
   type RemoteDeviceDetails,
 } from './adapter.js';
 import { adoptionFrom, compareRemoteDevice, type LocalDeviceView } from './link.js';
-import { compareWithDeviceProfile, type ProfileMismatch } from './device-profile.js';
+import {
+  compareWithDeviceProfile,
+  fillFromDeviceProfile,
+  type ProfileMismatch,
+} from './device-profile.js';
 import type { LnsProfilesService } from './profiles-service.js';
 import type { RegistrationRow, RegistrationsRepository } from './registrations-repository.js';
 
@@ -137,8 +142,9 @@ export class RegistrationService implements RegistrationReader {
     const profile = await this.requireProfile(this.db, profileId);
     const data = await this.lorawan.secretsFor(this.db, assetId);
     const full = await this.profiles.get(profileId);
-    const { info, mismatches } = await this.checkAgainstDeviceProfile(profileId, data);
-    const device = outgoingDevice(assetId, asset, data);
+    const checked = await this.checkAgainstDeviceProfile(profileId, data);
+    const { info, mismatches } = checked;
+    const device = outgoingDevice(assetId, asset, checked.data);
     return {
       profile: { id: profileId, name: profile.name, kind: profile.kind },
       deviceName: device.name,
@@ -155,12 +161,15 @@ export class RegistrationService implements RegistrationReader {
       target: full.target,
       deviceProfile: { name: info.name, version: info.versionLabel, region: info.regionLabel },
       mismatches,
+      fromDeviceProfile: checked.filled,
     };
   }
 
   /**
    * Compara versión, clase y región del activo con las del device profile del perfil LNS (en ChirpStack viven en el
    * device profile, no en el dispositivo). Si el LNS no responde no se puede validar y se dice, en vez de registrar a ciegas.
+   * La versión y la región que el activo no tiene se toman del device profile (`filled`); con la versión así completada
+   * se vuelve a exigir lo que RF-60 pide (una NwkKey si resulta ser 1.1).
    */
   private async checkAgainstDeviceProfile(profileId: string, data: LorawanSecrets) {
     const profile = await this.profiles.resolve(this.db, profileId);
@@ -174,19 +183,46 @@ export class RegistrationService implements RegistrationReader {
         `No se pudo validar el activo contra el device profile del LNS: ${e.message}`,
       );
     }
-    return { info, mismatches: compareWithDeviceProfile(data, info) };
+    const { data: completed, filled } = fillFromDeviceProfile(data, info);
+    const missing = missingForRegistration({
+      devEui: completed.devEui,
+      joinEui: completed.joinEui,
+      hasAppKey: Boolean(completed.appKey),
+      hasNwkKey: Boolean(completed.nwkKey),
+      lorawanVersion: completed.lorawanVersion,
+    });
+    if (missing.length) {
+      throw new ValidationError('Faltan datos LoRaWAN para registrar en el LNS', {
+        lorawan: missing.map((f) => `Falta ${f}`),
+      });
+    }
+    return { info, data: completed, filled, mismatches: compareWithDeviceProfile(completed, info) };
   }
 
   /** RF-60/61: deja el activo en `registrando` y encola el job. Un activo solo puede estar en un perfil (RF-65). */
   async request(actor: Actor, assetId: string, profileId: string): Promise<LnsRegistrationDto> {
     await this.requireProfile(this.db, profileId);
     const data = await this.lorawan.secretsFor(this.db, assetId); // valida los datos exigidos (RF-60)
-    const { info, mismatches } = await this.checkAgainstDeviceProfile(profileId, data);
+    const {
+      info,
+      mismatches,
+      data: completed,
+      filled,
+    } = await this.checkAgainstDeviceProfile(profileId, data);
     if (mismatches.length) throw mismatchError(mismatches, info);
     const { registrationId, dto } = await this.db.transaction(async (tx) => {
       const asset = await this.requireAsset(tx, assetId);
       if (asset.deleted) throw new ConflictError('El activo está dado de baja');
       const profile = await this.requireProfile(tx, profileId);
+      // Lo que el activo no tenía se guarda con lo que tomó del device profile: el worker lo lee de ahí.
+      if (filled.length) {
+        await this.lorawan.apply(
+          tx,
+          actor,
+          assetId,
+          Object.fromEntries(filled.map((f) => [f, completed[f]])),
+        );
+      }
       await this.lorawan.secretsFor(tx, assetId); // valida los datos exigidos (RF-60)
       await this.repo.lockByAsset(tx, assetId);
       const existing = await this.repo.getByAsset(tx, assetId);

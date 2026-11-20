@@ -139,6 +139,8 @@ export const registrationPreviewSchema = z.object({
   }),
   /** Si no está vacío, el registro se rechaza hasta que activo y device profile coincidan. */
   mismatches: z.array(profileMismatchSchema),
+  /** Campos que el activo no tiene y se tomarán del device profile al registrar (se guardan en el activo). */
+  fromDeviceProfile: z.array(z.enum(['lorawanVersion', 'region'])),
 });
 export type RegistrationPreviewDto = z.infer<typeof registrationPreviewSchema>;
 

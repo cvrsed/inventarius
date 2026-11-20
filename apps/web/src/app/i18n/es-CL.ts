@@ -584,6 +584,7 @@ export const messages = {
       keysHidden: 'Las claves se envían tal como están guardadas; por seguridad no se muestran.',
       confirm: 'Confirmar y registrar',
       queued: 'Registro en curso',
+      fromDeviceProfile: '{value}, del device profile',
       previewFields: {
         profile: 'Perfil LNS',
         deviceName: 'Nombre del dispositivo',

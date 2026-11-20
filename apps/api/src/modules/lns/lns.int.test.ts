@@ -388,6 +388,91 @@ describe('registro en el LNS (RF-60 a RF-65)', () => {
       ]);
     });
 
+    describe('versión y región que el activo no tiene se toman del device profile', () => {
+      /** Un activo cuyo modelo no trae versión ni región, listo en todo lo demás. */
+      async function bareAsset(extra: Record<string, unknown> = {}) {
+        if (!bareModel) {
+          const category = (await fx.operator.get(`${base}/categories?q=Sensores`)).json().data[0];
+          const maker = (await fx.operator.get(`${base}/manufacturers?q=Acme`)).json().data[0];
+          const res = await fx.operator.post(`${base}/models`, {
+            name: 'Sensor sin defaults',
+            lorawanClass: 'A',
+            manufacturerId: maker.id,
+            categoryId: category.id,
+          });
+          expect(res.statusCode, res.body).toBe(201);
+          bareModel = res.json().id;
+        }
+        seq += 1;
+        const a = await fx.newAsset({
+          modelId: bareModel,
+          lorawan: { devEui: devEui(seq), joinEui: JOIN_EUI, appKey: APP_KEY, ...extra },
+        });
+        return a;
+      }
+      let bareModel = '';
+
+      it('la confirmación lo indica, y al registrar se guardan en el activo y se envían', async () => {
+        reset();
+        const p = await newProfile();
+        const a = await bareAsset();
+        expect((await lorawan(a.id)).lorawanVersion).toBeNull();
+        const preview = (
+          await fx.tech.post(`${base}/assets/${a.id}/lns-registration/preview`, { profileId: p.id })
+        ).json();
+        expect(preview).toMatchObject({
+          lorawanVersion: '1.0.3',
+          region: 'AU915',
+          fromDeviceProfile: ['lorawanVersion', 'region'],
+          mismatches: [],
+        });
+        // La confirmación solo informa: no guarda nada todavía.
+        expect((await lorawan(a.id)).lorawanVersion).toBeNull();
+
+        expect((await register(a.id, p.id)).statusCode).toBe(202);
+        await drain();
+        const after = await lorawan(a.id);
+        expect(after).toMatchObject({ lorawanVersion: '1.0.3', region: 'AU915' });
+        expect(chirp.lastDevice).toMatchObject({ lorawanVersion: '1.0.3', region: 'AU915' });
+        const audit = await env.db.migratorPool.query(
+          "SELECT diff::text AS d FROM audit_log WHERE action = 'lorawan.update' AND entity_id = $1",
+          [a.id],
+        );
+        expect(audit.rows.map((r) => r.d).join()).toContain('1.0.3');
+      });
+
+      it('solo completa lo que falta: lo que el activo tiene se respeta y, si no calza, se rechaza', async () => {
+        reset();
+        const p = await newProfile();
+        const a = await bareAsset({ region: 'EU868' });
+        const res = await register(a.id, p.id);
+        expect(res.statusCode, res.body).toBe(422);
+        expect(Object.keys(res.json().errors)).toEqual(['region']);
+        // Nada se guardó: la versión sigue vacía.
+        expect((await lorawan(a.id)).lorawanVersion).toBeNull();
+        const preview = (
+          await fx.tech.post(`${base}/assets/${a.id}/lns-registration/preview`, { profileId: p.id })
+        ).json();
+        expect(preview.fromDeviceProfile).toEqual(['lorawanVersion']);
+      });
+
+      it('si la versión del device profile (1.1) exige una NwkKey que el activo no tiene, no registra ni guarda nada', async () => {
+        reset();
+        const p = await newProfile();
+        const a = await bareAsset();
+        chirp.deviceProfile = { ...DEFAULT_DEVICE_PROFILE, version: '1.1' };
+        const res = await register(a.id, p.id);
+        expect(res.statusCode, res.body).toBe(422);
+        expect(res.json().errors.lorawan).toContain('Falta nwkKey');
+        expect(env.queue.jobs).toHaveLength(0);
+        expect((await lorawan(a.id)).lorawanVersion).toBeNull();
+        const preview = await fx.tech.post(`${base}/assets/${a.id}/lns-registration/preview`, {
+          profileId: p.id,
+        });
+        expect(preview.statusCode).toBe(422);
+      });
+    });
+
     it('una clase que el device profile no admite también se rechaza', async () => {
       reset();
       const p = await newProfile();

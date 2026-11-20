@@ -26,6 +26,11 @@ export function previewRows(p: RegistrationPreviewDto, t: T): PreviewRow[] {
   const deviceProfile = [p.deviceProfile.name, p.deviceProfile.version, p.deviceProfile.region]
     .filter(Boolean)
     .join(' · ');
+  // Lo que el activo no tenía y se toma del device profile se guarda en el activo al registrar: se dice de dónde sale.
+  const fromProfile = (field: 'lorawanVersion' | 'region', value: string | null) =>
+    value && p.fromDeviceProfile.includes(field)
+      ? t('lorawan.registerDialog.fromDeviceProfile', { value })
+      : (value ?? none);
   return [
     row('profile', `${p.profile.name} · ${t(`lns.kinds.${p.profile.kind}`)}`),
     row('deviceName', p.deviceName),
@@ -36,8 +41,8 @@ export function previewRows(p: RegistrationPreviewDto, t: T): PreviewRow[] {
     ...(p.nwkKey ? [row('nwkKey', p.nwkKey, true)] : []),
     row('deviceProfile', deviceProfile || none),
     row('deviceClass', p.deviceClass ?? none),
-    row('lorawanVersion', p.lorawanVersion ?? none),
-    row('region', p.region ?? none),
+    row('lorawanVersion', fromProfile('lorawanVersion', p.lorawanVersion)),
+    row('region', fromProfile('region', p.region)),
     row('tags', p.tags.map((x) => `${x.key} = ${x.value}`).join(', '), true),
     ...Object.entries(p.target).map(([k, v]) => ({
       key: `target.${k}`,

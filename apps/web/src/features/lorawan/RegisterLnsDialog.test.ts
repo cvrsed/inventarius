@@ -33,6 +33,7 @@ const preview = (over: Record<string, unknown> = {}) => ({
   },
   deviceProfile: { name: 'Perfil AU915', version: 'LoRaWAN 1.0.3', region: 'AU915' },
   mismatches: [],
+  fromDeviceProfile: [],
   ...over,
 });
 

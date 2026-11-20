@@ -54,3 +54,27 @@ export function compareWithDeviceProfile(
   }
   return out;
 }
+
+/** Campos del activo que se pueden completar con los del device profile. */
+export type ProfileFilledField = 'lorawanVersion' | 'region';
+
+/**
+ * Completa la versión LoRaWAN y la región que el activo no tiene (ni por sí mismo ni por su modelo) con las del device
+ * profile, que es lo que el LNS usará de todos modos. Lo que el activo ya tiene no se toca: si no calza, lo detecta
+ * `compareWithDeviceProfile`. Devuelve los datos completados y qué campos se tomaron del perfil.
+ */
+export function fillFromDeviceProfile<
+  T extends { lorawanVersion: LorawanVersion | null; region: LorawanRegion | null },
+>(data: T, info: DeviceProfileInfo): { data: T; filled: ProfileFilledField[] } {
+  const filled: ProfileFilledField[] = [];
+  const out = { ...data };
+  if (!out.lorawanVersion && info.version) {
+    out.lorawanVersion = info.version;
+    filled.push('lorawanVersion');
+  }
+  if (!out.region && info.region) {
+    out.region = info.region;
+    filled.push('region');
+  }
+  return { data: out, filled };
+}
