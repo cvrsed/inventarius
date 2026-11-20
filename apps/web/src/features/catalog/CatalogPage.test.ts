@@ -80,6 +80,7 @@ describe('CatalogPage (RF-10 a RF-14)', () => {
           id: '018f0000-0000-7000-8000-000000000003',
           name: 'Notebooks',
           extension: 'none',
+          scope: 'asset',
           active: true,
           updatedAt: '2026-11-16T12:00:00.000Z',
         },
@@ -237,6 +238,7 @@ describe('CatalogPage (RF-10 a RF-14)', () => {
       id: '018f0000-0000-7000-8000-0000000000b1',
       name: 'Notebooks',
       extension: 'none',
+      scope: 'asset',
       active: true,
       updatedAt: '2026-11-16T12:00:00.000Z',
     };
@@ -334,5 +336,89 @@ describe('CatalogPage (RF-10 a RF-14)', () => {
       .findAll('input, select, textarea')
       .filter((el) => !el.attributes('id') && !el.attributes('name'));
     expect(bare).toHaveLength(0);
+  });
+});
+
+describe('secciones de consumibles (D4, D11)', () => {
+  const unit = {
+    id: '018f0000-0000-7000-8000-0000000000e1',
+    name: 'litro',
+    plural: 'litros',
+    abbreviation: 'L',
+    decimals: 3,
+    active: true,
+    updatedAt: '2026-11-16T12:00:00.000Z',
+    inUse: false,
+  };
+
+  it('lista las unidades con plural, abreviatura y decimales, y quien gestiona consumibles puede editarlas', async () => {
+    const { wrapper } = await mountSection(
+      'units',
+      [unit],
+      ['consumables:read', 'consumables:manage'],
+      {
+        'GET /api/v1/measure-units': () => ({
+          data: [unit],
+          meta: { page: 1, pageSize: 25, total: 1 },
+        }),
+      },
+    );
+    expect(wrapper.text()).toContain('litros');
+    expect(wrapper.text()).toContain('Nueva unidad de medida');
+    expect(wrapper.find('button[aria-label="Editar litro"]').exists()).toBe(true);
+  });
+
+  it('un lector de consumibles ve las unidades sin botones de edición', async () => {
+    const { wrapper } = await mountSection('units', [unit], ['consumables:read'], {
+      'GET /api/v1/measure-units': () => ({
+        data: [unit],
+        meta: { page: 1, pageSize: 25, total: 1 },
+      }),
+    });
+    expect(wrapper.text()).toContain('litros');
+    expect(wrapper.text()).not.toContain('Nueva unidad de medida');
+  });
+
+  it('las secciones de activos no se ofrecen a quien solo ve consumibles', async () => {
+    const { wrapper } = await mountSection(
+      'consumableCategories',
+      [
+        {
+          id: '018f0000-0000-7000-8000-0000000000e2',
+          name: 'EPP',
+          extension: 'none',
+          scope: 'consumable',
+          active: true,
+          updatedAt: '2026-11-16T12:00:00.000Z',
+        },
+      ],
+      ['consumables:read'],
+      {
+        'GET /api/v1/categories': () => ({
+          data: [
+            {
+              id: '018f0000-0000-7000-8000-0000000000e2',
+              name: 'EPP',
+              extension: 'none',
+              scope: 'consumable',
+              active: true,
+              updatedAt: '2026-11-16T12:00:00.000Z',
+            },
+          ],
+          meta: { page: 1, pageSize: 25, total: 1 },
+        }),
+      },
+    );
+    const links = wrapper.findAll('nav a').map((a) => a.text());
+    expect(links).toEqual(['Categorías de consumibles', 'Unidades de medida']);
+    expect(wrapper.text()).toContain('EPP');
+  });
+
+  it('pide solo las categorías de su ámbito', async () => {
+    const { fetchMock } = await mountSection('categories', [], ['asset:read']);
+    const urls = fetchMock.mock.calls.map((c: unknown[]) => String(c[0]));
+    expect(urls.some((u: string) => u.includes('/categories?') && u.includes('scope=asset'))).toBe(
+      true,
+    );
   });
 });

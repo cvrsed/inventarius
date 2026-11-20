@@ -18,7 +18,7 @@ import PagedFooter from '@/shared/ui/PagedFooter.vue';
 import { useConfirm } from '@/shared/ui/useConfirm';
 import { useCatalogList, useCatalogMutations, type CatalogItem } from './api';
 import CatalogFormDialog from './CatalogFormDialog.vue';
-import { SECTIONS, type Section } from './entities';
+import { SECTIONS, SECTION_READ, SECTION_WRITE, type Section } from './entities';
 import { columnsOf, displayCells } from './columns';
 
 const { t } = useI18n();
@@ -27,18 +27,21 @@ const toast = useToast();
 const confirm = useConfirm();
 const auth = useAuthStore();
 
+/** Solo las secciones que el usuario puede ver: quien solo gestiona consumibles no ve las de activos. */
+const visibleSections = computed(() => SECTIONS.filter((s) => auth.can(SECTION_READ[s])));
 const section = computed<Section>(() => {
   const s = String(route.params['section'] ?? '');
-  return (SECTIONS as readonly string[]).includes(s) ? (s as Section) : 'categories';
+  const wanted = (SECTIONS as readonly string[]).includes(s) ? (s as Section) : 'categories';
+  return visibleSections.value.includes(wanted) ? wanted : (visibleSections.value[0] ?? wanted);
 });
 const router = useRouter();
 /** En móvil las secciones son un select; en escritorio, pestañas. */
 const sectionItems = computed(() =>
-  SECTIONS.map((s) => ({ label: t(`catalog.sections.${s}`), value: s })),
+  visibleSections.value.map((s) => ({ label: t(`catalog.sections.${s}`), value: s })),
 );
 const goToSection = (value: string | number) =>
   router.push({ name: 'catalog', params: { section: String(value) } });
-const canWrite = computed(() => auth.can('catalog:write'));
+const canWrite = computed(() => auth.can(SECTION_WRITE[section.value]));
 
 const { query, update, setPage, reset } = useListQuery({
   page: 1,
@@ -143,7 +146,7 @@ const toggleActive = (item: CatalogItem) =>
 
     <nav :aria-label="t('catalog.tabsLabel')" class="hidden md:block">
       <ul class="m-0 flex list-none gap-1 p-0">
-        <li v-for="s in SECTIONS" :key="s">
+        <li v-for="s in visibleSections" :key="s">
           <RouterLink
             v-slot="{ href, navigate }"
             custom

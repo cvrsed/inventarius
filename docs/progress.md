@@ -561,7 +561,7 @@ Alcance: RF-70 a RF-74 y las decisiones D1 a D14 del prompt de arranque. Decisio
 - [x] Bloqueo por (consumible, bodega) y test de concurrencia
 - [x] Test y CLI de cuadratura libro vs saldo
 - [x] Rutas de la API con permisos y auditoría
-- [ ] Catálogo de unidades administrable (API y UI)
+- [x] Catálogo de unidades administrable (API y UI)
 - [ ] UI: listado de consumibles con stock total, filtro «Bajo mínimo» e inactivos
 - [ ] UI: ficha del consumible con stock por bodega, mínimos e historial filtrable
 - [ ] UI: ingreso a bodega

@@ -4,12 +4,14 @@ import {
   categorySchema,
   locationSchema,
   manufacturerSchema,
+  measureUnitSchema,
   pageOf,
   statusLabelSchema,
   type AssetModelDto,
   type CategoryDto,
   type LocationDto,
   type ManufacturerDto,
+  type MeasureUnitDto,
   type StatusLabelDto,
 } from '@inventarius/shared';
 import { computed, type Ref } from 'vue';
@@ -19,7 +21,7 @@ import type { RemoteOption } from '@/shared/ui/RemoteSelect.vue';
 import type { Section } from './entities';
 
 export type CatalogItem =
-  CategoryDto | ManufacturerDto | AssetModelDto | LocationDto | StatusLabelDto;
+  CategoryDto | ManufacturerDto | AssetModelDto | LocationDto | StatusLabelDto | MeasureUnitDto;
 
 const PATHS: Record<Section, string> = {
   categories: 'categories',
@@ -27,6 +29,14 @@ const PATHS: Record<Section, string> = {
   models: 'models',
   locations: 'locations',
   statuses: 'status-labels',
+  consumableCategories: 'categories',
+  units: 'measure-units',
+};
+
+/** Las categorías de activos y las de consumibles comparten tabla: cada sección pide solo las suyas. */
+const SCOPES: Partial<Record<Section, string>> = {
+  categories: 'asset',
+  consumableCategories: 'consumable',
 };
 
 const SCHEMAS: Record<Section, z.ZodType<CatalogItem>> = {
@@ -35,6 +45,8 @@ const SCHEMAS: Record<Section, z.ZodType<CatalogItem>> = {
   models: assetModelSchema,
   locations: locationSchema,
   statuses: statusLabelSchema,
+  consumableCategories: categorySchema,
+  units: measureUnitSchema,
 };
 
 export interface CatalogQuery {
@@ -59,7 +71,7 @@ export function useCatalogList(section: Ref<Section>, query: Ref<CatalogQuery>) 
       const { page, pageSize, q, active } = query.value;
       const path = PATHS[section.value];
       return api(
-        `/api/v1/${path}?${qs({ page, pageSize, q, active, withUsage: 'true' })}`,
+        `/api/v1/${path}?${qs({ page, pageSize, q, active, withUsage: 'true', scope: SCOPES[section.value] })}`,
         pageOf(SCHEMAS[section.value]),
         { signal },
       );
@@ -91,6 +103,10 @@ function optionOf(section: Section, item: CatalogItem): RemoteOption {
     }
     case 'categories':
       return { id: item.id, name: item.name, extension: (item as CategoryDto).extension };
+    case 'units': {
+      const u = item as MeasureUnitDto;
+      return { id: u.id, name: u.name, description: u.abbreviation, decimals: u.decimals };
+    }
     case 'statuses':
       return { id: item.id, name: item.name, isSystem: (item as StatusLabelDto).isSystem };
     default:
@@ -108,7 +124,7 @@ export async function fetchOptions(
   opts: { all?: boolean; extra?: Record<string, string> } = {},
 ): Promise<RemoteOption[]> {
   const res = await api(
-    `/api/v1/${PATHS[section]}?${qs({ pageSize: 30, q, sort: 'name', ...(opts.all ? {} : { active: 'true' }), ...opts.extra })}`,
+    `/api/v1/${PATHS[section]}?${qs({ pageSize: 30, q, sort: 'name', ...(opts.all ? {} : { active: 'true' }), scope: SCOPES[section], ...opts.extra })}`,
     pageOf(SCHEMAS[section]),
   );
   return res.data.map((i) => optionOf(section, i));
@@ -126,7 +142,10 @@ export function useCatalogMutations(section: Ref<Section>) {
   return {
     create: useMutation({
       mutationFn: (body: Record<string, unknown>) =>
-        api(base(), SCHEMAS[section.value], { method: 'POST', body }),
+        api(base(), SCHEMAS[section.value], {
+          method: 'POST',
+          body: section.value === 'consumableCategories' ? { ...body, scope: 'consumable' } : body,
+        }),
       onSuccess: refresh,
     }),
     update: useMutation({

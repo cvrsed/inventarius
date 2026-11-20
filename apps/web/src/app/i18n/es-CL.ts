@@ -160,6 +160,8 @@ export const messages = {
       models: 'Modelos',
       locations: 'Ubicaciones',
       statuses: 'Estados',
+      consumableCategories: 'Categorías de consumibles',
+      units: 'Unidades de medida',
     },
     singular: {
       categories: 'categoría',
@@ -167,6 +169,8 @@ export const messages = {
       models: 'modelo',
       locations: 'ubicación',
       statuses: 'estado',
+      consumableCategories: 'categoría de consumibles',
+      units: 'unidad de medida',
     },
     new: {
       categories: 'Nueva categoría',
@@ -174,6 +178,8 @@ export const messages = {
       models: 'Nuevo modelo',
       locations: 'Nueva ubicación',
       statuses: 'Nuevo estado',
+      consumableCategories: 'Nueva categoría de consumibles',
+      units: 'Nueva unidad de medida',
     },
     edit: {
       categories: 'Editar categoría',
@@ -181,6 +187,8 @@ export const messages = {
       models: 'Editar modelo',
       locations: 'Editar ubicación',
       statuses: 'Editar estado',
+      consumableCategories: 'Editar categoría de consumibles',
+      units: 'Editar unidad de medida',
     },
     empty: {
       categories: 'Aún no hay categorías',
@@ -188,6 +196,8 @@ export const messages = {
       models: 'Aún no hay modelos',
       locations: 'Aún no hay ubicaciones',
       statuses: 'Aún no hay estados',
+      consumableCategories: 'Aún no hay categorías de consumibles',
+      units: 'Aún no hay unidades de medida',
     },
     columns: {
       name: 'Nombre',
@@ -200,6 +210,9 @@ export const messages = {
       locationType: 'Tipo',
       kind: 'Tipo',
       state: 'Estado',
+      plural: 'Plural',
+      abbreviation: 'Abreviatura',
+      decimals: 'Decimales',
     },
     fields: {
       name: 'Nombre',
@@ -215,6 +228,9 @@ export const messages = {
       lorawanRegion: 'Región / plan de frecuencias',
       lorawanVersion: 'Versión de LoRaWAN',
       lorawanRegionalParameters: 'Versión de parámetros regionales',
+      plural: 'Nombre en plural',
+      abbreviation: 'Abreviatura',
+      decimals: 'Decimales permitidos',
       active: 'Activo',
     },
     placeholders: {
@@ -223,7 +239,20 @@ export const messages = {
       lorawanVersion: 'Seleccione versión',
       lorawanRegionalParameters: 'Seleccione versión',
     },
-    help: { modelNumber: 'Ej.: SDM530-LR-AU915' },
+    help: {
+      modelNumber: 'Ej.: SDM530-LR-AU915',
+      unitName: 'En singular. Ej.: par, litro.',
+      unitPlural: 'Se usa con cantidades distintas de 1. Ej.: pares, litros.',
+      unitAbbreviation: 'Se usa en las cantidades con decimales. Ej.: L, kg.',
+      unitDecimals:
+        'Cuántos decimales admite una cantidad en esta unidad. Una vez en uso solo se pueden aumentar.',
+    },
+    decimalsOptions: {
+      '0': '0 (solo enteros)',
+      '1': '1 decimal',
+      '2': '2 decimales',
+      '3': '3 decimales',
+    },
     parentPlaceholder: 'Sin ubicación superior',
     selectPlaceholder: 'Elige una opción',
     activeHint: 'Un registro inactivo no se puede elegir en formularios nuevos.',
@@ -237,6 +266,10 @@ export const messages = {
         'Lugares donde pueden estar los activos: bodegas, sitios de clientes y oficinas, en jerarquía.',
       statuses:
         'Situación en que se encuentra un activo; solo los estados asignables permiten asignar el activo.',
+      consumableCategories:
+        'Agrupa los consumibles (EPP, insumos). Son distintas de las categorías de activos.',
+      units:
+        'Cómo se cuenta cada consumible y cuántos decimales admite: un par no se parte, un litro sí.',
     },
     extensions: { none: 'Ninguna', lorawan: 'LoRaWAN' },
     locationTypes: {

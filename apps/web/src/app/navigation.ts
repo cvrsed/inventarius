@@ -35,7 +35,7 @@ export const navigationItems: readonly NavigationItem[] = [
     path: '/catalogo/categories',
     labelKey: 'nav.catalog',
     icon: 'i-lucide-library',
-    permissions: ['asset:read'],
+    permissions: ['asset:read', 'consumables:read'],
   },
   {
     routeName: 'users',
