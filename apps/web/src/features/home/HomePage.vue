@@ -13,6 +13,7 @@ import { formatDateOnly, formatDateTime } from '@/shared/format/format';
 import { useDashboard } from './api';
 import HomeBars, { type BarItem } from './HomeBars.vue';
 import HomeTile from './HomeTile.vue';
+import LowStockNotice from '@/features/consumables/LowStockNotice.vue';
 import { statusBarClass } from '@/features/assets/status';
 import { hasNoAssets, isFieldTech, links } from './summary';
 
@@ -56,6 +57,8 @@ const warehouseBars = computed<BarItem[]>(() =>
 <template>
   <div class="flex flex-col gap-6">
     <h1 class="m-0 text-2xl font-semibold text-highlighted">{{ t('home.title') }}</h1>
+
+    <LowStockNotice />
 
     <template v-if="canRead">
       <div

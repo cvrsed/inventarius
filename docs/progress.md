@@ -562,15 +562,15 @@ Alcance: RF-70 a RF-74 y las decisiones D1 a D14 del prompt de arranque. Decisio
 - [x] Test y CLI de cuadratura libro vs saldo
 - [x] Rutas de la API con permisos y auditoría
 - [x] Catálogo de unidades administrable (API y UI)
-- [ ] UI: listado de consumibles con stock total, filtro «Bajo mínimo» e inactivos
-- [ ] UI: ficha del consumible con stock por bodega, mínimos e historial filtrable
-- [ ] UI: ingreso a bodega
-- [ ] UI: entrega (usuario o texto libre) con tope de stock visible
-- [ ] UI: traslado entre bodegas
-- [ ] UI: ajuste con motivo y confirmación antes/después
-- [ ] UI: anular con motivo y enlace entre movimientos
-- [ ] Aviso de stock mínimo en Inicio
-- [ ] Traducciones de auditoría e historial para todos los eventos nuevos
+- [x] UI: listado de consumibles con stock total, filtro «Bajo mínimo» e inactivos
+- [x] UI: ficha del consumible con stock por bodega, mínimos e historial filtrable
+- [x] UI: ingreso a bodega
+- [x] UI: entrega (usuario o texto libre) con tope de stock visible
+- [x] UI: traslado entre bodegas
+- [x] UI: ajuste con motivo y confirmación antes/después
+- [x] UI: anular con motivo y enlace entre movimientos
+- [x] Aviso de stock mínimo en Inicio
+- [x] Traducciones de auditoría e historial para todos los eventos nuevos
 - [ ] Responsive 360 px y axe sin violaciones en las pantallas nuevas
 - [ ] e2e del ciclo ingreso → entrega → traslado → ajuste → anulación → aviso de mínimo, verificando que el stock mostrado cuadra con el libro
 - [ ] Documentación: requirements (si precisas algo), ficha técnica, ADR 0008 de consumibles, CHANGELOG, open-questions

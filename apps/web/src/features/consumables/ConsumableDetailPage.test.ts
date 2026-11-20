@@ -1,0 +1,144 @@
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
+import type { Permission } from '@inventarius/shared';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { router } from '@/app/router';
+import { useAuthStore } from '@/features/auth/useAuthStore';
+import { mockApi, pagePlugins } from '@/test-utils';
+import ConsumableDetailPage from './ConsumableDetailPage.vue';
+import { consumable, ids, movement } from './fixtures';
+
+const mounted: VueWrapper[] = [];
+afterEach(() => {
+  mounted.splice(0).forEach((w) => w.unmount());
+  document.body.innerHTML = '';
+  vi.unstubAllGlobals();
+});
+
+const ALL: Permission[] = [
+  'consumables:read',
+  'consumables:manage',
+  'consumables:receive',
+  'consumables:deliver',
+  'consumables:transfer',
+  'consumables:adjust',
+];
+
+async function mountPage(permissions: Permission[], detail = consumable(), history = [movement()]) {
+  mockApi({
+    [`GET /api/v1/consumables/${ids.consumable}`]: () => detail,
+    [`GET /api/v1/consumables/${ids.consumable}/movements`]: () => ({
+      data: history,
+      meta: { page: 1, pageSize: 10, total: history.length },
+    }),
+  });
+  const global = pagePlugins();
+  useAuthStore(global.plugins![0] as never).user = {
+    id: ids.user,
+    email: 'x@y.cl',
+    name: 'X',
+    mustChangePassword: false,
+    roles: [],
+    permissions,
+  };
+  await router.push(`/consumibles/${ids.consumable}`);
+  await router.isReady();
+  const w = mount(ConsumableDetailPage, { global, attachTo: document.body });
+  mounted.push(w);
+  await flushPromises();
+  return w;
+}
+
+const button = (w: VueWrapper, label: string) =>
+  w.findAll('button').find((b) => b.text().includes(label));
+
+describe('ficha del consumible (RF-73, RF-74)', () => {
+  it('muestra el stock por bodega con unidad, el total y el aviso de mínimo', async () => {
+    const w = await mountPage(['consumables:read']);
+    const text = w.text();
+    expect(text).toContain('Guantes de nitrilo');
+    expect(text).toContain('10 pares');
+    expect(text).toContain('2 pares');
+    expect(text).toContain('12 pares');
+    expect(text).toContain('El total (12 pares) está bajo el mínimo (20 pares).');
+    expect(text).toContain('Bajo mínimo');
+    // Un lector no ve ninguna acción de movimiento.
+    expect(button(w, 'Ingresar')).toBeUndefined();
+    expect(button(w, 'Entregar')).toBeUndefined();
+    expect(button(w, 'Anular')).toBeUndefined();
+  });
+
+  it('desactivado: ingresar, entregar y trasladar se ven apagados con el motivo; ajustar sigue disponible', async () => {
+    const w = await mountPage(ALL, consumable({ active: false, lowStock: false }));
+    for (const label of ['Ingresar', 'Entregar', 'Trasladar']) {
+      const b = button(w, label)!;
+      expect(b.attributes('disabled'), label).toBeDefined();
+      expect(b.attributes('aria-describedby'), label).toBeTruthy();
+    }
+    expect(w.text()).toContain('Desactivado: no admite ingresos, entregas ni traslados.');
+    expect(button(w, 'Ajustar')!.attributes('disabled')).toBeUndefined();
+    expect(w.text()).toContain('Este consumible está desactivado');
+  });
+
+  it('con movimientos no se puede eliminar y dice por qué', async () => {
+    const w = await mountPage(ALL);
+    const del = button(w, 'Eliminar')!;
+    expect(del.attributes('disabled')).toBeDefined();
+    expect(w.text()).toContain('No se puede eliminar porque tiene movimientos');
+  });
+
+  it('sin stock en ninguna bodega no se puede entregar', async () => {
+    const base = consumable();
+    const w = await mountPage(
+      ALL,
+      consumable({
+        totalStock: '0',
+        stockByWarehouse: base.stockByWarehouse.map((s) => ({ ...s, quantity: '0' })),
+      }),
+    );
+    expect(button(w, 'Entregar')!.attributes('disabled')).toBeDefined();
+    expect(w.text()).toContain('No hay stock en ninguna bodega para entregar.');
+  });
+
+  it('el historial enlaza el movimiento anulado con su anulación y al revés', async () => {
+    const reversal = movement({
+      id: '0190d1a0-0000-7000-8000-0000000000f2',
+      kind: 'reversal',
+      delta: '-12',
+      note: 'Ingreso duplicado',
+      reversible: false,
+      reverses: { id: ids.movement, kind: 'receipt', at: '2026-11-16T12:00:00.000Z' },
+    });
+    const original = movement({
+      reversible: false,
+      reversedBy: {
+        id: reversal.id,
+        at: '2026-11-17T12:00:00.000Z',
+        actorName: 'Ada Admin',
+      },
+    });
+    const w = await mountPage(ALL, consumable(), [reversal, original]);
+    const text = w.text();
+    expect(text).toContain('Anulado por Ada Admin el 17-11-2026');
+    expect(text).toContain('Anula ingreso del 16-11-2026');
+    expect(text).toContain('Motivo de la anulación');
+    expect(w.findAll('a').filter((a) => a.text() === 'Ir al movimiento')).toHaveLength(2);
+    // Lo ya anulado y las anulaciones no se pueden anular otra vez: no hay botón «Anular».
+    expect(button(w, 'Anular')).toBeUndefined();
+  });
+
+  it('solo quien tiene consumables:adjust ve «Anular» en un movimiento vigente', async () => {
+    const withAdjust = await mountPage(ALL);
+    expect(button(withAdjust, 'Anular')).toBeDefined();
+    withAdjust.unmount();
+    mounted.pop();
+    const without = await mountPage(ALL.filter((p) => p !== 'consumables:adjust'));
+    expect(button(without, 'Anular')).toBeUndefined();
+    expect(button(without, 'Ajustar')).toBeUndefined();
+  });
+
+  it('el historial usa «Ver más» y filtros de bodega, tipo y fecha', async () => {
+    const w = await mountPage(['consumables:read']);
+    const text = w.text();
+    for (const label of ['Bodega', 'Tipo', 'Desde', 'Hasta']) expect(text).toContain(label);
+  });
+});
