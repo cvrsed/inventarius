@@ -511,3 +511,21 @@ Para una fase de endurecimiento; **no se implementa en F3**.
 - Registro por lote desde el listado, por la cola y con progreso.
 - Defaults de modelo con plan de frecuencia y sub-banda (por ejemplo AU915 FSB2). En ChirpStack corresponde a la
   «region configuration» del device profile.
+- **Prefijo de etiqueta configurable en el primer arranque** (asistente o CLI `init`): de 2 a 6 caracteres alfanuméricos,
+  guardado en la base (la variable de entorno queda solo como sugerencia), en mayúsculas en la etiqueta y en minúsculas en
+  los IDs del LNS, y bloqueado al crear el primer activo. Los ejemplos del repo siguen usando `INV`.
+- **Plantilla de nombre en el LNS por perfil**, por defecto `<iniciales-modelo>-<serie>-<etiqueta>`. En TTN, el device ID
+  se basa en la etiqueta (minúsculas, máximo 36 caracteres).
+- **TLS con CA propia por perfil LNS** (cierra Q51): requisito antes de conectar un ChirpStack que no sea de desarrollo.
+
+## F3 revisión 2
+
+Segunda revisión manual del PR #6 (2026-11-19). Cada punto va en su propio commit.
+
+- [ ] P18b Serie única por (modelo, serie) sin distinguir mayúsculas; el CSV empareja por serie y desempata con la columna «modelo»
+- [ ] R1 Versión LoRaWAN y región faltantes en el activo se toman del device profile al registrar
+- [ ] R2 AppKey enmascarada de la confirmación sin partirse en dos líneas
+- [ ] R3 Las pruebas contra ChirpStack real borran lo que crean, usan prefijo por corrida y exigen endpoint marcado como de prueba
+- [ ] R4 Vincular: un JoinEUI en ceros no pisa el local; el usuario elige por campo qué adoptar
+- [ ] R5 Vincular muestra el device profile con nombre, versión y región
+- [ ] R6 Vincular advierte si el dispositivo remoto no tiene AppKey/NwkKey (no podrá hacer join)
