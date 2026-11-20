@@ -582,7 +582,7 @@ Alcance: RF-70 a RF-74 y las decisiones D1 a D14 del prompt de arranque. Decisio
   mínimo global y por bodega; ingreso, entrega (usuario o texto libre), traslado atómico, ajuste y anulación sobre un libro de
   movimientos append-only; saldo por (consumible, bodega) bloqueado `FOR UPDATE` con `CHECK` de no negativo; aviso de mínimo en
   listado, ficha e Inicio; auditoría traducida; `cli verify-consumables`. Migración 0017, ADR 0008, Q56 a Q69.
-- **Pruebas:** shared 55, API 206 unitarias + 295 de integración con Postgres 18 (46 son de consumibles: permisos por rol,
+- **Pruebas** (al cerrar la fase, antes de la revisión): shared 55, API 206 unitarias + 295 de integración con Postgres 18 (46 son de consumibles: permisos por rol,
   decimales, concurrencia real, anulaciones, libro vs saldo, append-only, auditoría), web 398. e2e (Playwright + axe, escritorio y
   360 px, claro y oscuro) sobre un stack limpio: **137 pasaron y 3 se omiten** (los mismos de antes); 10 son nuevas
   (`consumables.spec.ts`): el ciclo completo con comprobación de que el stock de la pantalla es la suma del libro, el rechazo de
@@ -676,6 +676,30 @@ marca aquí junto con su commit. Cómo probar cada uno: ver «Cómo probar la re
 - [x] P16 Botones de la ficha a 360 px: grilla de dos columnas del mismo tamaño
 - [x] P17 Subtítulo de Catálogo
 - [x] P18 Activar/desactivar inequívoco en las tablas del catálogo
+
+### Resultado de la revisión (2026-11-20)
+
+- **Pruebas:** shared 57, API 208 unitarias + 330 de integración con Postgres 18 (incluye las migraciones 0018 a 0020 sobre
+  datos existentes, la concurrencia del primer movimiento y los permisos por rol), web 462. e2e (Playwright + axe, escritorio y 360
+  px, claro y oscuro) sobre un stack limpio: **todo en verde** (los 3 omitidos de siempre); casos nuevos de devolución, permisos
+  separados, bodega inactiva, fecha fuera de rango, traslado único con resaltado y botones del mismo tamaño, Inicio y
+  confirmación de desactivar.
+- **Cosas que encontraron las pruebas** (corregidas, cada una con su test):
+  - El motivo de anulación salía en rojo al abrir: Nuxt UI trata cualquier `error` distinto de `undefined` (también `''`) como
+    error; el mismo defecto estaba en el diálogo de acciones de activos [P15].
+  - Con más de 100 bodegas en la base compartida del e2e, una quedaba fuera del selector: ahora se piden todas las páginas [P13].
+  - En móvil, la tarjeta de stock no mostraba «Bodega inactiva» [P7].
+  - Un defecto latente que el e2e `catalog-navigation` destapó en móvil (50 % de fallos): el buscador aplica su cambio 300 ms
+    después y, si en ese lapso se pulsaba «Inicio» y Inicio tardaba en cargar (ahora importa más módulos), `router.replace`
+    cancelaba la navegación y la URL volvía al listado. `useListQuery` ya no reescribe la URL mientras hay una navegación a otra
+    ruta en curso.
+  - El historial devuelve un traslado como una sola fila: el helper de cuadratura del e2e (stock = suma del libro) aplica la
+    cantidad a las dos bodegas.
+- **Decisiones registradas** (`docs/open-questions.md`): Q57, Q60, Q63 y Q65 cerradas o modificadas; Q70 a Q74 nuevas (bodega
+  inactiva, traslado en el historial, Inicio, orden de la auditoría, selector de bodega). Las dudas se resolvieron por lo
+  conservador: anular sigue sin mirar si la bodega está activa; un consumible inactivo no admite devoluciones; la migración 0019 no
+  quita la anulación a quien ya podía anular.
+- **Fuera de alcance:** prueba con lector de pantalla real (ver el backlog).
 
 ### Cómo probar la revisión
 

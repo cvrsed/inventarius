@@ -102,7 +102,12 @@ test.describe('catálogo (RF-10 a RF-14)', () => {
     await expect(toast(page, 'Cambios guardados')).toBeVisible();
     await expect(page.getByRole('button', { name: `Editar ${name} SpA` })).toBeVisible();
 
+    // Desactivar pide confirmación (P18); activar, no.
     await page.getByRole('button', { name: `Desactivar ${name} SpA` }).click();
+    const deactivate = page.getByRole('dialog', { name: 'Desactivar fabricante' });
+    await expect(deactivate).toContainText(`¿Desactivar «${name} SpA»?`);
+    await expectNoA11yViolations(page); // confirmación abierta
+    await deactivate.getByRole('button', { name: 'Desactivar' }).click();
     await expect(toast(page, 'Estado actualizado')).toBeVisible();
     await expect(page.getByRole('button', { name: `Activar ${name} SpA` })).toBeVisible();
 
