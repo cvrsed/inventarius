@@ -147,7 +147,8 @@ Mientras falten, el job falla con un mensaje claro. La prueba crea y borra solo 
 
 ### Importación CSV (RF-66)
 
-Columnas: `serial`, `DevEUI` (16 hex), `JoinEUI` (16 hex), `AppKey` (32 hex) y, opcionales, `NwkKey`, `Clase`, `Versión`, `Región`.
+Columnas: `serial`, `DevEUI` (16 hex), `JoinEUI` (16 hex), `AppKey` (32 hex) y, opcionales, `NwkKey`, `Clase`, `Versión`, `Región`, `Modelo`.
+La serie es única por modelo: si existe en más de uno, la fila se rechaza como ambigua salvo que `Modelo` (nombre o código) la desempate.
 Los valores de ejemplo van entre `<…>` a propósito: gitleaks bloquea hex con forma de DevEUI o clave fuera de los tests.
 
 ```csv

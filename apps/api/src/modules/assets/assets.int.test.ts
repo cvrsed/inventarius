@@ -509,6 +509,25 @@ describe('alta en lote (RF-27)', () => {
     await newAsset();
   });
 
+  it('la misma serie puede repetirse en otro modelo, pero no dentro del mismo', async () => {
+    await newAsset({ serial: 'Cruz-1' });
+    const otherModel = await operator.post(`${base}/assets`, {
+      name: 'Otro modelo',
+      modelId: ids.loraModel,
+      statusId: ids.available,
+      serial: 'CRUZ-1',
+    });
+    expect(otherModel.statusCode, otherModel.body).toBe(201);
+    const sameModel = await operator.post(`${base}/assets`, {
+      name: 'Mismo modelo',
+      modelId: ids.model,
+      statusId: ids.available,
+      serial: 'cruz-1',
+    });
+    expect(sameModel.statusCode, sameModel.body).toBe(422);
+    expect(sameModel.json().errors.serial[0]).toContain('en ese modelo');
+  });
+
   it('rechaza series que ya existen en la base y no crea nada (una transacción)', async () => {
     await newAsset({ serial: 'EXISTE-1' });
     const before = (await reader.get(`${base}/assets?pageSize=1`)).json().meta.total;

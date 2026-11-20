@@ -196,4 +196,58 @@ describe('importación CSV de datos LoRaWAN (RF-66)', () => {
     });
     expect(await get(kept!)).toMatchObject({ deviceClass: 'C', region: 'AU915' });
   });
+
+  it('una serie que existe en dos modelos es ambigua sin modelo; la columna «modelo» (nombre o código) desempata', async () => {
+    const category = (await fx.operator.get(`${base}/categories?q=Sensores`)).json().data[0];
+    const maker = (await fx.operator.post(`${base}/manufacturers`, { name: 'Otra Marca' })).json();
+    const other = (
+      await fx.operator.post(`${base}/models`, {
+        name: 'Sensor Z9',
+        modelNumber: 'Z9-AU',
+        manufacturerId: maker.id,
+        categoryId: category.id,
+        lorawanClass: 'A',
+      })
+    ).json();
+    const create = async (modelId: string) => {
+      const res = await fx.operator.post(`${base}/assets`, {
+        name: 'Repetida',
+        serial: 'Shared-1',
+        modelId,
+        statusId: fx.ids.status,
+      });
+      expect(res.statusCode, res.body).toBe(201);
+    };
+    await create(fx.ids.model);
+    await create(other.id);
+
+    const preview = async (csv: string) =>
+      (await fx.operator.post(`${base}/lorawan/import/preview`, { csv })).json();
+    const ambiguous = await preview([HEAD, line('shared-1', 400)].join('\n'));
+    expect(ambiguous.rows[0].errors).toHaveLength(1);
+    expect(ambiguous.rows[0].errors[0]).toMatch(/ambigu/i);
+    expect(ambiguous.rows[0].errors[0]).toContain('Sensor S1');
+    expect(ambiguous.rows[0].errors[0]).toContain('Sensor Z9');
+    expect(ambiguous.rows[0].assetId).toBeNull();
+
+    const head = `${HEAD},Modelo`;
+    const byName = await preview([head, `${line('shared-1', 401)},,,,,Sensor S1`].join('\n'));
+    expect(byName.rows[0].errors).toEqual([]);
+    const byCode = await preview([head, `${line('shared-1', 402)},,,,,z9-au`].join('\n'));
+    expect(byCode.rows[0].errors).toEqual([]);
+    expect(byCode.rows[0].assetId).not.toBe(byName.rows[0].assetId);
+    const unknown = await preview([head, `${line('shared-1', 403)},,,,,Inexistente`].join('\n'));
+    expect(unknown.rows[0].errors).toEqual([
+      'Ningún activo de ese modelo tiene ese número de serie',
+    ]);
+
+    const csv = [
+      head,
+      `${line('shared-1', 404)},,,,,Sensor S1`,
+      `${line('SHARED-1', 405)},,,,,Z9-AU`,
+    ].join('\n');
+    const applied = await fx.operator.post(`${base}/lorawan/import`, { csv });
+    expect(applied.statusCode, applied.body).toBe(200);
+    expect(applied.json()).toEqual({ applied: 2 });
+  });
 });

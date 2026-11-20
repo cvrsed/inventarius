@@ -32,6 +32,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). D
 - Importación: «Importar 1 dispositivo», defaults del modelo, id de lote en la auditoría por activo [P16, P19, P20].
 - Botones desactivados con motivo [P17]. Serie única sin distinguir mayúsculas, migración 0014 [P18].
 - Auditoría sin scroll horizontal en escritorio; la IP va al detalle [P21].
+- Serie única por (modelo, serie) sin distinguir mayúsculas, migración 0016; el CSV admite la columna opcional «Modelo» [P18b].
 - En producción la app no arranca con la clave de cifrado por defecto de `compose.yml` [P22].
 
 ### F2 — Inventario

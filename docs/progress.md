@@ -522,7 +522,7 @@ Para una fase de endurecimiento; **no se implementa en F3**.
 
 Segunda revisión manual del PR #6 (2026-11-19). Cada punto va en su propio commit.
 
-- [ ] P18b Serie única por (modelo, serie) sin distinguir mayúsculas; el CSV empareja por serie y desempata con la columna «modelo»
+- [x] P18b Serie única por (modelo, serie) sin distinguir mayúsculas; el CSV empareja por serie y desempata con la columna «modelo»
 - [ ] R1 Versión LoRaWAN y región faltantes en el activo se toman del device profile al registrar
 - [ ] R2 AppKey enmascarada de la confirmación sin partirse en dos líneas
 - [ ] R3 Las pruebas contra ChirpStack real borran lo que crean, usan prefijo por corrida y exigen endpoint marcado como de prueba

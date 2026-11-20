@@ -35,6 +35,22 @@ describe('parseLorawanImport', () => {
     expect(out.rows[0]!.serial).toBe('SN-1');
   });
 
+  it('lee la columna opcional «modelo» (nombre o código) y no cuenta como repetida la misma serie en otro modelo', () => {
+    const out = parseLorawanImport(
+      `${head},Modelo\nSN-1,0011223344556677,8877665544332211,${KEY},Sensor S1\nsn-1,0011223344556678,8877665544332211,${KEY},Medidor M2\nSN-2,0011223344556679,8877665544332211,${KEY},\n`,
+    );
+    expect(out.rows.map((r) => r.model)).toEqual(['Sensor S1', 'Medidor M2', '']);
+    expect(out.rows.map((r) => r.errors)).toEqual([[], [], []]);
+  });
+
+  it('la misma serie y el mismo modelo repetidos en el archivo siguen siendo error', () => {
+    const out = parseLorawanImport(
+      `${head},model\nSN-1,0011223344556677,8877665544332211,${KEY},m1\nsn-1,0011223344556678,8877665544332211,${KEY},M1\n`,
+    );
+    expect(out.rows[0]!.errors).toEqual(['Número de serie repetido en el archivo']);
+    expect(out.rows[1]!.errors).toEqual(['Número de serie repetido en el archivo']);
+  });
+
   it('informa por fila los formatos inválidos', () => {
     const out = parseLorawanImport(`${head},Clase\n,0011,XYZ,${KEY.slice(2)},D\n`);
     expect(out.rows[0]!.errors).toEqual([

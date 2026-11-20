@@ -20,6 +20,8 @@ const HEADER_ALIASES: Record<string, string> = {
   serial: 'serial',
   serie: 'serial',
   numerodeserie: 'serial',
+  modelo: 'model',
+  model: 'model',
   deveui: 'devEui',
   joineui: 'joinEui',
   appeui: 'joinEui',
@@ -43,6 +45,8 @@ const fold = (s: string) =>
 export interface ParsedImportRow {
   line: number;
   serial: string;
+  /** Nombre o código del modelo (columna opcional); desempata cuando la serie existe en más de un modelo. */
+  model: string;
   /** Cambio a aplicar; solo trae los campos presentes y válidos. */
   data: UpdateLorawanInput;
   errors: string[];
@@ -139,10 +143,14 @@ export function parseLorawanImport(csv: string): ParsedImport {
       const v = field(region, lorawanRegionSchema, 'Región inválida', errors);
       if (v) data.region = v;
     }
-    return { line: i + 2, serial, data, errors };
+    return { line: i + 2, serial, model: cell(r, 'model'), data, errors };
   });
 
-  flagRepeats(rows, (r) => r.serial.toLowerCase(), 'Número de serie repetido en el archivo');
+  flagRepeats(
+    rows,
+    (r) => (r.serial ? `${r.serial.toLowerCase()}\u0000${r.model.toLowerCase()}` : ''),
+    'Número de serie repetido en el archivo',
+  );
   flagRepeats(rows, (r) => r.data.devEui ?? '', 'DevEUI repetido en el archivo');
   return { rows, fileErrors };
 }

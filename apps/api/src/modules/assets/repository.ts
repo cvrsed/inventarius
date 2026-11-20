@@ -243,7 +243,15 @@ export class AssetsRepository {
     exec: Executor,
     serials: string[],
   ): Promise<
-    { id: string; assetTag: string; serial: string; deleted: boolean; categoryExtension: string }[]
+    {
+      id: string;
+      assetTag: string;
+      serial: string;
+      deleted: boolean;
+      categoryExtension: string;
+      modelName: string;
+      modelNumber: string | null;
+    }[]
   > {
     if (!serials.length) return [];
     const rows = await exec
@@ -253,6 +261,8 @@ export class AssetsRepository {
         serial: assets.serial,
         deletedAt: assets.deletedAt,
         categoryExtension: categories.extension,
+        modelName: models.name,
+        modelNumber: models.modelNumber,
       })
       .from(assets)
       .innerJoin(models, eq(models.id, assets.modelId))
@@ -269,6 +279,8 @@ export class AssetsRepository {
       serial: r.serial ?? '',
       deleted: r.deletedAt !== null,
       categoryExtension: r.categoryExtension,
+      modelName: r.modelName,
+      modelNumber: r.modelNumber,
     }));
   }
 
@@ -303,14 +315,20 @@ export class AssetsRepository {
     return out;
   }
 
-  /** Series de la lista que ya tiene algún activo (vigente o dado de baja), sin distinguir mayúsculas. */
-  async existingSerials(exec: Executor, serials: readonly string[]): Promise<string[]> {
+  /** Series de la lista que ya tiene algún activo de ese modelo (vigente o dado de baja), sin distinguir mayúsculas. */
+  async existingSerials(
+    exec: Executor,
+    modelId: string,
+    serials: readonly string[],
+  ): Promise<string[]> {
     if (!serials.length) return [];
     const lowered = serials.map((s) => s.trim().toLowerCase());
     const rows = await exec
       .select({ serial: assets.serial })
       .from(assets)
-      .where(inArray(sql<string>`lower(${assets.serial})`, lowered));
+      .where(
+        and(eq(assets.modelId, modelId), inArray(sql<string>`lower(${assets.serial})`, lowered)),
+      );
     return rows.flatMap((r) => (r.serial ? [r.serial] : []));
   }
 

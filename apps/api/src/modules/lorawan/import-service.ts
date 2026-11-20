@@ -13,7 +13,15 @@ export interface SerialLookup {
     exec: Executor,
     serials: string[],
   ): Promise<
-    { id: string; assetTag: string; serial: string; deleted: boolean; categoryExtension: string }[]
+    {
+      id: string;
+      assetTag: string;
+      serial: string;
+      deleted: boolean;
+      categoryExtension: string;
+      modelName: string;
+      modelNumber: string | null;
+    }[]
   >;
 }
 
@@ -88,11 +96,18 @@ export class LorawanImportService {
     const rows: Analyzed[] = [];
     for (const row of parsed.rows) {
       const out: Analyzed = { ...row, assetId: null, assetTag: null, errors: [...row.errors] };
-      const matches = row.serial ? (bySerial.get(row.serial.toLowerCase()) ?? []) : [];
-      if (row.serial && matches.length === 0)
+      const candidates = row.serial ? (bySerial.get(row.serial.toLowerCase()) ?? []) : [];
+      const matches = row.model ? candidates.filter((a) => isModel(a, row.model)) : candidates;
+      if (row.serial && candidates.length === 0) {
         out.errors.push('Ningún activo tiene ese número de serie');
-      else if (matches.length > 1) out.errors.push('Más de un activo tiene ese número de serie');
-      else if (matches[0]) {
+      } else if (row.serial && matches.length === 0) {
+        out.errors.push('Ningún activo de ese modelo tiene ese número de serie');
+      } else if (matches.length > 1) {
+        const models = [...new Set(matches.map((a) => a.modelName))].join(', ');
+        out.errors.push(
+          `Número de serie ambiguo: existe en más de un modelo (${models}); agrega la columna «modelo»`,
+        );
+      } else if (matches[0]) {
         const asset = matches[0];
         out.assetId = asset.id;
         out.assetTag = asset.assetTag;
@@ -117,6 +132,12 @@ export class LorawanImportService {
     }
     return { rows, fileErrors: parsed.fileErrors };
   }
+}
+
+/** El texto coincide con el nombre o el código del modelo, sin distinguir mayúsculas. */
+function isModel(a: { modelName: string; modelNumber: string | null }, text: string): boolean {
+  const t = text.trim().toLowerCase();
+  return a.modelName.toLowerCase() === t || a.modelNumber?.toLowerCase() === t;
 }
 
 function summarize(rows: Analyzed[], fileErrors: string[]): LorawanImportPreview {

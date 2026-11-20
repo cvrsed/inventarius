@@ -57,7 +57,9 @@ dispositivos en ChirpStack v4 y TTN v3 (RF-60 a RF-65) y la importación CSV (RF
     que recibe el adaptador, con las claves enmascaradas. Un test compara ambos campo por campo.
 14. **El historial de la ficha y la Auditoría comparten una sola tabla de traducciones** (`describeAuditDetail`); los rótulos
     que dependen de la entidad (`kind` de un perfil LNS) se resuelven con la entidad del evento.
-15. **Serie única sin distinguir mayúsculas** (migración 0014, índice sobre `lower(serial)`): la importación CSV empareja así.
+15. **Serie única por modelo, sin distinguir mayúsculas** (migración 0014 la hizo global; la 0016 la acota a `(model_id, lower(serial))`):
+    marcas distintas pueden repetir series. La importación CSV empareja por serie; si existe en más de un modelo rechaza la fila
+    como ambigua, salvo que la columna opcional «modelo» (nombre o código) desempate.
 
 ## Hallazgos contra un ChirpStack v4.20 real
 

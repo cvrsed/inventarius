@@ -645,7 +645,7 @@ export const messages = {
       description:
         'Sube un CSV con una fila por dispositivo. Cada fila se asocia al activo que tiene ese número de serie.',
       columnsHelp:
-        'Columnas obligatorias: serial, DevEUI, JoinEUI y AppKey. Opcionales: NwkKey, Clase, Versión y Región.',
+        'Columnas obligatorias: serial, DevEUI, JoinEUI y AppKey. Opcionales: NwkKey, Clase, Versión, Región y Modelo (nombre o código, para cuando una serie existe en más de un modelo).',
       file: 'Archivo CSV',
       choose: 'Elegir archivo',
       preview: 'Revisar',

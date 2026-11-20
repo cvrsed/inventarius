@@ -340,8 +340,9 @@ export class AssetsService {
       if (status.systemKey) throw reservedStatus();
       const base = await this.requireWarehouse(tx, input.baseLocationId, 'baseLocationId');
       if (serials) {
-        const existing = await this.repo.existingSerials(tx, serials);
-        if (existing.length) throw serialsError('Ya existen activos con estas series', existing);
+        const existing = await this.repo.existingSerials(tx, input.modelId, serials);
+        if (existing.length)
+          throw serialsError('Ya existen activos de ese modelo con estas series', existing);
       }
       const numbers = await this.repo.nextTagNumbers(tx, input.quantity);
       const name = input.name ?? model.name;
@@ -648,12 +649,14 @@ function parseSort(sort: string | undefined) {
   return parsed.data;
 }
 
-/** Índice único sobre `lower(serial)` (migración 0014). */
-const SERIAL_CONSTRAINT = 'assets_serial_lower_uq';
+/** Índice único sobre `(model_id, lower(serial))` (migración 0016). */
+const SERIAL_CONSTRAINT = 'assets_model_serial_lower_uq';
 
 function serialTaken(): ValidationError {
-  return new ValidationError('Ya existe un activo con ese número de serie', {
-    serial: ['Ya existe un activo con ese número de serie (se compara sin distinguir mayúsculas)'],
+  return new ValidationError('Ya existe un activo con ese número de serie en ese modelo', {
+    serial: [
+      'Ya existe un activo con ese número de serie en ese modelo (se compara sin distinguir mayúsculas)',
+    ],
   });
 }
 
