@@ -10,11 +10,12 @@ type Translate = (key: string, params?: Record<string, unknown>) => string;
 /** Ícono Lucide de cada tipo de movimiento (todos están en `APP_ICONS`). */
 export const MOVEMENT_ICONS: Record<MovementKind, string> = {
   receipt: 'i-lucide-package-plus',
-  delivery: 'i-lucide-package-minus',
+  delivery: 'i-lucide-hand-helping',
+  return: 'i-lucide-undo-2',
   adjustment: 'i-lucide-scale',
   transfer_out: 'i-lucide-arrow-right-left',
   transfer_in: 'i-lucide-arrow-right-left',
-  reversal: 'i-lucide-undo-2',
+  reversal: 'i-lucide-ban',
 };
 
 /** `+24 pares` / `−3 pares`: con signo (menos tipográfico) y la unidad. */

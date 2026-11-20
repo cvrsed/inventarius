@@ -530,29 +530,38 @@ export const consumableMovements = pgTable(
     reversesId: uuid('reverses_id')
       .unique()
       .references((): AnyPgColumn => consumableMovements.id, { onDelete: 'restrict' }),
+    /** En una devolución, la entrega que devuelve (varias devoluciones parciales pueden apuntar a la misma). */
+    returnsId: uuid('returns_id').references((): AnyPgColumn => consumableMovements.id, {
+      onDelete: 'restrict',
+    }),
     createdAt: createdAt(),
   },
   (t) => [
+    index('consumable_movements_returns_idx').on(t.returnsId),
     index('consumable_movements_consumable_idx').on(t.consumableId, t.occurredAt, t.id),
     index('consumable_movements_location_idx').on(t.locationId),
     index('consumable_movements_transfer_idx').on(t.transferId),
     index('consumable_movements_recipient_idx').on(t.recipientUserId),
     check(
       'consumable_movements_kind_chk',
-      sql`${t.kind} IN ('receipt', 'delivery', 'adjustment', 'transfer_out', 'transfer_in', 'reversal')`,
+      sql`${t.kind} IN ('receipt', 'delivery', 'return', 'adjustment', 'transfer_out', 'transfer_in', 'reversal')`,
     ),
     check('consumable_movements_delta_chk', sql`${t.delta} <> 0`),
     check(
       'consumable_movements_sign_chk',
-      sql`(${t.kind} IN ('receipt', 'transfer_in') AND ${t.delta} > 0) OR (${t.kind} IN ('delivery', 'transfer_out') AND ${t.delta} < 0) OR ${t.kind} IN ('adjustment', 'reversal')`,
+      sql`(${t.kind} IN ('receipt', 'transfer_in', 'return') AND ${t.delta} > 0) OR (${t.kind} IN ('delivery', 'transfer_out') AND ${t.delta} < 0) OR ${t.kind} IN ('adjustment', 'reversal')`,
     ),
     check(
       'consumable_movements_recipient_chk',
-      sql`(${t.kind} = 'delivery' AND ((${t.recipientUserId} IS NULL) <> (${t.recipientName} IS NULL)) AND (${t.recipientRef} IS NULL OR ${t.recipientName} IS NOT NULL)) OR (${t.kind} <> 'delivery' AND ${t.recipientUserId} IS NULL AND ${t.recipientName} IS NULL AND ${t.recipientRef} IS NULL)`,
+      sql`(${t.kind} IN ('delivery', 'return') AND ((${t.recipientUserId} IS NULL) <> (${t.recipientName} IS NULL)) AND (${t.recipientRef} IS NULL OR ${t.recipientName} IS NOT NULL)) OR (${t.kind} NOT IN ('delivery', 'return') AND ${t.recipientUserId} IS NULL AND ${t.recipientName} IS NULL AND ${t.recipientRef} IS NULL)`,
     ),
     check(
       'consumable_movements_reversal_chk',
       sql`(${t.kind} = 'reversal') = (${t.reversesId} IS NOT NULL) AND (${t.kind} <> 'reversal' OR ${t.note} IS NOT NULL)`,
+    ),
+    check(
+      'consumable_movements_return_chk',
+      sql`(${t.kind} = 'return') = (${t.returnsId} IS NOT NULL)`,
     ),
     check(
       'consumable_movements_transfer_chk',

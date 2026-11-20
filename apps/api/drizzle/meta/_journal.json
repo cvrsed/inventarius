@@ -127,6 +127,13 @@
       "when": 1795152873222,
       "tag": "0017_consumables",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1795185684488,
+      "tag": "0018_consumable_returns",
+      "breakpoints": true
     }
   ]
 }

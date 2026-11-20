@@ -653,13 +653,42 @@ Para que Rodrigo recorra la fase en su entorno de desarrollo.
   - 360 px: listado y ficha en tarjetas, sin scroll horizontal; la barra inferior tiene cinco destinos.
   - `docker compose exec api pnpm --filter @inventarius/api cli verify-consumables` debe decir que cuadra.
 
+## F3.5 revisión
+
+Revisión manual del PR #7 (decisiones de Rodrigo, mandan sobre las provisionales de Q56 a Q69). Un commit por punto; cada punto se
+marca aquí junto con su commit. Cómo probar cada uno: ver «Cómo probar la revisión» al final de esta sección.
+
+- [x] P1 Devolución como movimiento propio (`return`)
+- [ ] P2 Permisos separados: `consumables:adjust` y `consumables:reverse`
+- [ ] P3 Auditoría de la anulación con el detalle completo del movimiento anulado
+- [ ] P4 Categorías de consumibles con `consumables:manage` y unicidad por (ámbito, nombre)
+- [ ] P5 Concurrencia del primer movimiento en una bodega sin fila de saldo
+- [ ] P6 Fecha pasada solo en el ingreso (máx. 90 días) y «Registrado el…» en el historial
+- [ ] P7 Bodega inactiva con stock: salidas sí, entradas no
+- [ ] P8 Traslado como una sola entrada del historial
+- [ ] P9 «Bajo mínimo» explícito (motivo en la insignia y bodegas nombradas en la ficha)
+- [ ] P10 Inicio: «Últimos movimientos» incluye consumibles
+- [ ] P11 Auditoría de consumibles con orden fijo de campos y «Bodega»
+- [ ] P12 Íconos distintos por tipo de movimiento
+- [ ] P13 Selectores de bodega con nombre, ruta y stock, sin truncar
+- [ ] P14 Resaltado visible de «Ir al movimiento»
+- [ ] P15 Validación de obligatorios solo tras interactuar o enviar
+- [ ] P16 Botones de la ficha a 360 px: grilla de dos columnas del mismo tamaño
+- [ ] P17 Subtítulo de Catálogo
+- [ ] P18 Activar/desactivar inequívoco en las tablas del catálogo
+
+### Cómo probar la revisión
+
+- **P1:** ingresa 10, entrega 4 a una persona, «Registrar devolución» en la fila de la entrega: 1 → la entrega dice «Devuelto 1 par de
+  4 pares»; intenta devolver 4 (rechaza: solo quedan 3); elige otra bodega activa; intenta anular la entrega (rechaza: primero
+  anula la devolución); anula la devolución y luego la entrega. Como Lector: no aparece la acción.
+
 ### Backlog post-F3.5
 
 Fuera de alcance de F3.5; **no se implementa**.
 
 - Importación CSV de ingresos.
 - Exportación de stock.
-- Devoluciones de entregas como tipo de movimiento propio (hoy se anula la entrega).
 - Costos y valorización del stock.
 - Lotes y vencimientos.
 - Notificaciones por correo del stock mínimo.

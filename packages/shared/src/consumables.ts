@@ -255,6 +255,7 @@ export type ConsumableDetailDto = z.infer<typeof consumableDetailSchema>;
 export const MOVEMENT_KINDS = [
   'receipt',
   'delivery',
+  'return',
   'adjustment',
   'transfer_out',
   'transfer_in',
@@ -361,6 +362,17 @@ export const transferSchema = z
   });
 export type TransferInput = z.infer<typeof transferSchema>;
 
+/**
+ * Devolución de (parte de) una entrega (P1): entra a la bodega de la entrega, salvo que se elija otra bodega activa.
+ * El receptor se hereda de la entrega; no se devuelve más de lo entregado menos lo ya devuelto.
+ */
+export const returnSchema = z.object({
+  locationId: z.uuid().optional(),
+  quantity: positiveQuantitySchema,
+  note: note.default(null),
+});
+export type ReturnInput = z.infer<typeof returnSchema>;
+
 export const reversalSchema = z.object({ reason: requiredReason });
 export type ReversalInput = z.infer<typeof reversalSchema>;
 
@@ -386,8 +398,14 @@ export const movementSchema = z.object({
     .nullable(),
   /** Este movimiento es la anulación de otro. */
   reverses: z.object({ id: z.uuid(), kind: movementKindSchema, at: z.iso.datetime() }).nullable(),
-  /** Se puede anular: no es una anulación ni fue anulado. */
+  /** Se puede anular: no es una anulación, no fue anulado y, si es una entrega, no tiene devoluciones vigentes. */
   reversible: z.boolean(),
+  /** Solo en entregas: cuánto se ha devuelto (devoluciones vigentes, no anuladas). */
+  returned: z.string().nullable(),
+  /** Solo en entregas: aún queda algo por devolver (vigente y con devuelto menor que lo entregado). */
+  returnable: z.boolean(),
+  /** Este movimiento es una devolución de esa entrega. */
+  returnOf: z.object({ id: z.uuid(), at: z.iso.datetime() }).nullable(),
 });
 export type MovementDto = z.infer<typeof movementSchema>;
 

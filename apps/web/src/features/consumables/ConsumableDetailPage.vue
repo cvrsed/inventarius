@@ -32,6 +32,7 @@ import {
 import ConsumableFormDialog from './ConsumableFormDialog.vue';
 import MovementDialog, { type MovementKindForm } from './MovementDialog.vue';
 import { MOVEMENT_ICONS, describeMovement } from './movements';
+import ReturnDialog from './ReturnDialog.vue';
 import ReverseDialog from './ReverseDialog.vue';
 
 const { t } = useI18n();
@@ -64,6 +65,13 @@ const movementOpen = computed({
 });
 const editing = ref(false);
 const reversing = ref<MovementDto | null>(null);
+const returning = ref<MovementDto | null>(null);
+const returnOpen = computed({
+  get: () => returning.value !== null,
+  set: (v: boolean) => {
+    if (!v) returning.value = null;
+  },
+});
 const reverseOpen = computed({
   get: () => reversing.value !== null,
   set: (v: boolean) => {
@@ -254,7 +262,7 @@ async function goTo(movementId: string): Promise<void> {
         />
         <ReasonButton
           v-if="auth.can('consumables:deliver')"
-          icon="i-lucide-package-minus"
+          icon="i-lucide-hand-helping"
           :label="t('consumables.actions.deliver')"
           :reason="reasonFor('delivery')"
           @click="movementKind = 'delivery'"
@@ -516,17 +524,52 @@ async function goTo(movementId: string): Promise<void> {
                   >{{ t('consumables.history.goTo') }}</a
                 >
               </p>
-              <UButton
-                v-if="m.reversible && auth.can('consumables:adjust')"
-                icon="i-lucide-undo-2"
-                :label="t('consumables.actions.reverse')"
-                :aria-label="`${t('consumables.actions.reverse')} ${view.title} ${view.quantity}`"
-                color="neutral"
-                variant="outline"
-                size="sm"
-                class="mt-2"
-                @click="reversing = m"
-              />
+              <p
+                v-if="m.returned !== null && compareQuantities(m.returned, '0') > 0"
+                class="m-0 mt-1 text-sm text-default"
+              >
+                {{
+                  t('consumables.history.returned', {
+                    returned: qty(m.returned),
+                    total: qty(m.delta.replace('-', '')),
+                  })
+                }}
+                <span v-if="!m.reversedBy" class="block text-muted">{{
+                  t('consumables.history.returnsBlockReverse')
+                }}</span>
+              </p>
+              <p v-if="m.returnOf" class="m-0 mt-1 text-sm text-muted">
+                {{ t('consumables.history.returnOf', { date: formatDateTime(m.returnOf.at) }) }}
+                <a
+                  v-if="present(m.returnOf.id)"
+                  :href="`#mov-${m.returnOf.id}`"
+                  class="ml-1 underline"
+                  @click.prevent="goTo(m.returnOf.id)"
+                  >{{ t('consumables.history.goTo') }}</a
+                >
+              </p>
+              <div class="mt-2 flex flex-wrap gap-2">
+                <UButton
+                  v-if="m.returnable && !inactive && auth.can('consumables:deliver')"
+                  icon="i-lucide-undo-2"
+                  :label="t('consumables.actions.return')"
+                  :aria-label="`${t('consumables.actions.return')}: ${view.title} ${view.quantity}`"
+                  color="neutral"
+                  variant="outline"
+                  size="sm"
+                  @click="returning = m"
+                />
+                <UButton
+                  v-if="m.reversible && auth.can('consumables:adjust')"
+                  icon="i-lucide-ban"
+                  :label="t('consumables.actions.reverse')"
+                  :aria-label="`${t('consumables.actions.reverse')} ${view.title} ${view.quantity}`"
+                  color="neutral"
+                  variant="outline"
+                  size="sm"
+                  @click="reversing = m"
+                />
+              </div>
             </div>
           </li>
         </ol>
@@ -547,6 +590,7 @@ async function goTo(movementId: string): Promise<void> {
         :kind="movementKind"
         :consumable="consumable"
       />
+      <ReturnDialog v-model:visible="returnOpen" :delivery="returning" :consumable="consumable" />
       <ReverseDialog v-model:visible="reverseOpen" :movement="reversing" :consumable="consumable" />
       <ConsumableFormDialog v-model:visible="editing" :item="consumable" />
     </template>

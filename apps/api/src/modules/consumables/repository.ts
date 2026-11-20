@@ -65,6 +65,10 @@ export interface MovementViewRow {
   reversesId: string | null;
   reversesKind: string | null;
   reversesAt: Date | null;
+  /** Solo en entregas: suma de las devoluciones vigentes (no anuladas). */
+  returned: string | null;
+  returnsId: string | null;
+  returnsAt: Date | null;
 }
 
 export interface MovementFilters {
@@ -92,6 +96,7 @@ export interface NewMovement {
   recipientRef?: string | null | undefined;
   transferId?: string | null | undefined;
   reversesId?: string | null | undefined;
+  returnsId?: string | null | undefined;
 }
 
 export type LedgerMismatch = {
@@ -413,6 +418,7 @@ export class ConsumablesRepository {
           recipientRef: m.recipientRef ?? null,
           transferId: m.transferId ?? null,
           reversesId: m.reversesId ?? null,
+          returnsId: m.returnsId ?? null,
         })
         .returning({ id: consumableMovements.id })
     )[0]!;
@@ -433,6 +439,24 @@ export class ConsumablesRepository {
       .from(consumableMovements)
       .where(eq(consumableMovements.transferId, movement.transferId));
     return rows.find((r) => r.id !== movement.id);
+  }
+
+  /**
+   * Serializa lo que toca a una entrega (devolverla, anular la entrega o anular una devolución). Es un candado de
+   * aviso (advisory) porque la app no tiene `UPDATE` sobre el libro y `FOR UPDATE` lo exige. Se toma antes que el
+   * consumible y los saldos, siempre en ese orden, para no cruzarse con otros movimientos.
+   */
+  async lockDelivery(exec: Executor, deliveryId: string): Promise<void> {
+    await exec.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${deliveryId}::text, 0))`);
+  }
+
+  /** Suma de las devoluciones vigentes (no anuladas) de una entrega. */
+  async returnedOf(exec: Executor, deliveryId: string): Promise<string> {
+    const res = await exec.execute<{ total: string }>(sql`
+      SELECT COALESCE(SUM(r.delta), 0) AS total FROM consumable_movements r
+      WHERE r.returns_id = ${deliveryId}
+        AND NOT EXISTS (SELECT 1 FROM consumable_movements x WHERE x.reverses_id = r.id)`);
+    return res.rows[0]!.total;
   }
 
   /** Id de la anulación de un movimiento, si existe. */
@@ -466,10 +490,11 @@ export class ConsumablesRepository {
       conds.push(sql`(m.occurred_at AT TIME ZONE ${f.timezone})::date >= ${f.from}::date`);
     if (f.to) conds.push(sql`(m.occurred_at AT TIME ZONE ${f.timezone})::date <= ${f.to}::date`);
     const res = await exec.execute<
-      Omit<MovementViewRow, 'occurredAt' | 'reversedAt' | 'reversesAt'> & {
+      Omit<MovementViewRow, 'occurredAt' | 'reversedAt' | 'reversesAt' | 'returnsAt'> & {
         occurredAt: Date | string;
         reversedAt: Date | string | null;
         reversesAt: Date | string | null;
+        returnsAt: Date | string | null;
         rowTotal: string;
       }
     >(sql`
@@ -480,11 +505,17 @@ export class ConsumablesRepository {
              cp.location_id AS "counterpartLocationId",
              rb.id AS "reversedById", rb.occurred_at AS "reversedAt", rb.actor_id AS "reversedByActorId",
              m.reverses_id AS "reversesId", orig.kind AS "reversesKind", orig.occurred_at AS "reversesAt",
+             CASE WHEN m.kind = 'delivery' THEN COALESCE((
+               SELECT SUM(r.delta) FROM consumable_movements r
+               WHERE r.returns_id = m.id
+                 AND NOT EXISTS (SELECT 1 FROM consumable_movements x WHERE x.reverses_id = r.id)), 0) END AS "returned",
+             m.returns_id AS "returnsId", ro.occurred_at AS "returnsAt",
              count(*) OVER () AS "rowTotal"
       FROM consumable_movements m
       LEFT JOIN consumable_movements cp ON m.transfer_id IS NOT NULL AND cp.transfer_id = m.transfer_id AND cp.id <> m.id
       LEFT JOIN consumable_movements rb ON rb.reverses_id = m.id
       LEFT JOIN consumable_movements orig ON orig.id = m.reverses_id
+      LEFT JOIN consumable_movements ro ON ro.id = m.returns_id
       WHERE ${sql.join(conds, sql` AND `)}
       ORDER BY m.occurred_at DESC, m.id DESC
       LIMIT ${f.limit} OFFSET ${f.offset}`);
@@ -495,6 +526,7 @@ export class ConsumablesRepository {
         occurredAt: new Date(r.occurredAt),
         reversedAt: toDate(r.reversedAt),
         reversesAt: toDate(r.reversesAt),
+        returnsAt: toDate(r.returnsAt),
       })),
       total: first ? Number(first.rowTotal) : 0,
     };

@@ -353,6 +353,7 @@ export const messages = {
       transfer: 'Trasladar',
       adjust: 'Ajustar',
       reverse: 'Anular',
+      return: 'Registrar devolución',
       deactivate: 'Desactivar',
       activate: 'Activar',
       delete: 'Eliminar',
@@ -367,6 +368,7 @@ export const messages = {
     kinds: {
       receipt: 'Ingreso',
       delivery: 'Entrega',
+      return: 'Devolución',
       adjustment: 'Ajuste',
       transfer_out: 'Traslado (salida)',
       transfer_in: 'Traslado (entrada)',
@@ -401,6 +403,21 @@ export const messages = {
       reverses: 'Anula {kind} del {date}',
       goTo: 'Ir al movimiento',
       reversedBadge: 'Anulado',
+      returned: 'Devuelto {returned} de {total}',
+      returnOf: 'Devuelve la entrega del {date}',
+      returnsBlockReverse: 'Para anular esta entrega, anula primero sus devoluciones.',
+    },
+    returnDialog: {
+      title: 'Registrar devolución',
+      description:
+        'Devuelve al stock parte o toda una entrega. El receptor es el de la entrega y no se puede devolver más de lo entregado.',
+      summary: 'Entrega de {what} a {who}.',
+      remaining: 'Quedan por devolver {qty}.',
+      warehouse: 'Bodega a la que vuelve',
+      quantity: 'Cantidad a devolver',
+      note: 'Nota',
+      submit: 'Registrar devolución',
+      done: 'Devolución registrada',
     },
     form: {
       name: 'Nombre',

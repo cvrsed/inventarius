@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { ValidationError } from '../../core/errors.js';
-import { assertQuantityFitsUnit, isBelowMinimum, signedDelta } from './domain.js';
+import {
+  assertQuantityFitsUnit,
+  isBelowMinimum,
+  remainingToReturn,
+  signedDelta,
+} from './domain.js';
 
 const par = { id: 'u1', name: 'par', plural: 'pares', abbreviation: 'par', decimals: 0 };
 const litro = { id: 'u2', name: 'litro', plural: 'litros', abbreviation: 'L', decimals: 3 };
@@ -32,5 +37,12 @@ describe('dominio de consumibles', () => {
   it('el ajuste suma o resta con signo', () => {
     expect(signedDelta('add', '2.5')).toBe('2.5');
     expect(signedDelta('subtract', '2.5')).toBe('-2.5');
+  });
+
+  it('lo que queda por devolver es lo entregado menos lo ya devuelto', () => {
+    expect(remainingToReturn('10', '0')).toBe('10');
+    expect(remainingToReturn('10', '4')).toBe('6');
+    expect(remainingToReturn('2.5', '2.5')).toBe('0');
+    expect(remainingToReturn('2.5', '1.25')).toBe('1.25');
   });
 });

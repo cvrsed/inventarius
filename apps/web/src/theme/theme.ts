@@ -62,6 +62,8 @@ export const APP_ICONS = [
   'lucide:boxes',
   'lucide:package-plus',
   'lucide:package-minus',
+  'lucide:hand-helping',
+  'lucide:ban',
   'lucide:scale',
   'lucide:library',
   'lucide:download',

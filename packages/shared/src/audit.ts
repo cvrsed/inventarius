@@ -111,6 +111,7 @@ export const AUDIT_ACTIONS = [
   'consumable.delete',
   'consumable.receive',
   'consumable.deliver',
+  'consumable.return',
   'consumable.adjust',
   'consumable.transfer',
   'consumable.reverse',

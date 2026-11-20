@@ -508,6 +508,167 @@ describe('traslado entre bodegas (D8)', () => {
   });
 });
 
+describe('devolución (P1)', () => {
+  const giveBack = (c: TestClient, deliveryId: string, body: Json) =>
+    c.post(`${base}/consumable-movements/${deliveryId}/returns`, body);
+  const reverseMov = (c: TestClient, id: string, reason = 'Registrada por error') =>
+    c.post(`${base}/consumable-movements/${id}/reversals`, { reason });
+  /** Consumible con 10 en la central y una entrega de 4 a un usuario del sistema. */
+  async function delivered(extra: Json = {}) {
+    const c = await newConsumable(extra);
+    await receive(c.id, ids.main, '10');
+    const del = await move(operator, c.id, 'deliveries', {
+      locationId: ids.main,
+      quantity: '4',
+      recipientUserId: techId,
+    });
+    return { c, delId: del.json().movements[0].id as string };
+  }
+  const history = async (id: string) =>
+    (await reader.get(`${base}/consumables/${id}/movements?pageSize=100`)).json().data as Json[];
+
+  it('entra a la bodega de la entrega, hereda el receptor y deja el vínculo y lo devuelto', async () => {
+    const { c, delId } = await delivered();
+    const res = await giveBack(tech, delId, { quantity: '1', note: 'Talla equivocada' });
+    expect(res.statusCode, res.body).toBe(201);
+    expect(res.json().balances).toEqual([{ locationId: ids.main, quantity: '7' }]);
+    expect(res.json().movements[0]).toMatchObject({
+      kind: 'return',
+      delta: '1',
+      note: 'Talla equivocada',
+      recipient: { userId: techId, name: 'Tomás Técnico' },
+      returnOf: { id: delId },
+      reversible: true,
+      actor: { name: 'Tomás Técnico' },
+    });
+    const del = (await history(c.id)).find((m) => m.id === delId)!;
+    expect(del).toMatchObject({ returned: '1', returnable: true, reversible: false });
+    expect(await env.services.consumables.verifyLedger()).toEqual([]);
+  });
+
+  it('se puede devolver a otra bodega activa; no a una que no es bodega', async () => {
+    const { c, delId } = await delivered();
+    expect(
+      (await giveBack(operator, delId, { quantity: '1', locationId: ids.site })).statusCode,
+    ).toBe(422);
+    const ok = await giveBack(operator, delId, { quantity: '2', locationId: ids.annex });
+    expect(ok.statusCode, ok.body).toBe(201);
+    expect(await stock(c.id)).toEqual({ [ids.main]: '6', [ids.annex]: '2' });
+  });
+
+  it('no devuelve más de lo entregado menos lo ya devuelto, y nunca cero', async () => {
+    const { c, delId } = await delivered();
+    expect((await giveBack(operator, delId, { quantity: '0' })).statusCode).toBe(400);
+    expect((await giveBack(operator, delId, { quantity: '5' })).statusCode).toBe(409);
+    expect((await giveBack(operator, delId, { quantity: '3' })).statusCode).toBe(201);
+    const over = await giveBack(operator, delId, { quantity: '2' });
+    expect(over.statusCode).toBe(409);
+    expect(over.json().detail).toContain('solo quedan por devolver 1');
+    expect((await giveBack(operator, delId, { quantity: '1' })).statusCode).toBe(201);
+    const del = (await history(c.id)).find((m) => m.id === delId)!;
+    expect(del).toMatchObject({ returned: '4', returnable: false });
+    expect(await stock(c.id)).toEqual({ [ids.main]: '10' });
+  });
+
+  it('solo se devuelve una entrega: no un ingreso ni una entrega anulada; respeta los decimales de la unidad', async () => {
+    const { c, delId } = await delivered();
+    const rec = await receive(c.id, ids.main, '1');
+    expect((await giveBack(operator, rec.movements[0].id, { quantity: '1' })).statusCode).toBe(409);
+    expect((await giveBack(operator, delId, { quantity: '0.5' })).statusCode).toBe(422);
+    await reverseMov(admin, delId, 'Entrega duplicada');
+    const res = await giveBack(operator, delId, { quantity: '1' });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().detail).toContain('anulada');
+    expect(
+      (await giveBack(operator, '00000000-0000-4000-8000-000000000000', { quantity: '1' }))
+        .statusCode,
+    ).toBe(404);
+  });
+
+  it('una entrega con devoluciones vigentes no se anula; primero se anulan las devoluciones', async () => {
+    const { c, delId } = await delivered();
+    const ret = await giveBack(operator, delId, { quantity: '2' });
+    const retId = ret.json().movements[0].id as string;
+    const blocked = await reverseMov(admin, delId);
+    expect(blocked.statusCode).toBe(409);
+    expect(blocked.json().detail).toContain('devoluciones vigentes');
+    const undone = await reverseMov(admin, retId, 'Se devolvió otra cosa');
+    expect(undone.statusCode, undone.body).toBe(201);
+    expect(undone.json().movements[0]).toMatchObject({ kind: 'reversal', delta: '-2' });
+    expect(await stock(c.id)).toEqual({ [ids.main]: '6' });
+    const del = (await history(c.id)).find((m) => m.id === delId)!;
+    expect(del).toMatchObject({ returned: '0', returnable: true, reversible: true });
+    expect((await reverseMov(admin, delId)).statusCode).toBe(201);
+    expect(await stock(c.id)).toEqual({ [ids.main]: '10' });
+  });
+
+  it('una devolución anulada libera la cantidad para devolverla de nuevo', async () => {
+    const { delId } = await delivered();
+    const first = await giveBack(operator, delId, { quantity: '4' });
+    await reverseMov(admin, first.json().movements[0].id);
+    expect((await giveBack(operator, delId, { quantity: '4' })).statusCode).toBe(201);
+  });
+
+  it('anular una devolución no puede dejar el saldo negativo', async () => {
+    const { c, delId } = await delivered();
+    const ret = await giveBack(operator, delId, { quantity: '4' });
+    await move(operator, c.id, 'deliveries', {
+      locationId: ids.main,
+      quantity: '10',
+      recipientName: 'Persona Inventada',
+    });
+    const res = await reverseMov(admin, ret.json().movements[0].id);
+    expect(res.statusCode).toBe(409);
+    expect(res.json().detail).toContain('negativo');
+  });
+
+  it('exige consumables:deliver y el consumible activo; el lector no devuelve', async () => {
+    const { c, delId } = await delivered();
+    expect((await giveBack(reader, delId, { quantity: '1' })).statusCode).toBe(403);
+    await operator.patch(
+      `${base}/consumables/${c.id}`,
+      { active: false },
+      { 'if-match': `"${(await admin.get(`${base}/consumables/${c.id}`)).json().updatedAt}"` },
+    );
+    expect((await giveBack(operator, delId, { quantity: '1' })).statusCode).toBe(409);
+  });
+
+  it('devoluciones simultáneas de la misma entrega no devuelven más de lo entregado', async () => {
+    const { c, delId } = await delivered();
+    const clients = Array.from({ length: 6 }, (_, i) => env.client(`10.9.0.${i + 1}`));
+    await Promise.all(clients.map((x) => x.login('op@ejemplo.cl')));
+    const results = await Promise.all(
+      clients.map((x, i) =>
+        giveBack(x, delId, { quantity: '1', locationId: i % 2 ? ids.main : ids.annex }),
+      ),
+    );
+    expect(results.filter((r) => r.statusCode === 201)).toHaveLength(4);
+    expect(results.filter((r) => r.statusCode === 409)).toHaveLength(2);
+    const del = (await history(c.id)).find((m) => m.id === delId)!;
+    expect(del.returned).toBe('4');
+    expect(await env.services.consumables.verifyLedger()).toEqual([]);
+  });
+
+  it('la base rechaza una devolución sin entrega o con signo negativo', async () => {
+    const { c } = await delivered();
+    const pool = env.db.migratorPool;
+    const insert = (delta: string, returnsId: string | null) =>
+      pool.query(
+        `INSERT INTO consumable_movements (consumable_id, location_id, kind, delta, actor_id, recipient_name, returns_id)
+         VALUES ($1, $2, 'return', $3, (SELECT id FROM users LIMIT 1), 'Persona Inventada', $4)`,
+        [c.id, ids.main, delta, returnsId],
+      );
+    await expect(insert('1', null)).rejects.toThrow(/consumable_movements_return_chk/);
+    const [d] = (
+      await pool.query(
+        `SELECT id FROM consumable_movements WHERE kind = 'delivery' AND consumable_id = $1`,
+        [c.id],
+      )
+    ).rows;
+    await expect(insert('-1', d.id)).rejects.toThrow(/consumable_movements_sign_chk/);
+  });
+});
+
 describe('ajuste (D6)', () => {
   it('es solo del Administrador (consumables:adjust)', async () => {
     const c = await newConsumable();

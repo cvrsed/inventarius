@@ -25,6 +25,9 @@ const movement = (over: Partial<MovementDto>): MovementDto => ({
   reversedBy: null,
   reverses: null,
   reversible: true,
+  returned: null,
+  returnable: false,
+  returnOf: null,
   ...over,
 });
 

@@ -164,6 +164,14 @@ export function useConsumableMutations() {
         post(v.id, 'adjustments')(v.body),
       onSuccess: refresh,
     }),
+    giveBack: useMutation({
+      mutationFn: (v: { deliveryId: string; body: Record<string, unknown> }) =>
+        api(`/api/v1/consumable-movements/${v.deliveryId}/returns`, movementResultSchema, {
+          method: 'POST',
+          body: v.body,
+        }),
+      onSuccess: refresh,
+    }),
     reverse: useMutation({
       mutationFn: (v: { movementId: string; reason: string }) =>
         api(`/api/v1/consumable-movements/${v.movementId}/reversals`, movementResultSchema, {

@@ -141,4 +141,51 @@ describe('ficha del consumible (RF-73, RF-74)', () => {
     const text = w.text();
     for (const label of ['Bodega', 'Tipo', 'Desde', 'Hasta']) expect(text).toContain(label);
   });
+
+  describe('devoluciones (P1)', () => {
+    const delivery = (over = {}) =>
+      movement({
+        id: '0190d1a0-0000-7000-8000-0000000000f2',
+        kind: 'delivery',
+        delta: '-4',
+        recipient: { userId: null, name: 'Persona Inventada', ref: null },
+        returned: '1',
+        returnable: true,
+        reversible: false,
+        ...over,
+      });
+
+    it('la entrega muestra «Devuelto x de y» y la acción, y no se anula con devoluciones vigentes', async () => {
+      const w = await mountPage(ALL, consumable(), [delivery()]);
+      expect(w.text()).toContain('Devuelto 1 par de 4 pares');
+      expect(w.text()).toContain('anula primero sus devoluciones');
+      expect(button(w, 'Registrar devolución')).toBeTruthy();
+      expect(button(w, 'Anular')).toBeUndefined();
+    });
+
+    it('sin consumables:deliver no hay acción de devolver; ya devuelta del todo tampoco', async () => {
+      const w = await mountPage(['consumables:read'], consumable(), [delivery()]);
+      expect(button(w, 'Registrar devolución')).toBeUndefined();
+      const full = await mountPage(ALL, consumable(), [
+        delivery({ returned: '4', returnable: false }),
+      ]);
+      expect(full.text()).toContain('Devuelto 4 pares de 4 pares');
+      expect(
+        full.findAll('button').filter((b) => b.text().includes('Registrar devolución')),
+      ).toHaveLength(0);
+    });
+
+    it('una devolución enlaza con su entrega', async () => {
+      const ret = movement({
+        id: '0190d1a0-0000-7000-8000-0000000000f3',
+        kind: 'return',
+        delta: '1',
+        recipient: { userId: null, name: 'Persona Inventada', ref: null },
+        returnOf: { id: '0190d1a0-0000-7000-8000-0000000000f2', at: '2026-11-16T12:00:00.000Z' },
+      });
+      const w = await mountPage(ALL, consumable(), [ret, delivery()]);
+      expect(w.text()).toContain('Devolución');
+      expect(w.text()).toContain('Devuelve la entrega del');
+    });
+  });
 });

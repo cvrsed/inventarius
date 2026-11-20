@@ -1,5 +1,6 @@
 import {
   compareQuantities,
+  subtractQuantities,
   quantityFitsUnit,
   type AdjustmentInput,
   type UnitRef,
@@ -25,4 +26,11 @@ export function isBelowMinimum(quantity: string, minimum: string | null): boolea
 /** Cantidad con el signo que lleva en el libro. */
 export function signedDelta(direction: AdjustmentInput['direction'], quantity: string): string {
   return direction === 'add' ? quantity : `-${quantity}`;
+}
+
+/** Cuánto queda por devolver de una entrega: lo entregado menos las devoluciones vigentes (nunca negativo). */
+export function remainingToReturn(delivered: string, returned: string): string {
+  return compareQuantities(delivered, returned) <= 0
+    ? '0'
+    : subtractQuantities(delivered, returned);
 }

@@ -13,6 +13,7 @@ import {
   pageOf,
   receiptSchema,
   recipientSchema,
+  returnSchema,
   reversalSchema,
   transferSchema,
   updateConsumableSchema,
@@ -230,6 +231,20 @@ export const consumablesRoutes: FastifyPluginAsyncZod<{ consumables: Consumables
     },
     async (req, reply) =>
       reply.code(201).send(await consumables.adjust(actor(req), req.params.id, req.body)),
+  );
+  app.post(
+    '/consumable-movements/:id/returns',
+    {
+      ...requirePermission('consumables:deliver'),
+      schema: {
+        tags,
+        params: idParams,
+        body: returnSchema,
+        response: { 201: movementResultSchema },
+      },
+    },
+    async (req, reply) =>
+      reply.code(201).send(await consumables.returnDelivery(actor(req), req.params.id, req.body)),
   );
   app.post(
     '/consumable-movements/:id/reversals',

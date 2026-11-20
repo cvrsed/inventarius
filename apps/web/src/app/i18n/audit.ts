@@ -73,6 +73,7 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   'consumable.delete': 'Eliminación de consumible',
   'consumable.receive': 'Ingreso a bodega',
   'consumable.deliver': 'Entrega',
+  'consumable.return': 'Devolución',
   'consumable.adjust': 'Ajuste de stock',
   'consumable.transfer': 'Traslado entre bodegas',
   'consumable.reverse': 'Anulación de movimiento',
@@ -257,6 +258,7 @@ export const AUDIT_VALUE_LABELS: {
   originalKind: {
     receipt: 'Ingreso',
     delivery: 'Entrega',
+    return: 'Devolución',
     adjustment: 'Ajuste',
     transfer_out: 'Traslado (salida)',
     transfer_in: 'Traslado (entrada)',

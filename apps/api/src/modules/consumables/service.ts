@@ -17,6 +17,7 @@ import {
   type MovementListQuery,
   type MovementResult,
   type ReceiptInput,
+  type ReturnInput,
   type ReversalInput,
   type TransferInput,
   type UnitRef,
@@ -33,7 +34,12 @@ import {
 import type { Actor, AuditService } from '../audit/service.js';
 import { CatalogEntity, compact, isViolation } from '../catalog/entity.js';
 import type { CatalogService } from '../catalog/service.js';
-import { assertQuantityFitsUnit, isBelowMinimum, signedDelta } from './domain.js';
+import {
+  assertQuantityFitsUnit,
+  isBelowMinimum,
+  remainingToReturn,
+  signedDelta,
+} from './domain.js';
 import type {
   ConsumableRow,
   ConsumablesRepository,
@@ -96,7 +102,7 @@ const unitDto = (r: MeasureUnitRow): MeasureUnitDto => ({
 });
 
 const INACTIVE =
-  'El consumible está inactivo: no admite ingresos, entregas ni traslados (los ajustes y las anulaciones sí).';
+  'El consumible está inactivo: no admite ingresos, entregas, devoluciones ni traslados (los ajustes y las anulaciones sí).';
 
 interface Touched {
   consumable: ConsumableRow;
@@ -442,6 +448,92 @@ export class ConsumablesService {
     return this.result(consumableId, ids, balances);
   }
 
+  /**
+   * Devolución de (parte de) una entrega (P1): es un movimiento propio, positivo y ligado a la entrega. Entra a la
+   * bodega de la entrega o a otra bodega activa, hereda el receptor y no pasa de lo entregado menos lo ya devuelto.
+   */
+  async returnDelivery(
+    actor: Actor,
+    deliveryId: string,
+    input: ReturnInput,
+  ): Promise<MovementResult> {
+    let consumableId = '';
+    const { ids, balances } = await this.db.transaction(async (tx) => {
+      const delivery = await this.repo.getMovement(tx, deliveryId);
+      if (!delivery) throw new NotFoundError('Movimiento no encontrado');
+      consumableId = delivery.consumableId;
+      if (delivery.kind !== 'delivery') {
+        throw new ConflictError('Solo se pueden devolver entregas.');
+      }
+      await this.repo.lockDelivery(tx, delivery.id);
+      const { consumable, unit } = await this.begin(tx, delivery.consumableId, 'active');
+      if (await this.repo.reversalOf(tx, delivery.id)) {
+        throw new ConflictError('La entrega fue anulada: no se puede devolver.');
+      }
+      assertQuantityFitsUnit(input.quantity, unit, 'quantity');
+      const warehouse = await this.catalog.requireWarehouse(
+        tx,
+        input.locationId ?? delivery.locationId,
+      );
+      const delivered = normalizeDelta(delivery.delta).replace('-', '');
+      const returned = normalizeQuantity(await this.repo.returnedOf(tx, delivery.id));
+      const remaining = remainingToReturn(delivered, returned);
+      if (compareQuantities(input.quantity, remaining) > 0) {
+        throw new ConflictError(
+          remaining === '0'
+            ? `Ya se devolvió todo lo entregado (${formatQuantity(delivered, unit)}).`
+            : `No se puede devolver más de lo entregado: solo quedan por devolver ${formatQuantity(remaining, unit)} ` +
+                `(se entregaron ${formatQuantity(delivered, unit)} y ya se devolvieron ${formatQuantity(returned, unit)}).`,
+        );
+      }
+      const recipient = await this.recipientLabel(tx, delivery);
+      const before = (await this.repo.lockStock(tx, delivery.consumableId, [warehouse.id])).get(
+        warehouse.id,
+      )!;
+      const after = await this.repo.applyDelta(
+        tx,
+        delivery.consumableId,
+        warehouse.id,
+        input.quantity,
+      );
+      const id = await this.repo.insertMovement(tx, {
+        consumableId: delivery.consumableId,
+        locationId: warehouse.id,
+        kind: 'return',
+        delta: input.quantity,
+        actorId: actor.actorId!,
+        note: input.note,
+        recipientUserId: delivery.recipientUserId,
+        recipientName: delivery.recipientName,
+        recipientRef: delivery.recipientRef,
+        returnsId: delivery.id,
+      });
+      await this.audit.record(tx, {
+        ...actor,
+        action: 'consumable.return',
+        entity: 'consumable',
+        entityId: delivery.consumableId,
+        entityLabel: consumable.name,
+        diff: {
+          quantity: input.quantity,
+          unit: unit.name,
+          location: warehouse.path,
+          stockBefore: normalizeQuantity(before),
+          stockAfter: normalizeQuantity(after),
+          recipient: recipient,
+          recipientRef: delivery.recipientRef,
+          note: input.note,
+          returned: `${formatQuantity(normalizeQuantity(addDelta(returned, input.quantity)), unit)} de ${formatQuantity(delivered, unit)}`,
+        },
+      });
+      return {
+        ids: [id],
+        balances: [{ locationId: warehouse.id, quantity: normalizeQuantity(after) }],
+      };
+    });
+    return this.result(consumableId, ids, balances);
+  }
+
   /** Traslado atómico entre bodegas (D8): salida y entrada en una transacción, ligadas. */
   async transfer(
     actor: Actor,
@@ -574,12 +666,23 @@ export class ConsumablesService {
         const original = await this.repo.getMovement(tx, movementId);
         if (!original) throw new NotFoundError('Movimiento no encontrado');
         consumableId = original.consumableId;
+        // Entrega y devoluciones se serializan: no se anula una entrega mientras alguien le devuelve algo.
+        if (original.kind === 'delivery') await this.repo.lockDelivery(tx, original.id);
+        if (original.kind === 'return') await this.repo.lockDelivery(tx, original.returnsId!);
         if (original.kind === 'reversal') {
           throw new ConflictError(
             'Una anulación no se puede anular. Si fue un error, registra de nuevo el movimiento.',
           );
         }
         const { consumable, unit } = await this.begin(tx, original.consumableId, 'any');
+        if (
+          original.kind === 'delivery' &&
+          compareQuantities(await this.repo.returnedOf(tx, original.id), '0') > 0
+        ) {
+          throw new ConflictError(
+            'Esta entrega tiene devoluciones vigentes: anula primero las devoluciones y después la entrega.',
+          );
+        }
         const sibling = await this.repo.transferSibling(tx, original);
         const legs = [original, ...(sibling ? [sibling] : [])].sort((a, b) =>
           a.kind === 'transfer_out' ? -1 : b.kind === 'transfer_out' ? 1 : 0,
@@ -720,6 +823,15 @@ export class ConsumablesService {
     const consumable = (await this.repo.get(tx, id))!;
     if (needs === 'active' && !consumable.active) throw new ConflictError(INACTIVE);
     return { consumable, unit: unitRefOf(consumable) };
+  }
+
+  /** Nombre del receptor de una entrega (la persona del sistema o el texto libre). */
+  private async recipientLabel(
+    tx: Executor,
+    m: { recipientUserId: string | null; recipientName: string | null },
+  ): Promise<string> {
+    if (m.recipientUserId) return (await this.people.find(tx, m.recipientUserId))?.name ?? '';
+    return m.recipientName ?? '';
   }
 
   private assertEnough(balance: string, quantity: string, where: string, unit: UnitRef): void {
@@ -899,7 +1011,16 @@ export class ConsumablesService {
       reverses: r.reversesId
         ? { id: r.reversesId, kind: r.reversesKind as MovementKind, at: iso(r.reversesAt!) }
         : null,
-      reversible: r.kind !== 'reversal' && r.reversedById === null,
+      reversible:
+        r.kind !== 'reversal' &&
+        r.reversedById === null &&
+        !(r.kind === 'delivery' && compareQuantities(r.returned ?? '0', '0') > 0),
+      returned: r.kind === 'delivery' ? normalizeQuantity(r.returned ?? '0') : null,
+      returnable:
+        r.kind === 'delivery' &&
+        r.reversedById === null &&
+        compareQuantities(normalizeDelta(r.delta).replace('-', ''), r.returned ?? '0') > 0,
+      returnOf: r.returnsId ? { id: r.returnsId, at: iso(r.returnsAt!) } : null,
     }));
   }
 }
