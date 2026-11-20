@@ -330,9 +330,11 @@ export const messages = {
       category: 'Categoría',
     },
     lowBadge: 'Bajo mínimo',
+    lowGlobal: 'Bajo mínimo global',
+    lowWarehouses: '{n} bodega bajo mínimo | {n} bodegas bajo mínimo',
     noMinimum: 'Sin mínimo',
-    belowGlobal: 'El total ({total}) está bajo el mínimo ({min}).',
-    belowWarehouses: 'Una bodega está bajo su mínimo. | {n} bodegas están bajo su mínimo.',
+    belowGlobal: 'El total ({total}) está bajo el mínimo global ({min}).',
+    belowWarehouse: 'En «{name}» hay {qty} y su mínimo es {min}.',
     inactiveNotice:
       'Este consumible está desactivado: no admite ingresos, entregas, devoluciones ni traslados. Los ajustes y las anulaciones sí.',
     summary: {

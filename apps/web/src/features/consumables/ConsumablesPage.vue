@@ -13,6 +13,7 @@ import { useListQuery } from '@/shared/list/useListQuery';
 import PagedFooter from '@/shared/ui/PagedFooter.vue';
 import ResponsiveTable from '@/shared/ui/ResponsiveTable.vue';
 import { CONSUMABLE_LIST_DEFAULTS, useConsumablesList, type ConsumableListState } from './api';
+import { lowStockLabel } from './lowStock';
 import ConsumableFormDialog from './ConsumableFormDialog.vue';
 
 const { t } = useI18n();
@@ -143,7 +144,7 @@ const formVisible = ref(false);
           <span>{{ stockOf(row.original) }}</span>
           <UBadge
             v-if="row.original.lowStock"
-            :label="t('consumables.lowBadge')"
+            :label="lowStockLabel(row.original, t)"
             color="warning"
             variant="subtle"
             icon="i-lucide-triangle-alert"
@@ -187,7 +188,7 @@ const formVisible = ref(false);
             {{ stockOf(item) }}
             <UBadge
               v-if="item.lowStock"
-              :label="t('consumables.lowBadge')"
+              :label="lowStockLabel(item, t)"
               color="warning"
               variant="subtle"
               icon="i-lucide-triangle-alert"

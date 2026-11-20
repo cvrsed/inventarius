@@ -74,6 +74,35 @@ describe('listado de consumibles (RF-70, RF-74)', () => {
     expect(w.find('a[href="/consumibles/' + ids.consumable + '"]').exists()).toBe(true);
   });
 
+  it('la insignia dice el motivo: bajo el mínimo global, o cuántas bodegas están bajo el suyo (P9)', async () => {
+    const { w } = await mountList(
+      ['consumables:read'],
+      [
+        row({
+          name: 'Guantes de nitrilo',
+          totalStock: '27',
+          minStock: '20',
+          belowMinimum: false,
+          warehousesBelowMinimum: 1,
+          lowStock: true,
+        }),
+        row({
+          id: '0190d1a0-0000-7000-8000-0000000000c3',
+          name: 'Casco',
+          totalStock: '3',
+          minStock: '20',
+          belowMinimum: true,
+          warehousesBelowMinimum: 2,
+          lowStock: true,
+        }),
+      ],
+    );
+    const text = w.text();
+    expect(text).toContain('27 pares');
+    expect(text).toContain('1 bodega bajo mínimo');
+    expect(text).toContain('Bajo mínimo global · 2 bodegas bajo mínimo');
+  });
+
   it('por defecto pide solo los activos y respeta el filtro «Bajo mínimo» de la URL', async () => {
     const { fetchMock } = await mountList(['consumables:read'], [], '?lowStock=true');
     const url = String(

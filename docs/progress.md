@@ -666,7 +666,7 @@ marca aquí junto con su commit. Cómo probar cada uno: ver «Cómo probar la re
 - [x] P6 Fecha pasada solo en el ingreso (máx. 90 días) y «Registrado el…» en el historial
 - [x] P7 Bodega inactiva con stock: salidas sí, entradas no
 - [x] P8 Traslado como una sola entrada del historial
-- [ ] P9 «Bajo mínimo» explícito (motivo en la insignia y bodegas nombradas en la ficha)
+- [x] P9 «Bajo mínimo» explícito (motivo en la insignia y bodegas nombradas en la ficha)
 - [ ] P10 Inicio: «Últimos movimientos» incluye consumibles
 - [ ] P11 Auditoría de consumibles con orden fijo de campos y «Bodega»
 - [ ] P12 Íconos distintos por tipo de movimiento
@@ -701,6 +701,7 @@ marca aquí junto con su commit. Cómo probar cada uno: ver «Cómo probar la re
   el aviso «Bodega inactiva: solo se puede sacar stock»); Ingresar, el destino de un traslado, la devolución y Ajustar sumando la
   muestran apagada con «Bodega inactiva: solo admite salidas». Una bodega sin stock aparece apagada al sacar («Sin stock»).
 - **P8:** traslada 4 de la central al anexo: el historial muestra una sola entrada «Traslado: Bodega central → Bodega anexo, 4 pares» con un botón «Anular»; al anularla aparece una sola entrada «Anulación de traslado: Bodega anexo → Bodega central, 4 pares». Filtra por la central y por el anexo: el traslado sale en las dos. El filtro de tipo tiene un solo «Traslado». El libro sigue con dos filas por traslado (`cli verify-consumables` cuadra).
+- **P9:** en el listado, un consumible con 27 pares, mínimo global 20 y 1 bodega bajo su mínimo muestra la insignia «1 bodega bajo mínimo» (no «Bajo mínimo» a secas); si es el total el que está bajo, dice «Bajo mínimo global» (con ambos, «Bajo mínimo global · 2 bodegas bajo mínimo»). En la ficha, la alerta nombra cada bodega: «En «Bodega anexo» hay 2 pares y su mínimo es 5 pares.»
 
 ### Backlog post-F3.5
 

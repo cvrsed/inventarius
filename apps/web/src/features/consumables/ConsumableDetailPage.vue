@@ -31,6 +31,7 @@ import {
 } from './api';
 import ConsumableFormDialog from './ConsumableFormDialog.vue';
 import MovementDialog, { type MovementKindForm } from './MovementDialog.vue';
+import { lowStockLabel } from './lowStock';
 import { MOVEMENT_ICONS, describeMovement } from './movements';
 import ReturnDialog from './ReturnDialog.vue';
 import ReverseDialog from './ReverseDialog.vue';
@@ -126,6 +127,10 @@ const stockColumns = computed(() => [
   { id: 'minimum', header: t('consumables.stock.minimum') },
 ]);
 const qty = (v: string) => formatQuantity(v, unit.value!);
+/** Las bodegas que están bajo su propio mínimo: la alerta las nombra (P9). */
+const stockBelowMinimum = computed(() =>
+  (consumable.value?.stockByWarehouse ?? []).filter((w) => w.belowMinimum && w.minQuantity),
+);
 
 // --- Historial ---
 const filters = ref<HistoryFilters>({ locationId: '', kind: '', from: '', to: '' });
@@ -211,7 +216,7 @@ async function goTo(movementId: string): Promise<void> {
           />
           <UBadge
             v-if="consumable.lowStock"
-            :label="t('consumables.lowBadge')"
+            :label="lowStockLabel(consumable, t)"
             color="warning"
             variant="subtle"
             icon="i-lucide-triangle-alert"
@@ -236,13 +241,18 @@ async function goTo(movementId: string): Promise<void> {
               })
             }}
           </span>
-          <span v-if="consumable.warehousesBelowMinimum" class="block">
+          <span
+            v-for="w in stockBelowMinimum"
+            :key="w.location.id"
+            class="block"
+            data-testid="below-warehouse"
+          >
             {{
-              t(
-                'consumables.belowWarehouses',
-                { n: consumable.warehousesBelowMinimum },
-                consumable.warehousesBelowMinimum,
-              )
+              t('consumables.belowWarehouse', {
+                name: w.location.name,
+                qty: qty(w.quantity),
+                min: qty(w.minQuantity!),
+              })
             }}
           </span>
         </template>

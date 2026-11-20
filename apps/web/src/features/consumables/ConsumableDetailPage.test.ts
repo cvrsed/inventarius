@@ -60,7 +60,7 @@ describe('ficha del consumible (RF-73, RF-74)', () => {
     expect(text).toContain('10 pares');
     expect(text).toContain('2 pares');
     expect(text).toContain('12 pares');
-    expect(text).toContain('El total (12 pares) está bajo el mínimo (20 pares).');
+    expect(text).toContain('El total (12 pares) está bajo el mínimo global (20 pares).');
     expect(text).toContain('Bajo mínimo');
     // Un lector no ve ninguna acción de movimiento.
     expect(button(w, 'Ingresar')).toBeUndefined();
@@ -143,6 +143,26 @@ describe('ficha del consumible (RF-73, RF-74)', () => {
     const onlyReverse = await mountPage(ALL.filter((p) => p !== 'consumables:adjust'));
     expect(button(onlyReverse, 'Anular')).toBeDefined();
     expect(button(onlyReverse, 'Ajustar')).toBeUndefined();
+  });
+
+  it('la alerta de bajo mínimo nombra las bodegas que lo están (P9)', async () => {
+    const base = consumable();
+    const w = await mountPage(
+      ['consumables:read'],
+      consumable({
+        belowMinimum: false,
+        warehousesBelowMinimum: 1,
+        totalStock: '27',
+        stockByWarehouse: [
+          base.stockByWarehouse[0]!,
+          { ...base.stockByWarehouse[1]!, quantity: '2', minQuantity: '5', belowMinimum: true },
+        ],
+      }),
+    );
+    const lines = w.findAll('[data-testid="below-warehouse"]').map((l) => l.text());
+    expect(lines).toEqual(['En «Bodega anexo» hay 2 pares y su mínimo es 5 pares.']);
+    expect(w.text()).toContain('1 bodega bajo mínimo');
+    expect(w.text()).not.toContain('Bajo mínimo global');
   });
 
   it('el historial usa «Ver más» y filtros de bodega, tipo y fecha', async () => {
