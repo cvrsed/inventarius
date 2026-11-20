@@ -361,4 +361,38 @@ describe('ficha del consumible (RF-73, RF-74)', () => {
       expect(document.activeElement?.id).toBe(`mov-${ids.movement}`);
     });
   });
+
+  describe('botones de acción de la ficha (P16)', () => {
+    const labels = [
+      'Ingresar',
+      'Entregar',
+      'Trasladar',
+      'Ajustar',
+      'Editar',
+      'Desactivar',
+      'Eliminar',
+    ];
+
+    it('van en una grilla de dos columnas a ancho completo, todos con el mismo tamaño y los primarios primero', async () => {
+      const w = await mountPage(ALL);
+      const group = w.get('[role="group"]');
+      // Dos columnas en móvil; desde `sm` vuelven a ser botones en fila.
+      expect(group.classes()).toEqual(expect.arrayContaining(['grid', 'grid-cols-2', 'sm:flex']));
+      const buttons = group.findAll('button').filter((b) => labels.includes(b.text()));
+      expect(buttons.map((b) => b.text())).toEqual(labels);
+      for (const b of buttons) {
+        // Mismo tamaño: ancho completo de su celda, alto mínimo táctil y contenido centrado.
+        expect(b.classes(), b.text()).toEqual(
+          expect.arrayContaining(['w-full', 'min-h-11', 'justify-center']),
+        );
+        // Si el botón va dentro de un contenedor (el del tooltip), ese también llena la celda.
+        const parent = b.element.parentElement!;
+        if (parent !== group.element) expect(parent.className, b.text()).toContain('w-full');
+      }
+      // Primarios (sólidos) antes que los neutros (contorno).
+      const solid = buttons.map((b) => b.classes().includes('bg-primary'));
+      expect(solid.slice(0, 2)).toEqual([true, true]);
+      expect(solid.slice(2).some(Boolean)).toBe(false);
+    });
+  });
 });

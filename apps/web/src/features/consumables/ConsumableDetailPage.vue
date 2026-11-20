@@ -278,6 +278,7 @@ async function goTo(movementId: string): Promise<void> {
       >
         <ReasonButton
           v-if="auth.can('consumables:receive')"
+          block
           :icon="ACTION_ICONS.receive"
           :label="t('consumables.actions.receive')"
           :reason="reasonFor('receipt')"
@@ -285,6 +286,7 @@ async function goTo(movementId: string): Promise<void> {
         />
         <ReasonButton
           v-if="auth.can('consumables:deliver')"
+          block
           :icon="ACTION_ICONS.deliver"
           :label="t('consumables.actions.deliver')"
           :reason="reasonFor('delivery')"
@@ -292,6 +294,7 @@ async function goTo(movementId: string): Promise<void> {
         />
         <ReasonButton
           v-if="auth.can('consumables:transfer')"
+          block
           :icon="ACTION_ICONS.transfer"
           color="neutral"
           variant="outline"
@@ -301,6 +304,7 @@ async function goTo(movementId: string): Promise<void> {
         />
         <ReasonButton
           v-if="auth.can('consumables:adjust')"
+          block
           :icon="ACTION_ICONS.adjust"
           color="neutral"
           variant="outline"
@@ -309,6 +313,7 @@ async function goTo(movementId: string): Promise<void> {
         />
         <template v-if="auth.can('consumables:manage')">
           <UButton
+            class="w-full justify-center sm:w-auto"
             icon="i-lucide-pencil"
             :label="t('common.edit')"
             color="neutral"
@@ -316,6 +321,7 @@ async function goTo(movementId: string): Promise<void> {
             @click="editing = true"
           />
           <UButton
+            class="w-full justify-center sm:w-auto"
             :icon="consumable.active ? 'i-lucide-eye-off' : 'i-lucide-eye'"
             :label="
               consumable.active
@@ -327,6 +333,7 @@ async function goTo(movementId: string): Promise<void> {
             @click="toggleActive"
           />
           <ReasonButton
+            block
             icon="i-lucide-trash-2"
             :label="t('consumables.actions.delete')"
             color="error"
