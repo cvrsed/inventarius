@@ -342,7 +342,7 @@ export class ConsumablesService {
     const { ids, balances } = await this.db.transaction(async (tx) => {
       const { consumable, unit } = await this.begin(tx, consumableId, 'active');
       assertQuantityFitsUnit(input.quantity, unit, 'quantity');
-      const warehouse = await this.catalog.requireWarehouse(tx, input.locationId);
+      const warehouse = await this.entryWarehouse(tx, input.locationId);
       const today = this.today();
       const problem = input.receivedOn ? receivedOnProblem(input.receivedOn, today) : null;
       if (problem) {
@@ -399,7 +399,7 @@ export class ConsumablesService {
     const { ids, balances } = await this.db.transaction(async (tx) => {
       const { consumable, unit } = await this.begin(tx, consumableId, 'active');
       assertQuantityFitsUnit(input.quantity, unit, 'quantity');
-      const warehouse = await this.catalog.requireWarehouse(tx, input.locationId);
+      const warehouse = await this.exitWarehouse(tx, input.locationId);
       let recipientLabel = input.recipientName ?? '';
       if (input.recipientUserId) {
         const person = await this.people.find(tx, input.recipientUserId);
@@ -478,10 +478,7 @@ export class ConsumablesService {
         throw new ConflictError('La entrega fue anulada: no se puede devolver.');
       }
       assertQuantityFitsUnit(input.quantity, unit, 'quantity');
-      const warehouse = await this.catalog.requireWarehouse(
-        tx,
-        input.locationId ?? delivery.locationId,
-      );
+      const warehouse = await this.entryWarehouse(tx, input.locationId ?? delivery.locationId);
       const delivered = normalizeDelta(delivery.delta).replace('-', '');
       const returned = normalizeQuantity(await this.repo.returnedOf(tx, delivery.id));
       const remaining = remainingToReturn(delivered, returned);
@@ -550,8 +547,8 @@ export class ConsumablesService {
     const { ids, balances } = await this.db.transaction(async (tx) => {
       const { consumable, unit } = await this.begin(tx, consumableId, 'active');
       assertQuantityFitsUnit(input.quantity, unit, 'quantity');
-      const from = await this.catalog.requireWarehouse(tx, input.fromLocationId, 'fromLocationId');
-      const to = await this.catalog.requireWarehouse(tx, input.toLocationId, 'toLocationId');
+      const from = await this.exitWarehouse(tx, input.fromLocationId, 'fromLocationId');
+      const to = await this.entryWarehouse(tx, input.toLocationId, 'toLocationId');
       const locked = await this.repo.lockStock(tx, consumableId, [from.id, to.id]);
       const fromBefore = locked.get(from.id)!;
       this.assertEnough(fromBefore, input.quantity, from.path, unit);
@@ -618,9 +615,10 @@ export class ConsumablesService {
     const { ids, balances } = await this.db.transaction(async (tx) => {
       const { consumable, unit } = await this.begin(tx, consumableId, 'any');
       assertQuantityFitsUnit(input.quantity, unit, 'quantity');
-      const warehouse = await this.catalog.requireWarehouse(tx, input.locationId, 'locationId', {
-        allowInactive: true,
-      });
+      const warehouse =
+        input.direction === 'add'
+          ? await this.entryWarehouse(tx, input.locationId)
+          : await this.exitWarehouse(tx, input.locationId);
       const delta = signedDelta(input.direction, input.quantity);
       const before = (await this.repo.lockStock(tx, consumableId, [warehouse.id])).get(
         warehouse.id,
@@ -849,6 +847,24 @@ export class ConsumablesService {
   ): Promise<string> {
     if (m.recipientUserId) return (await this.people.find(tx, m.recipientUserId))?.name ?? '';
     return m.recipientName ?? '';
+  }
+
+  /**
+   * Bodega de una salida (entrega, traslado de salida, ajuste negativo): una bodega inactiva con stock sigue admitiendo
+   * salidas para poder vaciarla (P7).
+   */
+  private exitWarehouse(tx: Executor, id: string, field = 'locationId') {
+    return this.catalog.requireWarehouse(tx, id, field, { allowInactive: true });
+  }
+
+  /** Bodega de una entrada (ingreso, traslado de entrada, devolución, ajuste positivo): debe estar activa (P7). */
+  private async entryWarehouse(tx: Executor, id: string, field = 'locationId') {
+    const warehouse = await this.catalog.requireWarehouse(tx, id, field, { allowInactive: true });
+    if (!warehouse.active) {
+      const message = `La bodega «${warehouse.path}» está inactiva: ya no admite entradas (ingresos, traslados hacia ella, devoluciones ni ajustes que sumen); solo salidas, para vaciarla.`;
+      throw new ValidationError(message, { [field]: [message] });
+    }
+    return warehouse;
   }
 
   private assertEnough(balance: string, quantity: string, where: string, unit: UnitRef): void {

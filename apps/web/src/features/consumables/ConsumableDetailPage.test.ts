@@ -75,7 +75,9 @@ describe('ficha del consumible (RF-73, RF-74)', () => {
       expect(b.attributes('disabled'), label).toBeDefined();
       expect(b.attributes('aria-describedby'), label).toBeTruthy();
     }
-    expect(w.text()).toContain('Desactivado: no admite ingresos, entregas ni traslados.');
+    expect(w.text()).toContain(
+      'Desactivado: no admite ingresos, entregas, devoluciones ni traslados.',
+    );
     expect(button(w, 'Ajustar')!.attributes('disabled')).toBeUndefined();
     expect(w.text()).toContain('Este consumible está desactivado');
   });

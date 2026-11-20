@@ -16,11 +16,10 @@ import { useToast } from '@nuxt/ui/composables/useToast';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { errorMessage } from '@/features/auth/errors';
-import { fetchOptions } from '@/features/catalog/api';
 import { ApiError } from '@/shared/api/http';
-import RemoteSelect, { type RemoteOption } from '@/shared/ui/RemoteSelect.vue';
-import { useConsumableMutations } from './api';
+import { useConsumableMutations, useWarehouses } from './api';
 import { quantityProblem, toApiQuantity } from './quantity';
+import WarehouseSelect, { type WarehouseOption } from './WarehouseSelect.vue';
 
 /** Devolución de (parte de) una entrega (P1): vuelve a la bodega de la entrega u otra bodega activa. */
 const props = defineProps<{ delivery: MovementDto | null; consumable: ConsumableDetailDto }>();
@@ -38,7 +37,21 @@ const remaining = computed(() =>
     : subtractQuantities(delivered.value, props.delivery?.returned ?? '0'),
 );
 
-const warehouse = ref<RemoteOption | null>(null);
+const warehouseId = ref('');
+const { data: allWarehouses } = useWarehouses();
+const items = computed<WarehouseOption[]>(() =>
+  (allWarehouses.value ?? []).map((w) => {
+    const balance =
+      props.consumable.stockByWarehouse.find((s) => s.location.id === w.id)?.quantity ?? '0';
+    return {
+      id: w.id,
+      name: w.name,
+      parents: w.parents,
+      stock: formatQuantity(balance, unit.value),
+      ...(w.active ? {} : { disabledReason: t('consumables.picker.inactiveEntry') }),
+    };
+  }),
+);
 const quantity = ref('');
 const note = ref('');
 const touched = ref(false);
@@ -47,7 +60,7 @@ const error = ref('');
 
 watch(visible, (open) => {
   if (!open || !props.delivery) return;
-  warehouse.value = { id: props.delivery.location.id, name: props.delivery.location.name };
+  warehouseId.value = props.delivery.location.id;
   quantity.value = '';
   note.value = '';
   touched.value = false;
@@ -70,7 +83,7 @@ function validate(): boolean {
       max: formatQuantity(remaining.value, unit.value),
     });
   }
-  if (!warehouse.value) e['locationId'] = t('common.required');
+  if (!warehouseId.value) e['locationId'] = t('common.required');
   errors.value = e;
   return Object.keys(e).length === 0;
 }
@@ -83,7 +96,7 @@ async function submit(): Promise<void> {
     await giveBack.mutateAsync({
       deliveryId: props.delivery!.id,
       body: {
-        locationId: warehouse.value!.id,
+        locationId: warehouseId.value,
         quantity: toApiQuantity(quantity.value),
         note: note.value.trim() || null,
       },
@@ -102,8 +115,6 @@ async function submit(): Promise<void> {
     } else error.value = errorMessage(e, t);
   }
 }
-
-const warehouses = (q: string) => fetchOptions('locations', q, { extra: { type: 'warehouse' } });
 </script>
 
 <template>
@@ -136,11 +147,10 @@ const warehouses = (q: string) => fetchOptions('locations', q, { extra: { type: 
           required
           :error="touched ? errors['locationId'] : undefined"
         >
-          <RemoteSelect
+          <WarehouseSelect
             id="rt-warehouse"
-            v-model="warehouse"
-            source="warehouses-return"
-            :fetcher="warehouses"
+            v-model="warehouseId"
+            :items="items"
             :placeholder="t('consumables.form.warehousePlaceholder')"
           />
         </UFormField>

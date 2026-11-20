@@ -119,6 +119,29 @@ function askDelete(item: CatalogItem): void {
 
 const toggleActive = (item: CatalogItem) =>
   run(() => patch.mutateAsync({ item, body: { active: !item.active } }), 'catalog.toggled');
+
+/** Cuántos consumibles tienen stock en una bodega que se va a desactivar (0 si no es una bodega). */
+const stockedIn = (i: CatalogItem): number =>
+  section.value === 'locations' && 'type' in i && i.type === 'warehouse'
+    ? ((i as { stockedConsumables?: number }).stockedConsumables ?? 0)
+    : 0;
+
+/** Desactivar una bodega con stock avisa antes qué pasa con él (P7): solo seguirá admitiendo salidas. */
+function onToggle(item: CatalogItem): void {
+  const n = stockedIn(item);
+  if (!item.active || n === 0) return void toggleActive(item);
+  confirm.require({
+    title: t('catalog.deactivateWarehouseTitle'),
+    message: t(
+      'catalog.deactivateWarehouseStock',
+      { name: displayCells(section.value, item, t).title, n },
+      n,
+    ),
+    acceptLabel: t('catalog.deactivate'),
+    rejectLabel: t('common.cancel'),
+    accept: () => toggleActive(item),
+  });
+}
 </script>
 
 <template>
@@ -234,7 +257,7 @@ const toggleActive = (item: CatalogItem) =>
             :icon="row.original.active ? 'i-lucide-eye-off' : 'i-lucide-eye'"
             :label="row.original.active ? t('catalog.deactivate') : t('catalog.activate')"
             :target="displayCells(section, row.original).title"
-            @click="toggleActive(row.original)"
+            @click="onToggle(row.original)"
           />
           <IconAction
             icon="i-lucide-trash-2"
@@ -295,7 +318,7 @@ const toggleActive = (item: CatalogItem) =>
             color="neutral"
             variant="outline"
             size="sm"
-            @click="toggleActive(item)"
+            @click="onToggle(item)"
           />
           <UButton
             icon="i-lucide-trash-2"

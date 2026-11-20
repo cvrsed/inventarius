@@ -664,7 +664,7 @@ marca aquí junto con su commit. Cómo probar cada uno: ver «Cómo probar la re
 - [x] P4 Categorías de consumibles con `consumables:manage` y unicidad por (ámbito, nombre)
 - [x] P5 Concurrencia del primer movimiento en una bodega sin fila de saldo
 - [x] P6 Fecha pasada solo en el ingreso (máx. 90 días) y «Registrado el…» en el historial
-- [ ] P7 Bodega inactiva con stock: salidas sí, entradas no
+- [x] P7 Bodega inactiva con stock: salidas sí, entradas no
 - [ ] P8 Traslado como una sola entrada del historial
 - [ ] P9 «Bajo mínimo» explícito (motivo en la insignia y bodegas nombradas en la ficha)
 - [ ] P10 Inicio: «Últimos movimientos» incluye consumibles
@@ -696,6 +696,10 @@ marca aquí junto con su commit. Cómo probar cada uno: ver «Cómo probar la re
 - **P6:** Ingresar con fecha de hace 10 días: el historial muestra solo «10-11-2026» y debajo «Registrado el … por …»; uno de
   hoy muestra fecha y hora. Fecha de hace más de 90 días o futura: el diálogo y la API la rechazan. Entrega, traslado y ajuste no
   tienen campo de fecha. En Auditoría, el ingreso muestra «Fecha del ingreso» y «Registrado el».
+- **P7:** con 10 unidades en una bodega, desactívala en Catálogo → Ubicaciones: la confirmación dice «hay stock de 1
+  consumible…». Después, en la ficha del consumible: Entregar, Trasladar (como origen) y Ajustar restando siguen eligiéndola (con
+  el aviso «Bodega inactiva: solo se puede sacar stock»); Ingresar, el destino de un traslado, la devolución y Ajustar sumando la
+  muestran apagada con «Bodega inactiva: solo admite salidas». Una bodega sin stock aparece apagada al sacar («Sin stock»).
 
 ### Backlog post-F3.5
 

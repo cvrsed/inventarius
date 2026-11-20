@@ -158,6 +158,8 @@ export const locationSchema = z.object({
   type: locationTypeSchema,
   address: z.string().nullable(),
   active: z.boolean(),
+  /** Consumibles con stock en esta ubicación (una bodega): la confirmación de desactivarla lo avisa. */
+  stockedConsumables: z.number().int().optional(),
   ...versioned,
 });
 export type LocationDto = z.infer<typeof locationSchema>;

@@ -2,8 +2,11 @@ import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import type { MovementDto } from '@inventarius/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { jsonResponse, mockApi, pagePlugins } from '@/test-utils';
-import { consumable, ids, movement } from './fixtures';
+import { consumable, ids, movement, warehouses } from './fixtures';
 import ReturnDialog from './ReturnDialog.vue';
+
+const mockWith = (routes: Record<string, () => unknown> = {}) =>
+  mockApi({ 'GET /api/v1/locations': () => warehouses(), ...routes });
 
 const mounted: VueWrapper[] = [];
 afterEach(() => {
@@ -53,7 +56,7 @@ describe('devolución (P1)', () => {
   });
 
   it('no deja devolver más de lo que queda y no llama a la API', async () => {
-    const fetchMock = mockApi({});
+    const fetchMock = mockWith({});
     await open();
     await type('rt-quantity', '4');
     await submit();
@@ -62,7 +65,7 @@ describe('devolución (P1)', () => {
   });
 
   it('envía la devolución a la bodega de la entrega por defecto', async () => {
-    const fetchMock = mockApi({
+    const fetchMock = mockWith({
       [`POST /api/v1/consumable-movements/${ids.movement}/returns`]: () =>
         jsonResponse({ movements: [], balances: [] }, 201),
     });

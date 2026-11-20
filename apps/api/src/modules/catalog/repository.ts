@@ -59,6 +59,8 @@ export type LocationRow = {
   type: string;
   address: string | null;
   active: boolean;
+  /** Consumibles con saldo mayor que cero en esta ubicación (solo tiene sentido en una bodega). */
+  stockedConsumables: number;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -310,7 +312,9 @@ export class CatalogRepository {
     )`;
   private readonly locationSelect = sql`
     SELECT l.id, l.name, l.parent_id AS "parentId", p.name AS "parentName", tree.path,
-           l.type, l.address, l.active, l.created_at AS "createdAt", l.updated_at AS "updatedAt"
+           l.type, l.address, l.active, l.created_at AS "createdAt", l.updated_at AS "updatedAt",
+           (SELECT COUNT(*)::int FROM consumable_stock s
+             WHERE s.location_id = l.id AND s.quantity > 0) AS "stockedConsumables"
     FROM locations l
     JOIN tree ON tree.id = l.id
     LEFT JOIN locations p ON p.id = l.parent_id`;

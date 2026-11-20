@@ -19,13 +19,13 @@ import { useToast } from '@nuxt/ui/composables/useToast';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { errorMessage } from '@/features/auth/errors';
-import { fetchOptions } from '@/features/catalog/api';
 import { ApiError } from '@/shared/api/http';
 import AppSelect from '@/shared/ui/AppSelect.vue';
 import RemoteSelect, { type RemoteOption } from '@/shared/ui/RemoteSelect.vue';
 import { useConfirm } from '@/shared/ui/useConfirm';
-import { fetchRecipients, useConsumableMutations } from './api';
+import { fetchRecipients, useConsumableMutations, useWarehouses, type WarehouseInfo } from './api';
 import { quantityProblem, toApiQuantity } from './quantity';
+import WarehouseSelect, { type WarehouseOption } from './WarehouseSelect.vue';
 
 export type MovementKindForm = 'receipt' | 'delivery' | 'transfer' | 'adjustment';
 
@@ -41,10 +41,9 @@ const unit = computed(() => props.consumable.unit);
 const today = () => new Date().toLocaleDateString('en-CA');
 const earliest = () => earliestReceivedOn(today());
 
-/** Bodega de origen elegida de entre las que tienen stock (entrega y traslado). */
-const originId = ref('');
-const warehouse = ref<RemoteOption | null>(null);
-const destination = ref<RemoteOption | null>(null);
+/** Bodega elegida: de origen (entrega, traslado, ajuste que resta) o la que recibe (ingreso, ajuste que suma). */
+const warehouseId = ref('');
+const destinationId = ref('');
 const quantity = ref('');
 const receivedOn = ref(today());
 const supplier = ref('');
@@ -57,38 +56,73 @@ const direction = ref<'add' | 'subtract'>('subtract');
 const reason = ref('');
 const errors = ref<Record<string, string>>({});
 const error = ref('');
+/** Se muestran los errores de un campo solo después de intentar enviar (P15). */
+const attempted = ref(false);
 
+const { data: allWarehouses } = useWarehouses();
 const balances = computed(
   () => new Map(props.consumable.stockByWarehouse.map((s) => [s.location.id, s.quantity])),
 );
-const withStock = computed(() =>
-  props.consumable.stockByWarehouse.filter((s) => compareQuantities(s.quantity, '0') > 0),
-);
-const originItems = computed(() =>
-  withStock.value.map((s) => ({
-    value: s.location.id,
-    label: `${s.location.path} — ${formatQuantity(s.quantity, unit.value)}`,
-  })),
-);
+const balanceOf = (id: string) => balances.value.get(id) ?? '0';
 const usesOrigin = computed(() => props.kind === 'delivery' || props.kind === 'transfer');
-/** Bodega sobre la que se calcula el saldo: el origen elegido o la bodega buscada. */
-const currentLocationId = computed(() =>
-  usesOrigin.value ? originId.value : (warehouse.value?.id ?? ''),
+/** `exit`: saca stock de la bodega (se elige entre las que tienen); `entry`: lo mete (la bodega debe estar activa, P7). */
+const mainMode = computed<'exit' | 'entry'>(() =>
+  usesOrigin.value || (props.kind === 'adjustment' && direction.value === 'subtract')
+    ? 'exit'
+    : 'entry',
 );
-const currentBalance = computed(() => balances.value.get(currentLocationId.value) ?? '0');
+
+function optionOf(w: WarehouseInfo, mode: 'exit' | 'entry'): WarehouseOption {
+  const balance = balanceOf(w.id);
+  const hasStock = compareQuantities(balance, '0') > 0;
+  const option: WarehouseOption = {
+    id: w.id,
+    name: w.name,
+    parents: w.parents,
+    stock: formatQuantity(balance, unit.value),
+  };
+  if (mode === 'exit' && !hasStock) option.disabledReason = t('consumables.picker.noStock');
+  else if (mode === 'entry' && !w.active)
+    option.disabledReason = t('consumables.picker.inactiveEntry');
+  else if (!w.active) option.note = t('consumables.picker.inactiveExit');
+  return option;
+}
+const mainItems = computed(() =>
+  (allWarehouses.value ?? []).map((w) => optionOf(w, mainMode.value)),
+);
+const destinationItems = computed(() =>
+  (allWarehouses.value ?? []).map((w) => {
+    const o = optionOf(w, 'entry');
+    if (w.id === warehouseId.value) o.disabledReason = t('consumables.picker.sameAsOrigin');
+    return o;
+  }),
+);
+const enabledMain = computed(() => mainItems.value.filter((o) => !o.disabledReason));
+const selected = (items: WarehouseOption[], id: string) => items.find((o) => o.id === id);
+// Con una sola bodega de la que se pueda sacar stock, queda elegida sola (las bodegas llegan después de abrir el diálogo).
+watch(
+  enabledMain,
+  (list) => {
+    if (visible.value && usesOrigin.value && !warehouseId.value && list.length === 1) {
+      warehouseId.value = list[0]!.id;
+    }
+  },
+  { immediate: true },
+);
+
+/** Bodega sobre la que se calcula el saldo. */
+const currentLocationId = computed(() => warehouseId.value);
+const currentBalance = computed(() => balanceOf(currentLocationId.value));
+const currentName = computed(() => selected(mainItems.value, warehouseId.value)?.name ?? '');
 const currentPlace = computed(
   () =>
     props.consumable.stockByWarehouse.find((s) => s.location.id === currentLocationId.value)
-      ?.location.path ??
-    warehouse.value?.name ??
-    '',
+      ?.location.path ?? currentName.value,
 );
 /** Tope de la cantidad: lo disponible en el origen (entrega, traslado, y ajuste que resta). */
 const cap = computed<string | null>(() => {
   if (!currentLocationId.value) return null;
-  if (usesOrigin.value || (props.kind === 'adjustment' && direction.value === 'subtract')) {
-    return currentBalance.value;
-  }
+  if (mainMode.value === 'exit') return currentBalance.value;
   return null;
 });
 
@@ -104,9 +138,10 @@ watch(
     if (!open) return;
     errors.value = {};
     error.value = '';
-    originId.value = originItems.value.length === 1 ? originItems.value[0]!.value : '';
-    warehouse.value = null;
-    destination.value = null;
+    attempted.value = false;
+    warehouseId.value =
+      usesOrigin.value && enabledMain.value.length === 1 ? enabledMain.value[0]!.id : '';
+    destinationId.value = '';
     quantity.value = '';
     receivedOn.value = today();
     supplier.value = note.value = recipientName.value = recipientRef.value = reason.value = '';
@@ -116,6 +151,14 @@ watch(
   },
   { immediate: true },
 );
+// Al cambiar el sentido de un ajuste, la bodega elegida puede dejar de servir (p. ej. sin stock para restar).
+watch(direction, () => {
+  if (selected(mainItems.value, warehouseId.value)?.disabledReason) warehouseId.value = '';
+});
+// La de origen no puede ser también el destino.
+watch(warehouseId, (id) => {
+  if (id && id === destinationId.value) destinationId.value = '';
+});
 
 const submitting = computed(() => mutations[mutationKey()].isPending.value);
 function mutationKey() {
@@ -148,12 +191,10 @@ function validate(): boolean {
     const dateProblem = receivedOnProblem(receivedOn.value, today());
     if (dateProblem) e['receivedOn'] = t(`consumables.movement.problems.date.${dateProblem}`);
   }
-  if (usesOrigin.value) {
-    if (!originId.value) e[props.kind === 'transfer' ? 'fromLocationId' : 'locationId'] = required;
-  } else if (!warehouse.value) e['locationId'] = required;
+  if (!warehouseId.value) e[props.kind === 'transfer' ? 'fromLocationId' : 'locationId'] = required;
   if (props.kind === 'transfer') {
-    if (!destination.value) e['toLocationId'] = required;
-    else if (destination.value.id === originId.value) {
+    if (!destinationId.value) e['toLocationId'] = required;
+    else if (destinationId.value === warehouseId.value) {
       e['toLocationId'] = t('consumables.movement.problems.sameWarehouse');
     }
   }
@@ -176,7 +217,7 @@ function body(): Record<string, unknown> {
   switch (props.kind) {
     case 'receipt':
       return {
-        locationId: warehouse.value!.id,
+        locationId: warehouseId.value,
         quantity: q,
         receivedOn: receivedOn.value || undefined,
         supplier: supplier.value.trim() || null,
@@ -184,7 +225,7 @@ function body(): Record<string, unknown> {
       };
     case 'delivery':
       return {
-        locationId: originId.value,
+        locationId: warehouseId.value,
         quantity: q,
         ...(recipientKind.value === 'user'
           ? { recipientUserId: recipientUser.value!.id }
@@ -196,14 +237,14 @@ function body(): Record<string, unknown> {
       };
     case 'transfer':
       return {
-        fromLocationId: originId.value,
-        toLocationId: destination.value!.id,
+        fromLocationId: warehouseId.value,
+        toLocationId: destinationId.value,
         quantity: q,
         note: n,
       };
     case 'adjustment':
       return {
-        locationId: warehouse.value!.id,
+        locationId: warehouseId.value,
         direction: direction.value,
         quantity: q,
         reason: reason.value,
@@ -255,8 +296,6 @@ async function submit(): Promise<void> {
   if (ok) await send();
 }
 
-const warehouses = (q: string) =>
-  fetchOptions('locations', q, { all: props.kind === 'adjustment', extra: { type: 'warehouse' } });
 const reasonItems = computed(() =>
   ADJUSTMENT_REASONS.map((r) => ({ value: r, label: t(`consumables.reasons.${r}`) })),
 );
@@ -285,45 +324,38 @@ const quantityHelp = computed(() =>
       <form id="movement-form" class="flex flex-col gap-4" novalidate @submit.prevent="submit">
         <UAlert v-if="error" color="error" variant="subtle" role="alert" :description="error" />
 
-        <!-- Bodega: de origen (con stock a la vista) o cualquiera según el movimiento. -->
         <UFormField
-          v-if="usesOrigin"
+          v-if="kind === 'adjustment'"
+          :label="t('consumables.movement.direction')"
+          name="mv-direction"
+          required
+        >
+          <AppSelect id="mv-direction" v-model="direction" :items="directionItems" class="w-full" />
+        </UFormField>
+
+        <!-- Bodega: nombre, ruta y stock; las que no sirven para esta acción se ven apagadas con el motivo (P7, P13). -->
+        <UFormField
           :label="
             kind === 'transfer'
               ? t('consumables.movement.from')
               : t('consumables.movement.warehouse')
           "
-          name="mv-origin"
+          name="mv-warehouse"
           required
           :error="errors[kind === 'transfer' ? 'fromLocationId' : 'locationId']"
         >
-          <AppSelect
-            id="mv-origin"
-            v-model="originId"
-            :items="originItems"
-            :placeholder="t('consumables.form.warehousePlaceholder')"
-            class="w-full"
-          />
-        </UFormField>
-        <UFormField
-          v-else
-          :label="t('consumables.movement.warehouse')"
-          name="mv-warehouse"
-          required
-          :error="errors['locationId']"
-        >
-          <RemoteSelect
+          <WarehouseSelect
             id="mv-warehouse"
-            v-model="warehouse"
-            :source="`warehouses-${kind}`"
-            :fetcher="warehouses"
+            v-model="warehouseId"
+            :items="mainItems"
             :placeholder="t('consumables.form.warehousePlaceholder')"
           />
         </UFormField>
-        <p v-if="kind === 'adjustment' && warehouse" class="m-0 -mt-2 text-sm text-muted">
+
+        <p v-if="kind === 'adjustment' && warehouseId" class="m-0 -mt-2 text-sm text-muted">
           {{
             t('consumables.movement.available', {
-              name: warehouse.name,
+              name: currentName,
               qty: formatQuantity(currentBalance, unit),
             })
           }}
@@ -336,22 +368,12 @@ const quantityHelp = computed(() =>
           required
           :error="errors['toLocationId']"
         >
-          <RemoteSelect
+          <WarehouseSelect
             id="mv-destination"
-            v-model="destination"
-            source="warehouses-transfer-to"
-            :fetcher="warehouses"
+            v-model="destinationId"
+            :items="destinationItems"
             :placeholder="t('consumables.form.warehousePlaceholder')"
           />
-        </UFormField>
-
-        <UFormField
-          v-if="kind === 'adjustment'"
-          :label="t('consumables.movement.direction')"
-          name="mv-direction"
-          required
-        >
-          <AppSelect id="mv-direction" v-model="direction" :items="directionItems" class="w-full" />
         </UFormField>
 
         <UFormField

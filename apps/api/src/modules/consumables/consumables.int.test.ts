@@ -1043,6 +1043,109 @@ describe('permisos separados: ajustar y anular (P2, cierra Q60)', () => {
   });
 });
 
+describe('bodega inactiva con stock (P7)', () => {
+  /** Bodega propia con 10 unidades de un consumible; se desactiva al final de la preparación. */
+  async function inactiveWithStock() {
+    const c = await newConsumable();
+    const wh = (
+      await create(operator, 'locations', { name: `Bodega por cerrar ${seq}`, type: 'warehouse' })
+    ).id as string;
+    await receive(c.id, wh, '10');
+    const loc = (await operator.get(`${base}/locations/${wh}`)).json();
+    const off = await operator.patch(
+      `${base}/locations/${wh}`,
+      { active: false },
+      { 'if-match': `"${loc.updatedAt}"` },
+    );
+    expect(off.statusCode, off.body).toBe(200);
+    return { c, wh };
+  }
+
+  it('permite las salidas para poder vaciarla: entrega, traslado de salida y ajuste negativo', async () => {
+    const { c, wh } = await inactiveWithStock();
+    const del = await move(operator, c.id, 'deliveries', {
+      locationId: wh,
+      quantity: '2',
+      recipientName: 'Persona Inventada',
+    });
+    expect(del.statusCode, del.body).toBe(201);
+    const out = await move(operator, c.id, 'transfers', {
+      fromLocationId: wh,
+      toLocationId: ids.main,
+      quantity: '3',
+    });
+    expect(out.statusCode, out.body).toBe(201);
+    const adj = await move(operator, c.id, 'adjustments', {
+      locationId: wh,
+      direction: 'subtract',
+      quantity: '5',
+      reason: 'loss',
+    });
+    expect(adj.statusCode, adj.body).toBe(201);
+    expect((await stock(c.id))[wh]).toBe('0');
+  });
+
+  it('bloquea las entradas: ingreso, traslado de entrada, devolución hacia ella y ajuste positivo', async () => {
+    const { c, wh } = await inactiveWithStock();
+    const blocked = (res: { statusCode: number; json(): Json }) => {
+      expect(res.statusCode).toBe(422);
+      expect(JSON.stringify(res.json())).toContain('inactiva');
+    };
+    blocked(await move(operator, c.id, 'receipts', { locationId: wh, quantity: '1' }));
+    await receive(c.id, ids.main, '5');
+    blocked(
+      await move(operator, c.id, 'transfers', {
+        fromLocationId: ids.main,
+        toLocationId: wh,
+        quantity: '1',
+      }),
+    );
+    blocked(
+      await move(operator, c.id, 'adjustments', {
+        locationId: wh,
+        direction: 'add',
+        quantity: '1',
+        reason: 'physical_count',
+      }),
+    );
+    // La devolución a la bodega inactiva falla; a otra bodega activa, no.
+    const del = await move(operator, c.id, 'deliveries', {
+      locationId: wh,
+      quantity: '2',
+      recipientName: 'Persona Inventada',
+    });
+    const delId = del.json().movements[0].id as string;
+    const back = (body: Json) =>
+      operator.post(`${base}/consumable-movements/${delId}/returns`, { quantity: '1', ...body });
+    blocked(await back({}));
+    expect((await back({ locationId: ids.main })).statusCode).toBe(201);
+    expect((await stock(c.id))[wh]).toBe('8');
+  });
+
+  it('la ubicación informa cuántos consumibles tienen stock en ella, para avisar al desactivarla', async () => {
+    const a = await newConsumable();
+    const b = await newConsumable();
+    const wh = (await create(operator, 'locations', { name: 'Bodega con dos', type: 'warehouse' }))
+      .id as string;
+    expect((await operator.get(`${base}/locations/${wh}`)).json().stockedConsumables).toBe(0);
+    await receive(a.id, wh, '2');
+    await receive(b.id, wh, '1');
+    expect((await operator.get(`${base}/locations/${wh}`)).json().stockedConsumables).toBe(2);
+    // Con saldo 0 ya no cuenta.
+    await move(operator, b.id, 'adjustments', {
+      locationId: wh,
+      direction: 'subtract',
+      quantity: '1',
+      reason: 'loss',
+    });
+    const list = (await operator.get(`${base}/locations?type=warehouse&pageSize=100`)).json()
+      .data as Json[];
+    expect(list.find((l) => l.id === wh)!.stockedConsumables).toBe(1);
+    const site = (await operator.get(`${base}/locations/${ids.site}`)).json();
+    expect(site.stockedConsumables).toBe(0);
+  });
+});
+
 describe('stock mínimo (RF-74, D9)', () => {
   it('el mínimo global se compara con el total de todas las bodegas', async () => {
     const c = await newConsumable({ minStock: '10' });

@@ -10,6 +10,33 @@ export const ids = {
   movement: '0190d1a0-0000-7000-8000-0000000000f1',
 };
 
+export const ids2 = { closed: '0190d1a0-0000-7000-8000-0000000000a3' };
+
+const place = (id: string, name: string, over: Record<string, unknown> = {}) => ({
+  id,
+  name,
+  parent: null,
+  path: name,
+  type: 'warehouse' as const,
+  address: null,
+  active: true,
+  updatedAt: '2026-11-16T12:00:00.000Z',
+  ...over,
+});
+
+/** Respuesta de `GET /locations?type=warehouse`: dos bodegas activas y una inactiva (datos inventados). */
+export const warehouses = () => ({
+  data: [
+    place(ids.main, 'Bodega central'),
+    place(ids.annex, 'Bodega anexo', {
+      path: 'Zensi Chile > Bodega anexo',
+      parent: { id: ids.cat, name: 'Zensi Chile' },
+    }),
+    place(ids2.closed, 'Bodega cerrada', { active: false }),
+  ],
+  meta: { page: 1, pageSize: 100, total: 3 },
+});
+
 export const par = { id: ids.unit, name: 'par', plural: 'pares', abbreviation: 'par', decimals: 0 };
 
 /** Guantes (datos inventados): 10 pares en la bodega central y 2 en el anexo; mínimo global 20. */

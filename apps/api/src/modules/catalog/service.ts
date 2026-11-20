@@ -233,6 +233,7 @@ export class CatalogService {
           type: r.type as LocationType,
           address: r.address,
           active: r.active,
+          stockedConsumables: r.stockedConsumables,
           updatedAt: iso(r.updatedAt),
         }),
         snapshot: (r) => ({ path: r.path, type: r.type, address: r.address, active: r.active }),

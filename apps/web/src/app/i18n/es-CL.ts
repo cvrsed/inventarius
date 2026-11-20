@@ -297,6 +297,9 @@ export const messages = {
     deactivate: 'Desactivar',
     activate: 'Activar',
     toggled: 'Estado actualizado',
+    deactivateWarehouseTitle: 'Desactivar bodega con stock',
+    deactivateWarehouseStock:
+      'En «{name}» hay stock de {n} consumible. Al desactivarla dejará de admitir entradas (ingresos, traslados hacia ella, devoluciones y ajustes que sumen); podrás seguir sacando stock hasta vaciarla. | En «{name}» hay stock de {n} consumibles. Al desactivarla dejará de admitir entradas (ingresos, traslados hacia ella, devoluciones y ajustes que sumen); podrás seguir sacando stock hasta vaciarla.',
   },
   consumables: {
     title: 'Consumibles',
@@ -331,7 +334,7 @@ export const messages = {
     belowGlobal: 'El total ({total}) está bajo el mínimo ({min}).',
     belowWarehouses: 'Una bodega está bajo su mínimo. | {n} bodegas están bajo su mínimo.',
     inactiveNotice:
-      'Este consumible está desactivado: no admite ingresos, entregas ni traslados. Los ajustes y las anulaciones sí.',
+      'Este consumible está desactivado: no admite ingresos, entregas, devoluciones ni traslados. Los ajustes y las anulaciones sí.',
     summary: {
       total: 'Stock total',
       minimum: 'Mínimo global',
@@ -359,7 +362,7 @@ export const messages = {
       delete: 'Eliminar',
     },
     blocked: {
-      inactive: 'Desactivado: no admite ingresos, entregas ni traslados.',
+      inactive: 'Desactivado: no admite ingresos, entregas, devoluciones ni traslados.',
       noStock: 'No hay stock en ninguna bodega para entregar.',
       noTransferStock: 'Se necesita stock en una bodega para trasladar.',
       hasMovements:
@@ -408,6 +411,12 @@ export const messages = {
       returned: 'Devuelto {returned} de {total}',
       returnOf: 'Devuelve la entrega del {date}',
       returnsBlockReverse: 'Para anular esta entrega, anula primero sus devoluciones.',
+    },
+    picker: {
+      noStock: 'Sin stock: no hay nada que sacar',
+      inactiveEntry: 'Bodega inactiva: solo admite salidas',
+      inactiveExit: 'Bodega inactiva: solo se puede sacar stock',
+      sameAsOrigin: 'Es la bodega de origen',
     },
     returnDialog: {
       title: 'Registrar devolución',

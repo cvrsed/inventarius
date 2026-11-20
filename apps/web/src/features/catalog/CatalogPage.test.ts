@@ -184,6 +184,36 @@ describe('CatalogPage (RF-10 a RF-14)', () => {
     expect((call[1]!.headers as Record<string, string>)['if-match']).toBe(`"${item.updatedAt}"`);
   });
 
+  it('desactivar una bodega con stock avisa cuántos consumibles hay y solo sigue si se confirma (P7)', async () => {
+    const warehouse = {
+      id: '018f0000-0000-7000-8000-0000000000b1',
+      name: 'Bodega central',
+      parent: null,
+      path: 'Bodega central',
+      type: 'warehouse',
+      address: null,
+      active: true,
+      stockedConsumables: 3,
+      updatedAt: '2026-11-16T12:00:00.000Z',
+    };
+    const { wrapper, fetchMock } = await mountSection(
+      'locations',
+      [warehouse],
+      ['asset:read', 'catalog:write'],
+      { [`PATCH /api/v1/locations/${warehouse.id}`]: () => ({ ...warehouse, active: false }) },
+    );
+    await wrapper.get('button[aria-label="Desactivar Bodega central"]').trigger('click');
+    await flushPromises();
+    const confirm = useConfirm();
+    expect(confirm.state.open).toBe(true);
+    expect(confirm.state.options?.message).toContain('hay stock de 3 consumibles');
+    expect(confirm.state.options?.message).toContain('seguir sacando stock');
+    expect(fetchMock.mock.calls.some((c) => c[1]?.method === 'PATCH')).toBe(false);
+    await confirm.state.options!.accept();
+    await flushPromises();
+    expect(fetchMock.mock.calls.some((c) => c[1]?.method === 'PATCH')).toBe(true);
+  });
+
   it('eliminar queda deshabilitado con el motivo cuando el registro está en uso', async () => {
     const { wrapper, fetchMock } = await mountSection(
       'statuses',

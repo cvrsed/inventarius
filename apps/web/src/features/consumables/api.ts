@@ -8,6 +8,7 @@ import {
 import {
   consumableDetailSchema,
   consumableSchema,
+  locationSchema,
   movementResultSchema,
   movementSchema,
   pageOf,
@@ -181,4 +182,36 @@ export function useConsumableMutations() {
       onSuccess: refresh,
     }),
   };
+}
+
+/** Una bodega con su ruta, para los selectores de bodega (activas e inactivas: el selector dice cuáles no se pueden usar). */
+export interface WarehouseInfo {
+  id: string;
+  name: string;
+  path: string;
+  /** Ruta de los padres («Zensi › Chile»), vacía si es de primer nivel. */
+  parents: string;
+  active: boolean;
+}
+
+/** Todas las bodegas (hasta 100, el tope de los listados; RNF-06), ordenadas por ruta. */
+export function useWarehouses() {
+  return useQuery({
+    queryKey: ['remote', 'warehouses-all'] as const,
+    queryFn: async ({ signal }): Promise<WarehouseInfo[]> => {
+      const res = await api(
+        '/api/v1/locations?type=warehouse&pageSize=100&sort=path',
+        pageOf(locationSchema),
+        { signal },
+      );
+      return res.data.map((l) => ({
+        id: l.id,
+        name: l.name,
+        path: l.path,
+        parents: l.path.split(' > ').slice(0, -1).join(' › '),
+        active: l.active,
+      }));
+    },
+    staleTime: 15_000,
+  });
 }

@@ -3,7 +3,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { jsonResponse, mockApi, pagePlugins } from '@/test-utils';
 import { useConfirm } from '@/shared/ui/useConfirm';
 import { consumable, ids, movement } from './fixtures';
+import { ids2, warehouses } from './fixtures';
 import MovementDialog, { type MovementKindForm } from './MovementDialog.vue';
+
+const mockWith = (routes: Record<string, () => unknown> = {}) =>
+  mockApi({ 'GET /api/v1/locations': () => warehouses(), ...routes });
 
 const mounted: VueWrapper[] = [];
 afterEach(() => {
@@ -14,8 +18,7 @@ afterEach(() => {
 });
 
 type State = Record<string, unknown>;
-async function open(kind: MovementKindForm, one = false) {
-  const base = consumable();
+async function open(kind: MovementKindForm, one = false, base = consumable()) {
   const w = mount(MovementDialog, {
     props: {
       kind,
@@ -47,7 +50,7 @@ const posted = (fetchMock: ReturnType<typeof mockApi>, part: string) =>
 
 describe('entrega (RF-72, D5)', () => {
   it('muestra el tope de stock de la bodega y no deja entregar más', async () => {
-    const fetchMock = mockApi({});
+    const fetchMock = mockWith({});
     await open('delivery', true);
     expect(document.body.textContent).toContain('Máximo disponible en esta bodega: 10 pares');
     await type('#mv-quantity', '11');
@@ -58,7 +61,7 @@ describe('entrega (RF-72, D5)', () => {
   });
 
   it('rechaza decimales en una unidad entera', async () => {
-    const fetchMock = mockApi({});
+    const fetchMock = mockWith({});
     const { state } = await open('delivery', true);
     state['recipientKind'] = 'text';
     state['recipientName'] = 'Persona Inventada';
@@ -70,7 +73,7 @@ describe('entrega (RF-72, D5)', () => {
   });
 
   it('exige quién recibe: persona del sistema o nombre escrito', async () => {
-    mockApi({});
+    mockWith({});
     const { state } = await open('delivery', true);
     await type('#mv-quantity', '2');
     await submit();
@@ -82,7 +85,7 @@ describe('entrega (RF-72, D5)', () => {
   });
 
   it('envía la entrega a un nombre escrito con la cantidad normalizada', async () => {
-    const fetchMock = mockApi({
+    const fetchMock = mockWith({
       [`POST /api/v1/consumables/${ids.consumable}/deliveries`]: () =>
         jsonResponse(
           { movements: [movement({ kind: 'delivery', delta: '-3' })], balances: [] },
@@ -110,7 +113,7 @@ describe('entrega (RF-72, D5)', () => {
 
 describe('ajuste (D6)', () => {
   it('antes de ajustar pide confirmar mostrando el saldo antes y después', async () => {
-    const fetchMock = mockApi({
+    const fetchMock = mockWith({
       [`POST /api/v1/consumables/${ids.consumable}/adjustments`]: () =>
         jsonResponse(
           { movements: [movement({ kind: 'adjustment', delta: '-2' })], balances: [] },
@@ -118,7 +121,7 @@ describe('ajuste (D6)', () => {
         ),
     });
     const { state } = await open('adjustment');
-    state['warehouse'] = { id: ids.main, name: 'Bodega central' };
+    state['warehouseId'] = ids.main;
     state['direction'] = 'subtract';
     state['reason'] = 'waste_damage';
     await flushPromises();
@@ -137,9 +140,9 @@ describe('ajuste (D6)', () => {
   });
 
   it('con el motivo «otro» la nota es obligatoria', async () => {
-    mockApi({});
+    mockWith({});
     const { state } = await open('adjustment');
-    state['warehouse'] = { id: ids.main, name: 'Bodega central' };
+    state['warehouseId'] = ids.main;
     state['reason'] = 'other';
     await flushPromises();
     await type('#mv-quantity', '1');
@@ -149,9 +152,9 @@ describe('ajuste (D6)', () => {
   });
 
   it('una resta no puede superar el stock de la bodega', async () => {
-    mockApi({});
+    mockWith({});
     const { state } = await open('adjustment');
-    state['warehouse'] = { id: ids.annex, name: 'Bodega anexo' };
+    state['warehouseId'] = ids.annex;
     state['reason'] = 'loss';
     state['direction'] = 'subtract';
     await flushPromises();
@@ -164,9 +167,9 @@ describe('ajuste (D6)', () => {
 
 describe('traslado (D8)', () => {
   it('no deja elegir el mismo destino que el origen', async () => {
-    mockApi({});
+    mockWith({});
     const { state } = await open('transfer', true);
-    state['destination'] = { id: ids.main, name: 'Bodega central' };
+    state['destinationId'] = ids.main;
     await flushPromises();
     await type('#mv-quantity', '1');
     await submit();
@@ -176,7 +179,7 @@ describe('traslado (D8)', () => {
 
 describe('ingreso (RF-71)', () => {
   it('pide la bodega y envía fecha y proveedor', async () => {
-    const fetchMock = mockApi({
+    const fetchMock = mockWith({
       [`POST /api/v1/consumables/${ids.consumable}/receipts`]: () =>
         jsonResponse({ movements: [movement()], balances: [] }, 201),
     });
@@ -184,7 +187,7 @@ describe('ingreso (RF-71)', () => {
     await type('#mv-quantity', '24');
     await submit();
     expect(document.body.textContent).toContain('Este campo es obligatorio');
-    state['warehouse'] = { id: ids.main, name: 'Bodega central' };
+    state['warehouseId'] = ids.main;
     await flushPromises();
     await type('#mv-supplier', 'Proveedor Ficticio SpA');
     await submit();
@@ -216,9 +219,9 @@ describe('fecha del ingreso (P6)', () => {
   });
 
   it('una fecha de más de 90 días o futura no se envía y dice por qué', async () => {
-    const fetchMock = mockApi({});
+    const fetchMock = mockWith({});
     const { state } = await open('receipt', true);
-    state['warehouse'] = { id: ids.main, name: 'Bodega central' };
+    state['warehouseId'] = ids.main;
     await flushPromises();
     await type('#mv-quantity', '2');
     await type('#mv-date', '2020-01-01');
@@ -229,5 +232,86 @@ describe('fecha del ingreso (P6)', () => {
     await submit();
     expect(document.body.textContent).toContain('no puede ser futura');
     expect(posted(fetchMock, 'receipts')).toHaveLength(0);
+  });
+});
+
+describe('bodega inactiva con stock (P7)', () => {
+  const withClosed = () => {
+    const base = consumable();
+    return {
+      ...base,
+      stockByWarehouse: [
+        ...base.stockByWarehouse,
+        {
+          location: {
+            id: ids2.closed,
+            name: 'Bodega cerrada',
+            path: 'Bodega cerrada',
+            active: false,
+          },
+          quantity: '4',
+          minQuantity: null,
+          belowMinimum: false,
+        },
+      ],
+    };
+  };
+  const optionsOf = async (kind: MovementKindForm, direction?: string) => {
+    mockWith();
+    const { state } = await open(kind, false, withClosed());
+    if (direction) {
+      state['direction'] = direction;
+      await flushPromises();
+    }
+    (document.body.querySelector('#mv-warehouse') as HTMLElement).click();
+    await flushPromises();
+    return Object.fromEntries(
+      [...document.body.querySelectorAll<HTMLElement>('[role="option"]')].map((o) => [
+        ['Bodega central', 'Bodega anexo', 'Bodega cerrada'].find((n) =>
+          o.textContent?.includes(n),
+        ) ?? '',
+        o,
+      ]),
+    );
+  };
+
+  it('en una salida (entrega) se puede elegir la inactiva con stock, con un aviso', async () => {
+    const o = await optionsOf('delivery');
+    expect(o['Bodega cerrada']!.getAttribute('data-disabled')).toBeNull();
+    expect(o['Bodega cerrada']!.textContent).toContain(
+      'Bodega inactiva: solo se puede sacar stock',
+    );
+  });
+
+  it('en una entrada (ingreso) la inactiva se ve desactivada con el motivo, no falla al enviar', async () => {
+    const o = await optionsOf('receipt');
+    expect(o['Bodega cerrada']!.getAttribute('data-disabled')).not.toBeNull();
+    expect(o['Bodega cerrada']!.textContent).toContain('Bodega inactiva: solo admite salidas');
+    expect(o['Bodega central']!.getAttribute('data-disabled')).toBeNull();
+  });
+
+  it('un ajuste que resta admite la inactiva con stock y uno que suma no', async () => {
+    const subtract = await optionsOf('adjustment', 'subtract');
+    expect(subtract['Bodega cerrada']!.getAttribute('data-disabled')).toBeNull();
+    mounted.splice(0).forEach((w) => w.unmount());
+    document.body.innerHTML = '';
+    const add = await optionsOf('adjustment', 'add');
+    expect(add['Bodega cerrada']!.getAttribute('data-disabled')).not.toBeNull();
+  });
+
+  it('las bodegas sin stock se ven desactivadas al sacar, con el motivo', async () => {
+    const o = await optionsOf('delivery');
+    expect(o['Bodega anexo']!.getAttribute('data-disabled')).toBeNull(); // el anexo tiene 2 pares
+    mounted.splice(0).forEach((w) => w.unmount());
+    document.body.innerHTML = '';
+    mockWith();
+    await open('delivery', true);
+    (document.body.querySelector('#mv-warehouse') as HTMLElement).click();
+    await flushPromises();
+    const anexo = [...document.body.querySelectorAll<HTMLElement>('[role="option"]')].find((x) =>
+      x.textContent?.includes('Bodega anexo'),
+    )!;
+    expect(anexo.getAttribute('data-disabled')).not.toBeNull();
+    expect(anexo.textContent).toContain('Sin stock');
   });
 });
