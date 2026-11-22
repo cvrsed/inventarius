@@ -116,7 +116,10 @@ export class CatalogService {
       {
         entity: 'category',
         notFound: 'Categoría no encontrada',
-        duplicate: 'Ya existe una categoría con ese nombre',
+        duplicate: (subject) =>
+          subject.scope === 'consumable'
+            ? 'Ya existe una categoría de consumibles con ese nombre'
+            : 'Ya existe una categoría con ese nombre',
         toDto: (r) => ({
           id: r.id,
           name: r.name,
@@ -125,9 +128,10 @@ export class CatalogService {
           active: r.active,
           updatedAt: iso(r.updatedAt),
         }),
+        // El tipo de extensión solo existe en las categorías de activos: en las de consumibles no se audita (D11).
         snapshot: (r) => ({
           name: r.name,
-          extension: r.extension,
+          ...(r.scope === 'consumable' ? {} : { extension: r.extension }),
           scope: r.scope,
           active: r.active,
         }),

@@ -230,10 +230,48 @@ describe('categorías de consumibles: permiso y unicidad por ámbito (P4, cierra
     expect((await cats(operator, { name: 'Cables', scope: 'consumable' })).statusCode).toBe(201);
     const dup = await cats(operator, { name: 'cables', scope: 'consumable' });
     expect(dup.statusCode).toBe(409);
-    expect(dup.json().detail).toContain('Ya existe una categoría');
+    expect(dup.json().detail).toBe('Ya existe una categoría de consumibles con ese nombre');
     // El mismo nombre en el ámbito de activos es otra categoría.
     expect((await cats(operator, { name: 'CABLES' })).statusCode).toBe(201);
-    expect((await cats(operator, { name: 'cables' })).statusCode).toBe(409);
+    const dupAsset = await cats(operator, { name: 'cables' });
+    expect(dupAsset.statusCode).toBe(409);
+    expect(dupAsset.json().detail).toBe('Ya existe una categoría con ese nombre');
+  });
+
+  it('renombrar a un nombre repetido también dice «de consumibles» (D12)', async () => {
+    await cats(operator, { name: 'Guantes D12', scope: 'consumable' });
+    const other = await cats(operator, { name: 'Mascarillas D12', scope: 'consumable' });
+    const res = await operator.patch(
+      `${base}/categories/${other.json().id}`,
+      { name: 'guantes d12' },
+      { 'if-match': `"${other.json().updatedAt}"` },
+    );
+    expect(res.statusCode).toBe(409);
+    expect(res.json().detail).toBe('Ya existe una categoría de consumibles con ese nombre');
+  });
+
+  it('la auditoría de una categoría de consumibles no trae «extension» y la de activos sí (D11)', async () => {
+    const cons = await cats(operator, { name: 'Auditada D11', scope: 'consumable' });
+    const asset = await cats(operator, { name: 'Auditada D11 activos' });
+    const renamed = await operator.patch(
+      `${base}/categories/${cons.json().id}`,
+      { name: 'Auditada D11 b' },
+      { 'if-match': `"${cons.json().updatedAt}"` },
+    );
+    expect(renamed.statusCode).toBe(200);
+    const events = (
+      (await admin.get(`${base}/audit?entity=category&pageSize=100`)).json().data as Json[]
+    ).filter((e) => [cons.json().id, asset.json().id].includes(e.entityId as string));
+    const created = (id: string) =>
+      events.find((e) => e.entityId === id && e.action === 'category.create')!.diff as Json;
+    expect(created(cons.json().id).after).toEqual({
+      name: 'Auditada D11',
+      scope: 'consumable',
+      active: true,
+    });
+    expect(created(asset.json().id).after).toHaveProperty('extension', 'none');
+    const update = events.find((e) => e.action === 'category.update')!.diff as Json;
+    expect(update).toEqual({ before: { name: 'Auditada D11' }, after: { name: 'Auditada D11 b' } });
   });
 });
 

@@ -32,7 +32,8 @@ export interface EntityDef<Row extends Versioned, Dto, Create, Patch, Query> {
   /** Entidad de auditoría; sus acciones (`<entity>.create|update|delete`) están en `AUDIT_ACTIONS`. */
   entity: 'category' | 'manufacturer' | 'model' | 'location' | 'status_label' | 'measure_unit';
   notFound: string;
-  duplicate: string;
+  /** Mensaje de nombre repetido; puede depender de lo que se creó o editó (p. ej. el ámbito de una categoría). */
+  duplicate: string | ((subject: Row | Create) => string);
   toDto(row: Row): Dto;
   /** Campos que van a auditoría; nunca secretos. */
   snapshot(row: Row): Record<string, unknown>;
@@ -47,6 +48,7 @@ export interface EntityDef<Row extends Versioned, Dto, Create, Patch, Query> {
   beforeDelete?(tx: Executor, row: Row): void;
 }
 
+const DUPLICATE = 'Ya existe un registro con ese nombre';
 const IN_USE = 'No se puede borrar porque está en uso. Desactívalo para que ya no se pueda elegir.';
 
 /**
@@ -91,6 +93,12 @@ export class CatalogEntity<
     return this.def.get(exec, id);
   }
 
+  private duplicateMessage(subject: Row | Create): string {
+    return typeof this.def.duplicate === 'function'
+      ? this.def.duplicate(subject)
+      : this.def.duplicate;
+  }
+
   async create(actor: Actor, input: Create): Promise<Dto> {
     try {
       return await this.db.transaction(async (tx) => {
@@ -107,16 +115,18 @@ export class CatalogEntity<
         return this.def.toDto(row);
       });
     } catch (e) {
-      if (isViolation(e, '23505')) throw new ConflictError(this.def.duplicate);
+      if (isViolation(e, '23505')) throw new ConflictError(this.duplicateMessage(input));
       throw e;
     }
   }
 
   async update(actor: Actor, id: string, patch: Patch, expectedVersion: string): Promise<Dto> {
+    let subject: Row | undefined;
     try {
       return await this.db.transaction(async (tx) => {
         const current = await this.def.get(tx, id);
         if (!current) throw new NotFoundError(this.def.notFound);
+        subject = current;
         if (current.updatedAt.toISOString() !== expectedVersion)
           throw new PreconditionFailedError();
         const prepared = this.def.beforeUpdate
@@ -137,7 +147,8 @@ export class CatalogEntity<
         return this.def.toDto(row);
       });
     } catch (e) {
-      if (isViolation(e, '23505')) throw new ConflictError(this.def.duplicate);
+      if (isViolation(e, '23505'))
+        throw new ConflictError(subject ? this.duplicateMessage(subject) : DUPLICATE);
       throw e;
     }
   }
