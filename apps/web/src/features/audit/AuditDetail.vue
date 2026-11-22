@@ -26,7 +26,10 @@ const rows = computed(() => [
     <template v-for="r in rows" :key="r.field">
       <dt class="font-medium text-highlighted">{{ r.label }}</dt>
       <dd class="m-0 min-w-0 break-words">
-        <template v-if="r.value !== undefined">{{ r.value }}</template>
+        <ul v-if="r.items" class="m-0 flex list-none flex-col gap-1 p-0">
+          <li v-for="item in r.items" :key="item.text" :title="item.title">{{ item.text }}</li>
+        </ul>
+        <template v-else-if="r.value !== undefined">{{ r.value }}</template>
         <template v-else>
           <span class="text-muted">{{ t('audit.before') }}:</span> {{ r.before }}
           <span aria-hidden="true"> → </span>

@@ -9,6 +9,8 @@ export interface DetailRow {
   value?: string;
   before?: string;
   after?: string;
+  /** Una línea por elemento (p. ej. cada bodega de los mínimos), con la ruta completa como ayuda. */
+  items?: { text: string; title?: string }[];
 }
 
 /** Textos que necesita el formateo; `t` y `te` vienen de vue-i18n (inyectados para poder probar sin él). */
@@ -174,6 +176,50 @@ const orderedEntries = (
     .map((x) => x.e);
 };
 
+const NO_MINIMUM = '—';
+
+/** «Ruta: cantidad» → { ruta, cantidad }; la cantidad es lo que sigue al último «: ». */
+function parseMinimums(value: unknown): Map<string, string> {
+  const map = new Map<string, string>();
+  if (!Array.isArray(value)) return map;
+  for (const entry of value) {
+    if (typeof entry !== 'string') continue;
+    const cut = entry.lastIndexOf(': ');
+    if (cut > 0) map.set(entry.slice(0, cut), entry.slice(cut + 2));
+  }
+  return map;
+}
+
+const shortPath = (path: string): string => path.split(' > ').pop() ?? path;
+const minimumText = (q: string | undefined): string =>
+  q === undefined ? NO_MINIMUM : /^\d+(\.\d+)?$/.test(q) ? formatDecimal(q) : q;
+
+/**
+ * Mínimos por bodega (D18): con antes y después, solo las bodegas que cambiaron, una línea cada una con su nombre
+ * corto («Bodega Norte: — → 40»); en un alta o baja, todas («Bodega Norte: 40»). La ruta completa va como ayuda.
+ */
+function minimumItems(before: unknown, after: unknown, changes: boolean): DetailRow['items'] {
+  const b = parseMinimums(before);
+  const a = parseMinimums(after);
+  const paths = [...new Set([...b.keys(), ...a.keys()])].sort((x, y) =>
+    shortPath(x).localeCompare(shortPath(y), 'es'),
+  );
+  return paths.flatMap((path) => {
+    if (changes) {
+      if (b.get(path) === a.get(path)) return [];
+      return [
+        {
+          text: `${shortPath(path)}: ${minimumText(b.get(path))} → ${minimumText(a.get(path))}`,
+          title: path,
+        },
+      ];
+    }
+    return [
+      { text: `${shortPath(path)}: ${minimumText((a.size ? a : b).get(path))}`, title: path },
+    ];
+  });
+}
+
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   v !== null && typeof v === 'object' && !Array.isArray(v);
 
@@ -268,7 +314,10 @@ export function describeAuditDetail(
     const fields = [...new Set([...Object.keys(before), ...Object.keys(after)])];
     const changes: DetailRow[] = [];
     for (const f of fields.filter((x) => !hide(x))) {
-      if (EVENT_FIELDS.has(f)) {
+      if (entity === 'consumable' && f === 'warehouseMinimums') {
+        const items = minimumItems(before[f], after[f], true);
+        if (items?.length) changes.push({ ...row(f), items });
+      } else if (EVENT_FIELDS.has(f)) {
         // Dato del evento: valor simple (el de después; en una restauración, el que traía la baja).
         const v = after[f] ?? before[f];
         if (v !== null && v !== undefined && v !== '') {
@@ -288,7 +337,13 @@ export function describeAuditDetail(
   return [
     ...orderedEntries(Object.entries(single), entity)
       .filter(([f]) => (single !== diff || f !== 'context') && !hide(f))
-      .map(([f, v]) => ({ ...row(f), value: fmt(f, v) })),
+      .flatMap(([f, v]): DetailRow[] => {
+        if (entity === 'consumable' && f === 'warehouseMinimums') {
+          const items = minimumItems(undefined, v, false);
+          return items?.length ? [{ ...row(f), items }] : [];
+        }
+        return [{ ...row(f), value: fmt(f, v) }];
+      }),
     ...keys.rows,
     ...context,
   ];

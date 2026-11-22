@@ -452,3 +452,57 @@ describe('consumibles: a qué entrega pertenece una devolución (D10)', () => {
     ]);
   });
 });
+
+describe('consumibles: mínimos por bodega, solo lo que cambió (D18)', () => {
+  const opts = { entity: 'consumable', action: 'consumable.update' };
+  const items = (diff: Record<string, unknown>) =>
+    describeAuditDetail(diff, text, opts).find((r) => r.field === 'warehouseMinimums')?.items;
+
+  it('una línea por bodega que cambió, con el nombre corto y la ruta completa como ayuda', () => {
+    expect(
+      items({
+        before: {
+          warehouseMinimums: ['Cliente Inventado > Bodega Anexo: 40', 'Bodega Central: 10'],
+        },
+        after: {
+          warehouseMinimums: [
+            'Bodega Central: 10',
+            'Cliente Inventado > Bodega Cristobal Gambi: 40',
+          ],
+        },
+      }),
+    ).toEqual([
+      { text: 'Bodega Anexo: 40 → —', title: 'Cliente Inventado > Bodega Anexo' },
+      {
+        text: 'Bodega Cristobal Gambi: — → 40',
+        title: 'Cliente Inventado > Bodega Cristobal Gambi',
+      },
+    ]);
+  });
+
+  it('no muestra las bodegas que no cambiaron y da formato a los decimales', () => {
+    expect(
+      items({
+        before: { warehouseMinimums: ['Bodega Central: 10', 'Bodega Norte: 2.5'] },
+        after: { warehouseMinimums: ['Bodega Central: 10', 'Bodega Norte: 3.5'] },
+      }),
+    ).toEqual([{ text: 'Bodega Norte: 2,5 → 3,5', title: 'Bodega Norte' }]);
+  });
+
+  it('no hay fila si los mínimos no cambiaron', () => {
+    expect(
+      items({
+        before: { warehouseMinimums: ['Bodega Central: 10'], name: 'A' },
+        after: { warehouseMinimums: ['Bodega Central: 10'], name: 'B' },
+      }),
+    ).toBeUndefined();
+  });
+
+  it('en un alta lista cada bodega con su mínimo', () => {
+    expect(
+      items({
+        after: { name: 'Guantes', warehouseMinimums: ['Zensi > Bodega Norte: 40'] },
+      }),
+    ).toEqual([{ text: 'Bodega Norte: 40', title: 'Zensi > Bodega Norte' }]);
+  });
+});
