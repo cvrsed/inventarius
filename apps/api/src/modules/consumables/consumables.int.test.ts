@@ -1720,6 +1720,64 @@ describe('auditoría (D13)', () => {
     });
   });
 
+  it('la anulación de un traslado no trae campos que no aplican (receptor, motivo) (D9)', async () => {
+    const c = await newConsumable({ name: 'Anulación sin campos vacíos' });
+    await receive(c.id, ids.main, '10');
+    const tr = await move(operator, c.id, 'transfers', {
+      fromLocationId: ids.main,
+      toLocationId: ids.annex,
+      quantity: '3',
+    });
+    await admin.post(`${base}/consumable-movements/${tr.json().movements[1].id}/reversals`, {
+      reason: 'Equivocado',
+    });
+    const events = (
+      (await admin.get(`${base}/audit?entity=consumable&pageSize=100`)).json().data as Json[]
+    ).filter((e) => e.entityId === c.id && e.action === 'consumable.reverse');
+    const diff = events[0]!.diff as Json;
+    expect(diff).toMatchObject({ originalKind: 'transfer_out', reversalReason: 'Equivocado' });
+    for (const absent of [
+      'recipient',
+      'recipientRef',
+      'originalReason',
+      'originalNote',
+      'delivery',
+    ]) {
+      expect(diff, absent).not.toHaveProperty(absent);
+    }
+  });
+
+  it('la devolución y su anulación indican la entrega a la que pertenecen (D10)', async () => {
+    const c = await newConsumable({ name: 'Devolución con entrega' });
+    await receive(c.id, ids.main, '10');
+    const del = await move(operator, c.id, 'deliveries', {
+      locationId: ids.main,
+      quantity: '3',
+      recipientName: 'Persona Inventada',
+    });
+    const deliveryId = del.json().movements[0].id as string;
+    const ret = await operator.post(`${base}/consumable-movements/${deliveryId}/returns`, {
+      quantity: '1',
+    });
+    await admin.post(`${base}/consumable-movements/${ret.json().movements[0].id}/reversals`, {
+      reason: 'Devolución errada',
+    });
+    const events = (
+      (await admin.get(`${base}/audit?entity=consumable&pageSize=100`)).json().data as Json[]
+    ).filter((e) => e.entityId === c.id);
+    const by = (action: string) => events.find((e) => e.action === action)!.diff as Json;
+    const delivery = {
+      at: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
+      recipient: 'Persona Inventada',
+    };
+    expect(by('consumable.return')).toMatchObject({ delivery });
+    expect(by('consumable.reverse')).toMatchObject({
+      originalKind: 'return',
+      recipient: 'Persona Inventada',
+      delivery,
+    });
+  });
+
   it('un traslado audita el saldo antes y después de las dos bodegas, y una devolución lo devuelto (P11)', async () => {
     const c = await newConsumable({ name: 'Auditoría de traslado' });
     await receive(c.id, ids.main, '10');

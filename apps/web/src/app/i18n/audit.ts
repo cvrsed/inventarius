@@ -206,6 +206,7 @@ export const AUDIT_FIELD_LABELS: Record<string, string> = {
   registeredAt: 'Registrado el',
   receivedOn: 'Fecha del ingreso',
   returned: 'Devuelto',
+  delivery: 'Entrega',
 };
 
 /**
@@ -277,8 +278,9 @@ export const AUDIT_VALUE_LABELS: {
     delivery: 'Entrega',
     return: 'Devolución',
     adjustment: 'Ajuste',
-    transfer_out: 'Traslado (salida)',
-    transfer_in: 'Traslado (entrada)',
+    // Un traslado anulado es una sola cosa para quien lee, no «salida» y «entrada» (D9).
+    transfer_out: 'Traslado',
+    transfer_in: 'Traslado',
     reversal: 'Anulación',
   },
 };

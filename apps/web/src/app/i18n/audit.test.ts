@@ -116,6 +116,7 @@ describe('traducción de la auditoría (RNF-05)', () => {
       'originalReason',
       'originalNote',
       'reversalReason',
+      'delivery',
       'originalActor',
       'movementDate',
       'registeredAt',

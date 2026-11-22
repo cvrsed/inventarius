@@ -319,7 +319,7 @@ describe('consumibles: anulación con el detalle del movimiento anulado (P3)', (
       { entity: 'consumable' },
     );
     const by = Object.fromEntries(rows.map((r) => [r.label, r.value]));
-    expect(by['Movimiento anulado']).toBe('Traslado (salida)');
+    expect(by['Movimiento anulado']).toBe('Traslado');
     expect(by['Saldo del origen antes']).toBe('1.234,5');
     expect(by['Saldo del destino antes']).toBe('3');
     expect(by['Motivo del movimiento']).toBe('Pérdida');
@@ -378,6 +378,7 @@ describe('consumibles: orden fijo de campos y «Bodega» (P11)', () => {
       }),
     ).toEqual([
       'Movimiento anulado',
+      'Motivo de la anulación',
       'Cantidad',
       'Unidad',
       'Bodega de origen',
@@ -386,7 +387,6 @@ describe('consumibles: orden fijo de campos y «Bodega» (P11)', () => {
       'Saldo del origen después',
       'Saldo del destino antes',
       'Saldo del destino después',
-      'Motivo de la anulación',
     ]);
   });
 
@@ -415,5 +415,40 @@ describe('consumibles: la persona de una devolución «Devolvió» (D1)', () => 
     expect(
       label({ originalKind: 'delivery', recipient: 'Ana Inventada' }, 'consumable.reverse'),
     ).toBe('Recibe');
+  });
+});
+
+describe('consumibles: a qué entrega pertenece una devolución (D10)', () => {
+  it('la muestra como «Entrega del dd-mm-aaaa HH:mm a <receptor>», en la hora de la instalación', () => {
+    const rows = describeAuditDetail(
+      {
+        quantity: '1',
+        recipient: 'Ana Inventada',
+        delivery: { at: '2026-11-16T15:30:00.000Z', recipient: 'Ana Inventada' },
+        note: 'Sobró',
+      },
+      text,
+      { entity: 'consumable', action: 'consumable.return' },
+    );
+    const delivery = rows.find((r) => r.field === 'delivery')!;
+    expect(delivery.label).toBe('Entrega');
+    expect(delivery.value).toBe('Entrega del 16-11-2026 12:30 a Ana Inventada');
+    // Va junto a la persona, antes de la nota.
+    const order = rows.map((r) => r.field);
+    expect(order.indexOf('delivery')).toBe(order.indexOf('recipient') + 1);
+    expect(order.indexOf('delivery')).toBeLessThan(order.indexOf('note'));
+  });
+
+  it('el título de una anulación de traslado dice «Traslado» y su motivo va primero', () => {
+    const rows = describeAuditDetail(
+      { originalKind: 'transfer_in', quantity: '2', reversalReason: 'Error' },
+      text,
+      { entity: 'consumable', action: 'consumable.reverse' },
+    );
+    expect(rows.map((r) => [r.label, r.value])).toEqual([
+      ['Movimiento anulado', 'Traslado'],
+      ['Motivo de la anulación', 'Error'],
+      ['Cantidad', '2'],
+    ]);
   });
 });

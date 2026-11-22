@@ -748,8 +748,8 @@ aquí junto con su commit. Cómo probar cada uno: «Cómo probar la revisión 2�
 - [ ] D6 Confirmaciones estructuradas (ajuste y patrón común)
 - [x] D7 Diálogo de ajuste: una sola línea de stock disponible
 - [x] D8 Descripciones de los roles semilla con sus permisos de consumibles
-- [ ] D9 Auditoría de una anulación: motivo primero y solo campos aplicables
-- [ ] D10 La devolución indica a qué entrega pertenece (auditoría)
+- [x] D9 Auditoría de una anulación: motivo primero y solo campos aplicables
+- [x] D10 La devolución indica a qué entrega pertenece (auditoría)
 - [ ] D11 Auditoría de categorías de consumibles sin «Tipo de extensión»
 - [ ] D12 Nombre duplicado en categorías de consumibles
 - [ ] D13 Renombrar o desactivar categoría/unidad en uso: «Afecta a N consumibles»

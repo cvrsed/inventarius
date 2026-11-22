@@ -49,8 +49,15 @@ import type {
   ConsumablesRepository,
   LedgerMismatch,
   MeasureUnitRow,
+  MovementRow,
   MovementViewRow,
 } from './repository.js';
+
+/** Un diff de auditoría sin los campos vacíos: no se muestra «—» donde el dato no aplica. */
+const compactDiff = (d: Record<string, unknown>): Record<string, unknown> =>
+  Object.fromEntries(
+    Object.entries(d).filter(([, v]) => v !== null && v !== undefined && v !== ''),
+  );
 
 /** Personas del sistema que pueden recibir una entrega (puerto hacia `users`). */
 export interface PeoplePort {
@@ -527,6 +534,7 @@ export class ConsumablesService {
           stockAfter: normalizeQuantity(after),
           recipient: recipient,
           recipientRef: delivery.recipientRef,
+          delivery: await this.deliveryRef(tx, delivery),
           note: input.note,
           returned: `${formatQuantity(normalizeQuantity(addDelta(returned, input.quantity)), unit)} de ${formatQuantity(delivered, unit)}`,
         },
@@ -749,15 +757,21 @@ export class ConsumablesService {
         const author = (await this.people.namesByIds([original.actorId])).get(original.actorId);
         const recipient = await this.recipientLabel(tx, original);
         const before = (id: string) => normalizeQuantity(locked.get(id)!);
-        // Orden de lectura de los eventos de consumibles: tipo, cantidad, unidad, bodega(s), saldos, receptor, motivos, fechas.
+        // Del movimiento anulado solo se guarda lo que aplica a su tipo: un traslado no tiene receptor ni motivo (D9).
+        const takesRecipient = original.kind === 'delivery' || original.kind === 'return';
+        const returnedDelivery =
+          original.kind === 'return' && original.returnsId
+            ? await this.repo.getMovement(tx, original.returnsId)
+            : undefined;
         await this.audit.record(tx, {
           ...actor,
           action: 'consumable.reverse',
           entity: 'consumable',
           entityId: original.consumableId,
           entityLabel: consumable.name,
-          diff: {
+          diff: compactDiff({
             originalKind: sibling ? 'transfer_out' : original.kind,
+            reversalReason: input.reason,
             quantity,
             unit: unit.name,
             ...(sibling
@@ -774,15 +788,17 @@ export class ConsumablesService {
                   stockBefore: before(original.locationId),
                   stockAfter: after.get(original.locationId),
                 }),
-            recipient: recipient || null,
-            recipientRef: original.recipientRef,
-            originalReason: original.reason,
+            ...(takesRecipient
+              ? { recipient: recipient, recipientRef: original.recipientRef }
+              : {}),
+            ...(returnedDelivery ? { delivery: await this.deliveryRef(tx, returnedDelivery) } : {}),
+            supplier: original.kind === 'receipt' ? original.supplier : null,
+            originalReason: original.kind === 'adjustment' ? original.reason : null,
             originalNote: original.note,
-            reversalReason: input.reason,
             originalActor: author ?? null,
             movementDate: localDay(original.occurredAt, this.timezone),
             registeredAt: iso(original.createdAt),
-          },
+          }),
         });
         return { ids, balances };
       });
@@ -868,6 +884,14 @@ export class ConsumablesService {
   }
 
   /** Nombre del receptor de una entrega (la persona del sistema o el texto libre). */
+  /** A qué entrega pertenece una devolución: cuándo fue y a quién (D10). */
+  private async deliveryRef(
+    tx: Executor,
+    delivery: MovementRow,
+  ): Promise<{ at: string; recipient: string }> {
+    return { at: iso(delivery.occurredAt), recipient: await this.recipientLabel(tx, delivery) };
+  }
+
   private async recipientLabel(
     tx: Executor,
     m: { recipientUserId: string | null; recipientName: string | null },

@@ -126,6 +126,8 @@ const FIELD_ORDER: Partial<Record<AuditEntity, readonly string[]>> = {
   // tipo, cantidad, unidad, bodega (o origen y destino), saldo antes, saldo después, receptor, motivo, nota y fechas.
   consumable: [
     'originalKind',
+    // En una anulación, su motivo va justo después del tipo anulado (D9).
+    'reversalReason',
     'direction',
     'quantity',
     'unit',
@@ -140,9 +142,9 @@ const FIELD_ORDER: Partial<Record<AuditEntity, readonly string[]>> = {
     'toStockAfter',
     'recipient',
     'recipientRef',
+    'delivery',
     'reason',
     'originalReason',
-    'reversalReason',
     'supplier',
     'note',
     'originalNote',
@@ -195,6 +197,13 @@ export function formatDetailValue(
     return more > 0
       ? `${shown.join(', ')} … ${text.t('audit.andMore').replace('{n}', String(more))}`
       : shown.join(', ');
+  }
+  if (isRecord(value) && field === 'delivery') {
+    // A qué entrega pertenece una devolución: «Entrega del 16-11-2026 12:00 a Ana».
+    const at = typeof value['at'] === 'string' ? formatDateTime(value['at']) : EMPTY;
+    const to =
+      typeof value['recipient'] === 'string' && value['recipient'] ? value['recipient'] : '';
+    return `Entrega del ${at}${to ? ` a ${to}` : ''}`;
   }
   if (isRecord(value)) {
     // Objeto plano (p. ej. el destino de un perfil LNS): «Tenant: …; Aplicación: …».
