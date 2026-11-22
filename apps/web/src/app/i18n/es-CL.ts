@@ -382,6 +382,7 @@ export const messages = {
       quantity: 'Cantidad',
       minimum: 'Mínimo',
       inactiveWarehouse: 'Bodega inactiva',
+      inactiveMinimum: 'bodega inactiva',
     },
     actions: {
       receive: 'Ingresar',

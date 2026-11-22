@@ -127,6 +127,7 @@ const CONSUMABLE_SELECT = sql`
          c.created_at AS "createdAt", c.updated_at AS "updatedAt",
          COALESCE((SELECT SUM(s.quantity) FROM consumable_stock s WHERE s.consumable_id = c.id), 0) AS "totalStock",
          (SELECT COUNT(*) FROM consumable_warehouse_minimums m
+            JOIN locations wl ON wl.id = m.location_id AND wl.active
             LEFT JOIN consumable_stock s ON s.consumable_id = m.consumable_id AND s.location_id = m.location_id
           WHERE m.consumable_id = c.id AND COALESCE(s.quantity, 0) < m.min_quantity)::int AS "warehousesBelow",
          EXISTS (SELECT 1 FROM consumable_movements mv WHERE mv.consumable_id = c.id) AS "hasMovements"

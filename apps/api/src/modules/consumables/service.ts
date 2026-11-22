@@ -1028,7 +1028,8 @@ export class ConsumablesService {
             location: { id: place.id, name: place.name, path: place.path, active: place.active },
             quantity,
             minQuantity,
-            belowMinimum: isBelowMinimum(quantity, minQuantity),
+            // Una bodega inactiva ya no se repone: su mínimo se conserva pero no avisa (D16).
+            belowMinimum: place.active && isBelowMinimum(quantity, minQuantity),
           },
         ];
       })

@@ -167,6 +167,35 @@ describe('ficha del consumible (RF-73, RF-74)', () => {
     expect(w.text()).not.toContain('Bajo mínimo global');
   });
 
+  it('el mínimo de una bodega inactiva se ve atenuado con la nota y no genera aviso (D16)', async () => {
+    const base = consumable();
+    const w = await mountPage(
+      ['consumables:read'],
+      consumable({
+        belowMinimum: false,
+        lowStock: false,
+        warehousesBelowMinimum: 0,
+        totalStock: '12',
+        stockByWarehouse: [
+          base.stockByWarehouse[0]!,
+          {
+            ...base.stockByWarehouse[1]!,
+            location: { ...base.stockByWarehouse[1]!.location, active: false },
+            quantity: '2',
+            minQuantity: '5',
+            belowMinimum: false,
+          },
+        ],
+      }),
+    );
+    const cell = w.get('[data-testid="inactive-minimum"]');
+    expect(cell.text()).toBe('5 pares (bodega inactiva)');
+    expect(cell.classes()).toContain('text-muted');
+    expect(w.findAll('[data-testid="below-warehouse"]')).toHaveLength(0);
+    expect(w.text()).not.toContain('bajo mínimo');
+    expect(w.text()).not.toContain('Bajo mínimo');
+  });
+
   it('el historial usa «Ver más» y filtros de bodega, tipo y fecha', async () => {
     const w = await mountPage(['consumables:read']);
     const text = w.text();

@@ -417,9 +417,22 @@ async function goTo(movementId: string): Promise<void> {
             </span>
           </template>
           <template #minimum-cell="{ row }">
-            {{
-              row.original.minQuantity ? qty(row.original.minQuantity) : t('consumables.noMinimum')
-            }}
+            <!-- Una bodega inactiva conserva su mínimo pero ya no avisa: se ve atenuado y con la nota (D16). -->
+            <span
+              v-if="row.original.minQuantity && !row.original.location.active"
+              class="text-muted"
+              data-testid="inactive-minimum"
+            >
+              {{ qty(row.original.minQuantity) }}
+              <span class="text-xs">({{ t('consumables.stock.inactiveMinimum') }})</span>
+            </span>
+            <template v-else>
+              {{
+                row.original.minQuantity
+                  ? qty(row.original.minQuantity)
+                  : t('consumables.noMinimum')
+              }}
+            </template>
           </template>
           <template #empty>{{ t('consumables.stock.empty') }}</template>
           <template #card="{ item }">
@@ -446,8 +459,17 @@ async function goTo(movementId: string): Promise<void> {
                 />
               </dd>
               <dt class="text-muted">{{ t('consumables.stock.minimum') }}</dt>
-              <dd class="m-0">
+              <dd
+                class="m-0"
+                :class="item.minQuantity && !item.location.active ? 'text-muted' : ''"
+                :data-testid="
+                  item.minQuantity && !item.location.active ? 'inactive-minimum' : undefined
+                "
+              >
                 {{ item.minQuantity ? qty(item.minQuantity) : t('consumables.noMinimum') }}
+                <span v-if="item.minQuantity && !item.location.active" class="text-xs"
+                  >({{ t('consumables.stock.inactiveMinimum') }})</span
+                >
               </dd>
             </dl>
           </template>

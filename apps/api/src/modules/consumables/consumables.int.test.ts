@@ -1261,6 +1261,40 @@ describe('stock mínimo (RF-74, D9)', () => {
   });
 });
 
+describe('mínimos de una bodega inactiva (D16)', () => {
+  it('no avisan: ni la ficha, ni lowStock, ni el filtro «bajo mínimo»; el mínimo se conserva', async () => {
+    const wh = (
+      await create(operator, 'locations', { name: 'Bodega mínimos D16', type: 'warehouse' })
+    ).id as string;
+    const c = await newConsumable({
+      name: 'Mínimo en bodega inactiva',
+      warehouseMinimums: [{ locationId: wh, minQuantity: '5' }],
+    });
+    await receive(c.id, wh, '2');
+    let d = (await reader.get(`${base}/consumables/${c.id}`)).json();
+    expect(d).toMatchObject({ lowStock: true, warehousesBelowMinimum: 1 });
+    const listed = async () =>
+      ((await reader.get(`${base}/consumables?lowStock=true&pageSize=100`)).json().data as Json[])
+        .map((x) => x.name)
+        .includes(c.name);
+    expect(await listed()).toBe(true);
+
+    const loc = (await operator.get(`${base}/locations/${wh}`)).json();
+    const off = await operator.patch(
+      `${base}/locations/${wh}`,
+      { active: false },
+      { 'if-match': `"${loc.updatedAt}"` },
+    );
+    expect(off.statusCode, off.body).toBe(200);
+
+    d = (await reader.get(`${base}/consumables/${c.id}`)).json();
+    expect(d).toMatchObject({ lowStock: false, warehousesBelowMinimum: 0 });
+    const line = d.stockByWarehouse.find((s: Json) => s.location.id === wh);
+    expect(line).toMatchObject({ belowMinimum: false, minQuantity: '5', quantity: '2' });
+    expect(await listed()).toBe(false);
+  });
+});
+
 describe('traslado como una sola entrada del historial (P8)', () => {
   const history = async (id: string, qs = '') =>
     (
