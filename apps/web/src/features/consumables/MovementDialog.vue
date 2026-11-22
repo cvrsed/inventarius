@@ -5,7 +5,9 @@ import {
   addDelta,
   compareQuantities,
   earliestReceivedOn,
+  formatDecimal,
   formatQuantity,
+  normalizeDelta,
   receivedOnProblem,
   type ConsumableDetailDto,
 } from '@inventarius/shared';
@@ -282,14 +284,27 @@ async function submit(): Promise<void> {
   // Un ajuste cambia el stock sin que haya entrado ni salido nada: se confirma viendo el saldo antes y después.
   const q = toApiQuantity(quantity.value);
   const after = addDelta(currentBalance.value, direction.value === 'add' ? q : `-${q}`);
+  const row = (key: string, value: string, highlight = false) => ({
+    label: t(`consumables.movement.confirmAdjustRows.${key}`),
+    value,
+    ...(highlight ? { highlight } : {}),
+  });
   const ok = await confirm.ask({
     title: t('consumables.movement.confirmAdjustTitle'),
-    message: t('consumables.movement.confirmAdjust', {
-      where: currentPlace.value,
-      before: formatQuantity(currentBalance.value, unit.value),
-      after: formatQuantity(after, unit.value),
-      reason: t(`consumables.reasons.${reason.value}`),
-    }),
+    message: t('consumables.movement.confirmAdjust'),
+    rows: [
+      row('warehouse', currentPlace.value),
+      row('direction', t(`consumables.movement.${direction.value === 'add' ? 'add' : 'subtract'}`)),
+      row('quantity', formatQuantity(q, unit.value)),
+      row(
+        'balance',
+        `${formatDecimal(normalizeDelta(currentBalance.value))} → ${formatDecimal(normalizeDelta(after))}`,
+        true,
+      ),
+      row('reason', t(`consumables.reasons.${reason.value}`)),
+      ...(note.value.trim() ? [row('note', note.value.trim())] : []),
+    ],
+    footnote: t('consumables.movement.confirmAdjustFootnote'),
     acceptLabel: t('consumables.movement.confirmAdjustAction'),
     rejectLabel: t('common.back'),
   });
@@ -307,11 +322,27 @@ const recipientKinds = computed(() => [
   { value: 'user', label: t('consumables.movement.recipientUser') },
   { value: 'text', label: t('consumables.movement.recipientText') },
 ]);
-const quantityHelp = computed(() =>
-  cap.value !== null
+/**
+ * Una sola línea bajo la cantidad (D7): en el ajuste, el stock disponible al sumar y el máximo al restar; en entrega y
+ * traslado, el máximo. Sin bodega elegida, lo que admite la unidad.
+ */
+const quantityHelp = computed(() => {
+  const decimals = t('consumables.form.decimalsHelp', { decimals: decimalsText.value });
+  if (props.kind === 'adjustment' && warehouseId.value) {
+    return cap.value !== null
+      ? t('consumables.movement.maxSubtractHelp', {
+          name: currentName.value,
+          max: formatQuantity(cap.value, unit.value),
+        })
+      : t('consumables.movement.availableHelp', {
+          name: currentName.value,
+          qty: formatQuantity(currentBalance.value, unit.value),
+        });
+  }
+  return cap.value !== null
     ? t('consumables.movement.quantityHelp', { max: formatQuantity(cap.value, unit.value) })
-    : t('consumables.form.decimalsHelp', { decimals: decimalsText.value }),
-);
+    : decimals;
+});
 </script>
 
 <template>
@@ -351,15 +382,6 @@ const quantityHelp = computed(() =>
             :placeholder="t('consumables.form.warehousePlaceholder')"
           />
         </UFormField>
-
-        <p v-if="kind === 'adjustment' && warehouseId" class="m-0 -mt-2 text-sm text-muted">
-          {{
-            t('consumables.movement.available', {
-              name: currentName,
-              qty: formatQuantity(currentBalance, unit),
-            })
-          }}
-        </p>
 
         <UFormField
           v-if="kind === 'transfer'"

@@ -507,7 +507,6 @@ export const messages = {
       to: 'Bodega de destino',
       quantity: 'Cantidad',
       quantityHelp: 'Máximo disponible en esta bodega: {max}.',
-      available: 'Disponible en {name}: {qty}',
       receivedOn: 'Fecha del ingreso',
       receivedOnHelp: 'Hoy por defecto; se puede fechar hasta {days} días atrás.',
       supplier: 'Proveedor',
@@ -539,8 +538,19 @@ export const messages = {
         },
       },
       confirmAdjustTitle: 'Confirmar ajuste',
-      confirmAdjust:
-        'En {where} el stock pasará de {before} a {after}. Motivo: {reason}. Esto queda en el libro y se puede anular, no editar.',
+      confirmAdjust: 'Revisa el ajuste antes de confirmarlo.',
+      confirmAdjustRows: {
+        warehouse: 'Bodega',
+        direction: 'Sentido',
+        quantity: 'Cantidad',
+        balance: 'Saldo',
+        reason: 'Motivo',
+        note: 'Nota',
+      },
+      confirmAdjustFootnote:
+        'Queda en el libro y no se puede editar; solo un administrador puede anularlo.',
+      availableHelp: 'Disponible en {name}: {qty}',
+      maxSubtractHelp: 'Máximo a restar en {name}: {max}',
       confirmAdjustAction: 'Confirmar ajuste',
     },
     reverse: {

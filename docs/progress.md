@@ -746,7 +746,7 @@ aquí junto con su commit. Cómo probar cada uno: «Cómo probar la revisión 2�
 - [x] D4 Filas anuladas: primero la línea de origen y después «Anulado por…»
 - [x] D5 Permisos de consumibles traducidos en la matriz de roles (con test de cobertura)
 - [ ] D6 Confirmaciones estructuradas (ajuste y patrón común)
-- [ ] D7 Diálogo de ajuste: una sola línea de stock disponible
+- [x] D7 Diálogo de ajuste: una sola línea de stock disponible
 - [ ] D8 Descripciones de los roles semilla con sus permisos de consumibles
 - [ ] D9 Auditoría de una anulación: motivo primero y solo campos aplicables
 - [ ] D10 La devolución indica a qué entrega pertenece (auditoría)

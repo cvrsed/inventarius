@@ -129,14 +129,38 @@ describe('ajuste (D6)', () => {
     await submit();
     const confirm = useConfirm();
     expect(confirm.state.open).toBe(true);
-    expect(confirm.state.options?.message).toContain('Bodega central');
-    expect(confirm.state.options?.message).toContain('de 10 pares a 8 pares');
-    expect(confirm.state.options?.message).toContain('Merma o daño');
+    // Confirmación estructurada (D6): filas con etiqueta y el saldo destacado.
+    expect(confirm.state.options?.rows).toEqual([
+      { label: 'Bodega', value: 'Bodega central' },
+      { label: 'Sentido', value: 'Restar del stock' },
+      { label: 'Cantidad', value: '2 pares' },
+      { label: 'Saldo', value: '10 → 8', highlight: true },
+      { label: 'Motivo', value: 'Merma o daño' },
+    ]);
+    expect(confirm.state.options?.footnote).toBe(
+      'Queda en el libro y no se puede editar; solo un administrador puede anularlo.',
+    );
     expect(confirm.state.options?.danger).not.toBe(true);
     expect(posted(fetchMock, 'adjustments')).toHaveLength(0);
     await confirm.state.options!.accept();
     await flushPromises();
     expect(posted(fetchMock, 'adjustments')).toHaveLength(1);
+  });
+
+  it('el stock disponible sale en una sola línea y el máximo solo al restar (D7)', async () => {
+    mockWith({});
+    const { state } = await open('adjustment');
+    state['warehouseId'] = ids.main;
+    state['direction'] = 'add';
+    await flushPromises();
+    const count = (text: string) => (document.body.textContent ?? '').split(text).length - 1;
+    expect(count('Disponible en Bodega central: 10 pares')).toBe(1);
+    expect(document.body.textContent).not.toContain('Máximo');
+    state['direction'] = 'subtract';
+    await flushPromises();
+    expect(count('Máximo a restar en Bodega central: 10 pares')).toBe(1);
+    expect(count('Disponible en')).toBe(0);
+    expect(count('10 pares')).toBe(count('Máximo a restar en Bodega central: 10 pares'));
   });
 
   it('con el motivo «otro» la nota es obligatoria', async () => {

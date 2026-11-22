@@ -1,8 +1,22 @@
 import { reactive, watch } from 'vue';
 
+/** Una fila «etiqueta: dato» de una confirmación estructurada; `highlight` destaca el dato clave. */
+export interface ConfirmRow {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}
+
 export interface ConfirmOptions {
   title: string;
+  /** Frase corta bajo el título. */
   message: string;
+  /** Detalle como filas con etiqueta (D6): el dato que decide va destacado. */
+  rows?: ConfirmRow[];
+  /** Lista corta de consecuencias, tras las filas. */
+  bullets?: string[];
+  /** Cierre en una línea (p. ej. «Queda en el libro y no se puede editar…»). */
+  footnote?: string;
   acceptLabel: string;
   rejectLabel: string;
   /** `error` pinta el botón de confirmar como acción destructiva. */
