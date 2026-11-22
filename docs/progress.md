@@ -756,12 +756,12 @@ aquí junto con su commit. Cómo probar cada uno: «Cómo probar la revisión 2�
 - [x] D14 Confirmación de desactivar una bodega con stock (formato D6)
 - [x] D15 Formato corto del traslado en todas partes
 - [x] D16 Mínimos de una bodega inactiva no generan aviso
-- [ ] D17 Buscador de los selectores de bodega: «Buscar bodega…»
+- [x] D17 Buscador de los selectores de bodega: «Buscar bodega…»
 - [ ] D18 Auditoría de mínimos por bodega: solo lo que cambió
 - [ ] D19 «Stock por bodega»: nombre y ruta en segunda línea
 - [ ] D20 Filtros del historial a 360 px: botón «Filtros» y chips
-- [ ] D21 «Ir al movimiento» sin cortarse entre líneas
-- [ ] D22 Inicio: «Activos disponibles por bodega»
+- [x] D21 «Ir al movimiento» sin cortarse entre líneas
+- [x] D22 Inicio: «Activos disponibles por bodega»
 - [ ] D23 Diálogo «Asignar activo» (y demás de activos): Persona sin error falso
 
 ### Cómo probar la revisión 2

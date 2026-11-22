@@ -67,7 +67,7 @@ const onOpen = useInertWhileOpen();
     :placeholder="placeholder"
     :disabled="disabled"
     :search-input="{
-      placeholder: `${placeholder} — ${t('common.searchPlaceholder')}`,
+      placeholder: t('consumables.picker.search'),
       id: `${id ?? 'warehouse'}-search`,
       name: `${id ?? 'warehouse'}-search`,
     }"

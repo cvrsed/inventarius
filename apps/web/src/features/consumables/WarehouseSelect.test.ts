@@ -42,6 +42,13 @@ describe('WarehouseSelect (P13)', () => {
     expect(second.querySelector('[data-testid="warehouse-path"]')).toBeNull();
   });
 
+  it('el buscador dice solo «Buscar bodega…», sin repetir el texto del campo (D17)', async () => {
+    await open();
+    const search = document.body.querySelector<HTMLInputElement>('#ws-search')!;
+    expect(search.placeholder).toBe('Buscar bodega…');
+    expect(search.placeholder).not.toContain('Elige una bodega');
+  });
+
   it('una bodega que no sirve para la acción se ve apagada y dice por qué (P7)', async () => {
     await open();
     const blocked = options().find((o) => o.textContent?.includes('Bodega anexo'))!;
