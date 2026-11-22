@@ -742,7 +742,7 @@ Segunda revisión manual del PR #7 (D3 se descartó; la numeración salta). Un c
 aquí junto con su commit. Cómo probar cada uno: «Cómo probar la revisión 2» al final de esta sección.
 
 - [x] D1 Devolución: la persona se etiqueta «Devolvió» (historial y auditoría)
-- [ ] D2 Diálogo de devolución: el límite es lo pendiente de devolver
+- [x] D2 Diálogo de devolución: el límite es lo pendiente de devolver
 - [ ] D4 Filas anuladas: primero la línea de origen y después «Anulado por…»
 - [ ] D5 Permisos de consumibles traducidos en la matriz de roles (con test de cobertura)
 - [ ] D6 Confirmaciones estructuradas (ajuste y patrón común)

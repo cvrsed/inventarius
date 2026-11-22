@@ -437,6 +437,8 @@ export const messages = {
       remaining: 'Quedan por devolver {qty}.',
       warehouse: 'Bodega a la que vuelve',
       quantity: 'Cantidad a devolver',
+      quantityHelp: 'Máximo a devolver: {max}',
+      exceeds: 'No puede superar lo pendiente de devolver ({max})',
       note: 'Nota',
       submit: 'Registrar devolución',
       done: 'Devolución registrada',

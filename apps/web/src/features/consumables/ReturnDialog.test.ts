@@ -52,6 +52,8 @@ describe('devolución (P1)', () => {
     const text = document.body.textContent ?? '';
     expect(text).toContain('Persona Inventada');
     expect(text).toContain('Quedan por devolver 3 pares');
+    expect(text).toContain('Máximo a devolver: 3 pares');
+    expect(text).not.toContain('disponible en esta bodega');
     expect(text).not.toContain('Este campo es obligatorio');
   });
 
@@ -60,7 +62,9 @@ describe('devolución (P1)', () => {
     await open();
     await type('rt-quantity', '4');
     await submit();
-    expect(document.body.textContent).toContain('No puede superar');
+    expect(document.body.textContent).toContain(
+      'No puede superar lo pendiente de devolver (3 pares)',
+    );
     expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('returns'))).toBe(false);
   });
 

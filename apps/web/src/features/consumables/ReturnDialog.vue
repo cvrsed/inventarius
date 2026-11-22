@@ -79,7 +79,7 @@ function validate(): boolean {
     });
   } else if (problem) e['quantity'] = t(`consumables.movement.problems.${problem}`);
   else if (compareQuantities(toApiQuantity(quantity.value), remaining.value) > 0) {
-    e['quantity'] = t('consumables.movement.problems.exceeds', {
+    e['quantity'] = t('consumables.returnDialog.exceeds', {
       max: formatQuantity(remaining.value, unit.value),
     });
   }
@@ -158,7 +158,9 @@ async function submit(): Promise<void> {
           :label="t('consumables.returnDialog.quantity')"
           name="rt-quantity"
           required
-          :help="t('consumables.movement.quantityHelp', { max: formatQuantity(remaining, unit) })"
+          :help="
+            t('consumables.returnDialog.quantityHelp', { max: formatQuantity(remaining, unit) })
+          "
           :error="touched ? errors['quantity'] : undefined"
         >
           <UInput
