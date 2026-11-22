@@ -766,6 +766,13 @@ export const messages = {
     'user:manage': 'Gestionar usuarios',
     'role:manage': 'Gestionar roles',
     'audit:read': 'Ver auditoría',
+    'consumables:read': 'Ver consumibles',
+    'consumables:manage': 'Gestionar catálogo de consumibles',
+    'consumables:receive': 'Ingresar a bodega',
+    'consumables:deliver': 'Entregar y registrar devoluciones',
+    'consumables:transfer': 'Trasladar entre bodegas',
+    'consumables:adjust': 'Ajustar stock',
+    'consumables:reverse': 'Anular movimientos',
   },
   lorawan: {
     title: 'LoRaWAN',
