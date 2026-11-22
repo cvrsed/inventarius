@@ -762,7 +762,7 @@ aquí junto con su commit. Cómo probar cada uno: «Cómo probar la revisión 2�
 - [ ] D20 Filtros del historial a 360 px: botón «Filtros» y chips
 - [x] D21 «Ir al movimiento» sin cortarse entre líneas
 - [x] D22 Inicio: «Activos disponibles por bodega»
-- [ ] D23 Diálogo «Asignar activo» (y demás de activos): Persona sin error falso
+- [x] D23 Diálogo «Asignar activo» (y demás de activos): Persona sin error falso
 
 ### Cómo probar la revisión 2
 

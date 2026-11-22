@@ -40,6 +40,10 @@ watch(visible, (open) => {
   fieldError.value = '';
 });
 watch(kind, () => (target.value = null));
+// El error de «obligatorio» se va en cuanto se elige un valor.
+watch(target, (v) => {
+  if (v) fieldError.value = '';
+});
 
 async function submit(): Promise<void> {
   error.value = fieldError.value = '';
@@ -89,7 +93,7 @@ const kinds = [
           :label="kind === 'user' ? t('assets.checkout.user') : t('assets.checkout.location')"
           name="co-target"
           required
-          :error="fieldError"
+          :error="fieldError || undefined"
         >
           <RemoteSelect
             v-if="kind === 'user'"

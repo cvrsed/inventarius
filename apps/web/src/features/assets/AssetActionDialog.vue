@@ -52,6 +52,17 @@ watch(visible, (open) => {
   error.value = fieldError.value = returnError.value = '';
 });
 
+// Los errores de «obligatorio» se van en cuanto se elige o escribe un valor.
+watch(status, (v) => {
+  if (v) fieldError.value = '';
+});
+watch(returnTo, (v) => {
+  if (v) returnError.value = '';
+});
+watch(text, (v) => {
+  if (v.trim() && props.mode === 'delete') fieldError.value = '';
+});
+
 /** «Asignado» lo pone el sistema al asignar: no se ofrece como destino. */
 const fetchStatuses = async (q: string) =>
   (await fetchOptions('statuses', q)).filter(
