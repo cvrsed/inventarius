@@ -269,7 +269,8 @@ describe('Inicio: últimos movimientos de consumibles (P10)', () => {
     expect(items[0]).toContain('Bodega central');
     expect(items[0]).toContain('por Olga Operadora');
     expect(items[1]).toContain('INV-000003');
-    expect(items[2]).toContain('Traslado: Bodega central → Bodega anexo, 2 pares');
+    expect(items[2]).toContain('Traslado 2 pares');
+    expect(items[2]).toContain('Bodega central → Bodega anexo');
     expect(items[2]).toContain('Casco');
     const links = w.findAll('#recent-title + ol a').map((a) => a.attributes('href'));
     expect(links[0]).toBe(`/consumibles/${uuid(80)}`);

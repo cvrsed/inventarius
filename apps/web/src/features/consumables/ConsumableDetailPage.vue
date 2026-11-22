@@ -540,7 +540,11 @@ async function goTo(movementId: string): Promise<void> {
                   variant="subtle"
                 />
               </p>
-              <p v-if="!m.counterpartLocation" class="m-0 text-sm text-default">
+              <p
+                class="m-0 text-sm text-default"
+                :title="view.route?.title"
+                :data-testid="view.route ? 'transfer-route' : undefined"
+              >
                 {{ view.place }}
               </p>
               <p v-if="m.backdated" class="m-0 text-sm text-muted">

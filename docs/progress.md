@@ -754,7 +754,7 @@ aquí junto con su commit. Cómo probar cada uno: «Cómo probar la revisión 2�
 - [x] D12 Nombre duplicado en categorías de consumibles
 - [x] D13 Renombrar o desactivar categoría/unidad en uso: «Afecta a N consumibles»
 - [x] D14 Confirmación de desactivar una bodega con stock (formato D6)
-- [ ] D15 Formato corto del traslado en todas partes
+- [x] D15 Formato corto del traslado en todas partes
 - [ ] D16 Mínimos de una bodega inactiva no generan aviso
 - [ ] D17 Buscador de los selectores de bodega: «Buscar bodega…»
 - [ ] D18 Auditoría de mínimos por bodega: solo lo que cambió

@@ -265,14 +265,34 @@ describe('ficha del consumible (RF-73, RF-74)', () => {
       counterpartLocation: { id: ids.annex, name: 'Bodega anexo' },
     });
 
-    it('muestra «Traslado: origen → destino, N unidades» con un solo botón Anular', async () => {
+    it('muestra el título «Traslado 2 pares», la ruta debajo y un solo botón Anular (D15)', async () => {
       const w = await mountPage(ALL, consumable(), [transfer]);
-      expect(w.text()).toContain('Traslado: Bodega central → Bodega anexo, 2 pares');
+      expect(w.text()).toContain('Traslado 2 pares');
+      expect(w.get('[data-testid="transfer-route"]').text()).toBe('Bodega central → Bodega anexo');
       const undo = w.findAll('button').filter((b) => b.text().includes('Anular'));
       expect(undo).toHaveLength(1);
-      expect(undo[0]!.attributes('aria-label')).toContain(
-        'Traslado: Bodega central → Bodega anexo',
+      expect(undo[0]!.attributes('aria-label')).toContain('Traslado 2 pares');
+    });
+
+    it('con rutas largas muestra los nombres cortos y la ruta completa en el tooltip (D15)', async () => {
+      const long = movement({
+        id: '0190d1a0-0000-7000-8000-0000000000f9',
+        kind: 'transfer_out',
+        delta: '-5',
+        location: { id: ids.main, name: 'Cliente Inventado > Sede Norte > Bodega Anexo' },
+        counterpartLocation: {
+          id: ids.annex,
+          name: 'Cliente Inventado > Sede Sur > Bodega Cristobal Gambi',
+        },
+      });
+      const w = await mountPage(ALL, consumable(), [long]);
+      const route = w.get('[data-testid="transfer-route"]');
+      expect(route.text()).toBe('Bodega Anexo → Bodega Cristobal Gambi');
+      expect(route.attributes('title')).toBe(
+        'Cliente Inventado > Sede Norte > Bodega Anexo → Cliente Inventado > Sede Sur > Bodega Cristobal Gambi',
       );
+      expect(w.text()).toContain('Traslado 5 pares');
+      expect(w.text()).not.toContain('Sede Norte');
     });
 
     it('el filtro de tipo ofrece un solo «Traslado»', async () => {

@@ -69,6 +69,12 @@ describe('anular (D7)', () => {
     const text = document.body.textContent ?? '';
     expect(text).toContain('En Bodega central el stock pasará de 10 pares a 12 pares');
     expect(text).toContain('En Bodega anexo el stock pasará de 2 pares a 0 pares');
+    // «Se anulará» usa el formato corto del traslado (D15): título y, debajo, la ruta con nombres cortos.
+    expect(text).toContain('Se anulará: Traslado 2 pares');
+    expect(document.body.querySelector('[data-testid="reverse-place"]')!.textContent).toContain(
+      'Bodega central → Bodega anexo',
+    );
+    expect(text).not.toContain('Traslado:');
   });
 
   it('envía el motivo y cierra', async () => {

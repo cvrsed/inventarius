@@ -31,6 +31,7 @@ type Entry =
       at: string;
       headline: string;
       place: string;
+      placeTitle: string | undefined;
       name: string;
       id: string;
       date: string;
@@ -51,7 +52,8 @@ const entries = computed<Entry[]>(() => {
       key: `c-${r.movement.id}`,
       at: r.movement.registeredAt,
       headline: view.headline,
-      place: r.movement.counterpartLocation ? '' : view.place,
+      place: view.place,
+      placeTitle: view.route?.title,
       name: r.consumable.name,
       id: r.consumable.id,
       date: r.movement.backdated
@@ -103,7 +105,9 @@ const entries = computed<Entry[]>(() => {
               {{ e.name }}
             </span>
             <span class="text-xs text-muted">
-              <template v-if="e.place">{{ e.place }} · </template>{{ e.date }}
+              <template v-if="e.place"
+                ><span :title="e.placeTitle">{{ e.place }}</span> · </template
+              >{{ e.date }}
               <template v-if="e.by"> · {{ t('assets.history.by', { name: e.by }) }}</template>
             </span>
           </template>

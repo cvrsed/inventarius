@@ -56,11 +56,17 @@ const effects = computed(() => {
   });
 });
 const blocked = computed(() => effects.value.find((e) => e.negative));
+/** El movimiento que se anula, con el mismo formato corto del historial (D15): título, ruta y fecha. */
 const what = computed(() => {
   const m = props.movement;
-  if (!m) return '';
+  if (!m) return null;
   const v = describeMovement(m, unit.value, t);
-  return `${v.headline} (${m.counterpartLocation ? '' : `${v.place}, `}${formatDateTime(m.occurredAt)})`;
+  return {
+    headline: v.headline,
+    place: v.place,
+    title: v.route?.title,
+    date: formatDateTime(m.occurredAt),
+  };
 });
 
 async function submit(): Promise<void> {
@@ -94,9 +100,14 @@ async function submit(): Promise<void> {
     <template #body>
       <form id="reverse-form" class="flex flex-col gap-4" novalidate @submit.prevent="submit">
         <UAlert v-if="error" color="error" variant="subtle" role="alert" :description="error" />
-        <p class="m-0 font-medium text-highlighted">
-          {{ t('consumables.reverse.summary', { what }) }}
-        </p>
+        <div v-if="what" class="flex flex-col">
+          <p class="m-0 font-medium text-highlighted">
+            {{ t('consumables.reverse.summary', { what: what.headline }) }}
+          </p>
+          <p class="m-0 text-sm text-muted" data-testid="reverse-place">
+            <span :title="what.title">{{ what.place }}</span> · {{ what.date }}
+          </p>
+        </div>
         <ul class="m-0 flex list-none flex-col gap-1 p-0 text-sm">
           <li v-for="e in effects" :key="e.id">
             {{

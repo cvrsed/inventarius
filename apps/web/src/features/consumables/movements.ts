@@ -35,13 +35,18 @@ export function signedQuantity(delta: string, unit: UnitRef): string {
   return `${negative ? '−' : '+'}${text}`;
 }
 
+/** Nombre corto de una bodega: lo último de su ruta («Zensi > Anexo» → «Anexo»). */
+export const shortPlace = (path: string): string => path.split(' > ').pop() ?? path;
+
 export interface MovementView {
   title: string;
   quantity: string;
-  /** Lo que dice la entrada: «Ingreso +12 pares» o «Traslado: origen → destino, 2 pares». */
+  /** Lo que dice la entrada: «Ingreso +12 pares» o «Traslado 2 pares» (la ruta va aparte, D15). */
   headline: string;
-  /** Dónde: una bodega, o «origen → destino» en un traslado. */
+  /** Dónde: una bodega (con su ruta), o «origen → destino» con los nombres cortos en un traslado. */
   place: string;
+  /** Solo en un traslado: la ruta con nombres cortos y, para el tooltip, con las rutas completas. */
+  route: { text: string; title: string } | null;
   /** Líneas «campo: valor» propias del tipo (receptor, proveedor, motivo...). */
   lines: { label: string; value: string }[];
 }
@@ -63,13 +68,18 @@ export function describeMovement(m: MovementDto, unit: UnitRef, t: Translate): M
   add(m.kind === 'reversal' ? 'reversalReason' : 'note', m.note);
 
   let place = m.location.name;
+  let route: MovementView['route'] = null;
   const isTransfer = m.counterpartLocation !== null;
   if (m.counterpartLocation) {
     // El stock entra a la bodega del movimiento cuando el `delta` es positivo y sale cuando es negativo.
     const [from, to] = m.delta.startsWith('-')
       ? [m.location.name, m.counterpartLocation.name]
       : [m.counterpartLocation.name, m.location.name];
-    place = `${from} → ${to}`;
+    route = {
+      text: `${shortPlace(from)} → ${shortPlace(to)}`,
+      title: `${from} → ${to}`,
+    };
+    place = route.text;
   }
   const reversesTransfer = m.kind === 'reversal' && m.reverses?.kind.startsWith('transfer');
   const title = reversesTransfer
@@ -82,8 +92,9 @@ export function describeMovement(m: MovementDto, unit: UnitRef, t: Translate): M
   return {
     title,
     quantity,
-    headline: isTransfer ? `${title}: ${place}, ${quantity}` : `${title} ${quantity}`,
+    headline: `${title} ${quantity}`,
     place,
+    route,
     lines,
   };
 }

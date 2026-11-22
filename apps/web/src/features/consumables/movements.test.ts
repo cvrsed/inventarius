@@ -79,7 +79,7 @@ describe('historial de movimientos', () => {
     expect(JSON.stringify(v)).not.toContain('waste_damage');
   });
 
-  it('un traslado es una sola entrada: «Traslado: origen → destino, N unidades» (P8)', () => {
+  it('un traslado es una sola entrada: título «Traslado N unidades» y la ruta aparte (P8, D15)', () => {
     const counterpart = { id: '0190d1a0-0000-7000-8000-0000000000a2', name: 'Bodega anexo' };
     const v = describeMovement(
       movement({ kind: 'transfer_out', delta: '-2', counterpartLocation: counterpart }),
@@ -89,7 +89,11 @@ describe('historial de movimientos', () => {
     expect(v.title).toBe('Traslado');
     expect(v.place).toBe('Bodega central → Bodega anexo');
     expect(v.quantity).toBe('2 pares');
-    expect(v.headline).toBe('Traslado: Bodega central → Bodega anexo, 2 pares');
+    expect(v.headline).toBe('Traslado 2 pares');
+    expect(v.route).toEqual({
+      text: 'Bodega central → Bodega anexo',
+      title: 'Bodega central → Bodega anexo',
+    });
   });
 
   it('la anulación de un traslado también es una entrada, con el sentido contrario', () => {
@@ -109,7 +113,8 @@ describe('historial de movimientos', () => {
       par,
       t,
     );
-    expect(v.headline).toBe('Anulación de traslado: Bodega anexo → Bodega central, 2 pares');
+    expect(v.headline).toBe('Anulación de traslado 2 pares');
+    expect(v.route?.text).toBe('Bodega anexo → Bodega central');
     expect(v.lines).toEqual([{ label: 'Motivo de la anulación', value: 'Bodega equivocada' }]);
   });
 
