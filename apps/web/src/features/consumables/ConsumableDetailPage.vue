@@ -609,7 +609,7 @@ async function goTo(movementId: string): Promise<void> {
                 <a
                   v-if="present(m.reverses.id)"
                   :href="`#mov-${m.reverses.id}`"
-                  class="ml-1 underline"
+                  class="ml-1 whitespace-nowrap underline"
                   @click.prevent="goTo(m.reverses.id)"
                   >{{ t('consumables.history.goTo') }}</a
                 >
@@ -633,7 +633,7 @@ async function goTo(movementId: string): Promise<void> {
                 <a
                   v-if="present(m.returnOf.id)"
                   :href="`#mov-${m.returnOf.id}`"
-                  class="ml-1 underline"
+                  class="ml-1 whitespace-nowrap underline"
                   @click.prevent="goTo(m.returnOf.id)"
                   >{{ t('consumables.history.goTo') }}</a
                 >
@@ -652,7 +652,7 @@ async function goTo(movementId: string): Promise<void> {
                 <a
                   v-if="present(m.reversedBy.id)"
                   :href="`#mov-${m.reversedBy.id}`"
-                  class="ml-1 underline"
+                  class="ml-1 whitespace-nowrap underline"
                   @click.prevent="goTo(m.reversedBy.id)"
                   >{{ t('consumables.history.goTo') }}</a
                 >

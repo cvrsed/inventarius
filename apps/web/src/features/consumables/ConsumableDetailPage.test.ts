@@ -126,7 +126,10 @@ describe('ficha del consumible (RF-73, RF-74)', () => {
     expect(text).toContain('Anulado por Ada Admin el 17-11-2026');
     expect(text).toContain('Anula ingreso del 16-11-2026');
     expect(text).toContain('Motivo de la anulación');
-    expect(w.findAll('a').filter((a) => a.text() === 'Ir al movimiento')).toHaveLength(2);
+    const links = w.findAll('a').filter((a) => a.text() === 'Ir al movimiento');
+    expect(links).toHaveLength(2);
+    // El enlace no se parte entre líneas (D21).
+    for (const link of links) expect(link.classes()).toContain('whitespace-nowrap');
     // Lo ya anulado y las anulaciones no se pueden anular otra vez: no hay botón «Anular».
     expect(button(w, 'Anular')).toBeUndefined();
   });
