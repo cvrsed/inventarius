@@ -1119,7 +1119,7 @@ export const messages = {
     pendingSetup: 'Pendientes de configuración',
     byStatus: 'Activos por estado',
     byCategory: 'Activos por categoría',
-    stock: 'Stock disponible por bodega',
+    stock: 'Activos disponibles por bodega',
     stockHint: 'Activos disponibles, según su bodega base.',
     noData: 'Sin datos todavía.',
     overdue: 'Devoluciones atrasadas',

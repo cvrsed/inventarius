@@ -141,6 +141,13 @@ describe('HomePage (RF-28)', () => {
     expect(widths.some((s) => s?.includes('width: 100%'))).toBe(true);
   });
 
+  it('el bloque de bodegas dice «Activos disponibles por bodega», no «Stock» (D22)', async () => {
+    const { w } = await mountHome(summary(), ADMIN);
+    const headings = w.findAll('h2').map((h) => h.text());
+    expect(headings).toContain('Activos disponibles por bodega');
+    expect(headings).not.toContain('Stock disponible por bodega');
+  });
+
   it('muestra devoluciones atrasadas con su enlace y los últimos movimientos', async () => {
     const { w } = await mountHome(summary(), ADMIN);
     expect(w.text()).toContain('Devoluciones atrasadas');

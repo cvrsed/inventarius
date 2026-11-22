@@ -35,7 +35,9 @@ test.describe('Inicio con resumen (RF-28)', () => {
     const byStatus = page.locator('section[aria-labelledby="kind-title"]');
     await expect(byStatus.getByRole('link', { name: /^Disponible\b/ })).toBeVisible();
     await expect(page.getByText(/desplegable/i)).toHaveCount(0);
-    await expect(page.getByRole('heading', { name: 'Stock disponible por bodega' })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Activos disponibles por bodega' }),
+    ).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Últimos movimientos' })).toBeVisible();
     // «Estado del sistema» va al final, compacto, solo para administradores.
     await expect(page.getByText('Todo funciona con normalidad')).toBeVisible();
