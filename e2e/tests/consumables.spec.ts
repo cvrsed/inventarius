@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import {
   ADMIN,
+  apiPatch,
   apiPost,
   eachTheme,
   expectNoA11yViolations,
@@ -74,7 +75,7 @@ const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&
 async function pickWarehouse(page: Page, name: string, label = /^Bodega\*/): Promise<void> {
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('button', { name: label }).click();
-  await page.getByPlaceholder(/Buscar…/).fill(name.slice(0, 18));
+  await page.getByPlaceholder('Buscar bodega…').fill(name.slice(0, 18));
   await page.getByRole('option', { name: new RegExp(escapeRegExp(name)) }).click();
   await expect(page.getByRole('listbox')).toBeHidden();
 }
@@ -167,7 +168,9 @@ test.describe('consumables (RF-70 a RF-74)', () => {
     await page.getByRole('option', { name: 'Merma o daño' }).click();
     await page.getByRole('button', { name: 'Revisar ajuste' }).click();
     const confirm = page.getByRole('dialog', { name: 'Confirmar ajuste' });
-    await expect(confirm).toContainText('de 4 pares a 3 pares');
+    // D6: confirmación estructurada con el saldo destacado.
+    await expect(confirm.locator('[data-highlight="true"]')).toHaveText('4 → 3');
+    await expect(confirm).toContainText('Queda en el libro y no se puede editar');
     await expectNoA11yViolations(page); // confirmación abierta
     await confirm.getByRole('button', { name: 'Confirmar ajuste' }).click();
     await expect(toast(page, 'Ajuste registrado')).toBeVisible();
@@ -323,7 +326,9 @@ test.describe('consumables (RF-70 a RF-74)', () => {
     await expect(dialog.getByText('Este campo es obligatorio')).toHaveCount(0);
     await dialog.getByLabel('Cantidad a devolver', { exact: false }).fill('5');
     await dialog.getByRole('button', { name: 'Registrar devolución' }).click();
-    await expect(dialog.getByText('No puede superar lo disponible: 4 pares')).toBeVisible();
+    await expect(
+      dialog.getByText('No puede superar lo pendiente de devolver (4 pares)'),
+    ).toBeVisible();
     await dialog.getByLabel('Cantidad a devolver', { exact: false }).fill('1');
     await dialog.getByRole('button', { name: 'Registrar devolución' }).click();
     await expect(toast(page, 'Devolución registrada')).toBeVisible();
@@ -406,7 +411,11 @@ test.describe('consumables (RF-70 a RF-74)', () => {
       .locator('visible=true')
       .click();
     const confirm = page.getByRole('dialog', { name: 'Desactivar bodega con stock' });
-    await expect(confirm).toContainText('hay stock de 1 consumible');
+    // D14: formato estructurado con el dato clave y lo que se bloquea.
+    await expect(confirm).toContainText('Stock en esta bodega');
+    await expect(confirm.locator('[data-highlight="true"]')).toHaveText('1 consumible');
+    await expect(confirm).toContainText('No admite ingresos');
+    await expect(confirm).toContainText('Sí permite sacar stock');
     await expectNoA11yViolations(page);
     await confirm.getByRole('button', { name: 'Desactivar' }).click();
     await expect(toast(page, 'Estado actualizado')).toBeVisible();
@@ -488,6 +497,42 @@ test.describe('consumables (RF-70 a RF-74)', () => {
     ).toBeVisible();
   });
 
+  test('los mínimos de una bodega inactiva no avisan: se ven atenuados con la nota «bodega inactiva» (D16)', async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+    const f = await createFixture(page);
+    // Mínimo de 5 en la bodega central y solo 2 en ella: avisa mientras la bodega esté activa.
+    await apiPatch(page.request, `/api/v1/consumables/${f.id}`, {
+      minStock: null,
+      warehouseMinimums: [{ locationId: f.main.id, minQuantity: '5' }],
+    });
+    await apiPost(page.request, `/api/v1/consumables/${f.id}/receipts`, {
+      locationId: f.main.id,
+      quantity: '2',
+    });
+    await page.goto(`/consumibles/${f.id}`);
+    await expect(page.getByTestId('below-warehouse')).toHaveCount(1);
+
+    await apiPatch(page.request, `/api/v1/locations/${f.main.id}`, { active: false });
+
+    await page.goto(`/consumibles/${f.id}`);
+    await expect(page.getByTestId('below-warehouse')).toHaveCount(0);
+    const minimum = page.getByTestId('inactive-minimum').locator('visible=true');
+    await expect(minimum).toContainText('5 pares');
+    await expect(minimum).toContainText('bodega inactiva');
+    await expect(page.getByText(/bajo mínimo/i)).toHaveCount(0);
+    await expectNoA11yViolations(page);
+
+    // Ni el listado con «Bajo mínimo» ni el aviso de Inicio lo cuentan.
+    const low = (await (
+      await page.request.get('/api/v1/consumables?lowStock=true&pageSize=100')
+    ).json()) as {
+      data: { id: string }[];
+    };
+    expect(low.data.map((c) => c.id)).not.toContain(f.id);
+  });
+
   test('el traslado es una sola entrada, «Ir al movimiento» resalta y los botones de la ficha son del mismo tamaño (P8, P14, P16)', async ({
     page,
   }, testInfo) => {
@@ -509,19 +554,21 @@ test.describe('consumables (RF-70 a RF-74)', () => {
       },
     );
     await page.goto(`/consumibles/${f.id}`);
-    // Una entrada por el traslado y otra por su anulación, no cuatro.
-    await expect(page.getByText(`Traslado: ${f.main.name} → ${f.annex.name}, 4 pares`)).toHaveCount(
-      1,
-    );
+    // Una entrada por el traslado y otra por su anulación, no cuatro (D15: título corto y la ruta en otra línea).
+    await expect(page.getByText('Traslado 4 pares', { exact: true })).toHaveCount(1);
+    await expect(page.getByText('Anulación de traslado 4 pares', { exact: true })).toHaveCount(1);
     await expect(
-      page.getByText(`Anulación de traslado: ${f.annex.name} → ${f.main.name}, 4 pares`),
+      page.getByTestId('transfer-route').filter({ hasText: `${f.main.name} → ${f.annex.name}` }),
+    ).toHaveCount(1);
+    await expect(
+      page.getByTestId('transfer-route').filter({ hasText: `${f.annex.name} → ${f.main.name}` }),
     ).toHaveCount(1);
 
     // «Ir al movimiento» marca el movimiento con el color primario.
     await page.getByRole('link', { name: 'Ir al movimiento' }).first().click();
     const target = page
       .locator('li[id^="mov-"]')
-      .filter({ hasText: 'Traslado: ' })
+      .filter({ hasText: 'Traslado 4 pares' })
       .filter({ hasNotText: 'Anulación' });
     await expect(target.first()).toHaveClass(/border-primary/);
     await eachTheme(page, async () => {

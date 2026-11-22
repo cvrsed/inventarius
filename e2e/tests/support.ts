@@ -49,6 +49,21 @@ export async function apiPatchAsset(
   return (await res.json()) as { updatedAt: string };
 }
 
+/** PATCH de cualquier recurso con `If-Match` tomado de su estado actual (`GET` de la misma URL). */
+export async function apiPatch(
+  request: APIRequestContext,
+  url: string,
+  data: Record<string, unknown>,
+): Promise<{ updatedAt: string }> {
+  const current = (await (await request.get(url)).json()) as { updatedAt: string };
+  const res = await request.patch(url, {
+    data,
+    headers: { 'x-csrf-token': await csrf(request), 'if-match': `"${current.updatedAt}"` },
+  });
+  expect(res.status(), await res.text()).toBe(200);
+  return (await res.json()) as { updatedAt: string };
+}
+
 /** Token CSRF y cookie de secreto en el contexto de la petición. */
 async function csrf(request: APIRequestContext): Promise<string> {
   const res = await request.get('/api/v1/auth/csrf');

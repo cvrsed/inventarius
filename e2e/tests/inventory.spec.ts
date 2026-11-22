@@ -411,6 +411,19 @@ test.describe('activos: CRUD completo (RF-20 a RF-25)', () => {
     const asset = await createAssetViaApi(page.request, fixture);
     await page.goto(`/activos/${asset.id}`);
 
+    // D23: «Persona» no sale en rojo al abrir; sí al enviar vacío y deja de estarlo al elegir una persona.
+    await page.getByRole('button', { name: 'Asignar' }).click();
+    const fresh = page.getByRole('dialog', { name: 'Asignar activo' });
+    await expect(fresh.getByText('Este campo es obligatorio')).toHaveCount(0);
+    await expect(fresh.locator('[aria-invalid="true"]')).toHaveCount(0);
+    await fresh.getByRole('button', { name: 'Asignar' }).click();
+    await expect(fresh.getByText('Este campo es obligatorio')).toBeVisible();
+    await pick(page, fresh, /^Persona/, 'Admin E2E');
+    await expect(fresh.getByText('Este campo es obligatorio')).toHaveCount(0);
+    await expect(fresh.locator('[aria-invalid="true"]')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(fresh).toBeHidden();
+
     for (const theme of ['light', 'dark'] as const) {
       await page.getByRole('button', { name: 'Asignar' }).click();
       const dialog = page.getByRole('dialog', { name: 'Asignar activo' });

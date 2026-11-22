@@ -764,9 +764,67 @@ aquí junto con su commit. Cómo probar cada uno: «Cómo probar la revisión 2�
 - [x] D22 Inicio: «Activos disponibles por bodega»
 - [x] D23 Diálogo «Asignar activo» (y demás de activos): Persona sin error falso
 
+### Resultado de la revisión 2 (2026-11-22)
+
+- **Pruebas:** shared 57, API 208 unitarias y 337 de integración con Postgres 18 (8 omitidas de siempre), web 515. e2e (Playwright
+  - axe, escritorio y 360 px) de `consumables`, `inventory`, `admin` y `home-dashboard`: **en verde** (los 2 omitidos de siempre).
+- **Cosas que encontraron las pruebas:** el e2e destapó cuatro casos que dependían de textos que esta revisión cambió a propósito
+  (el máximo de la devolución, el buscador del selector de bodegas, la confirmación del ajuste y la de desactivar una bodega) y un
+  helper de PATCH sin token CSRF; se actualizaron. `dialogErrors.test.ts` falla sin la corrección de D23 (comprobado).
+- **Decisiones registradas:** Q75 a Q82 en `docs/open-questions.md`. Las más relevantes: los eventos de auditoría ya guardados no
+  se reescriben (D9, D10); el filtro de bodega del historial usa la barra de F2 y deja `WarehouseSelect` solo en los diálogos
+  (D20); el texto «solo un administrador puede anularlo» se usó tal cual aunque anular sea un permiso (D6).
+- **Pendiente:** ver el backlog de abajo. No se esperó el CI ni se hizo merge.
+
 ### Cómo probar la revisión 2
 
-(Se completa punto por punto.)
+Notas de proceso: cada punto es un commit con su test; el hook de pre-commit corre lint, typecheck y gitleaks, y la batería
+completa (`pnpm test`, más `pnpm --filter @inventarius/api test:int`) se corrió al cerrar la tanda. D6 y D7, D9 y D10, D11 y D12
+comparten commit porque tocan las mismas líneas. Decisiones nuevas: Q75 a Q82 en `docs/open-questions.md`.
+
+- **D1:** en el historial, una devolución dice «Devolvió: <persona>» (la entrega sigue con «Recibió»). En Auditoría, el evento
+  «Devolución» y la «Anulación de movimiento» de una devolución rotulan «Devolvió».
+- **D2:** «Registrar devolución» en una entrega de 4 con 1 devuelto: «Máximo a devolver: 3 pares». Escribe 4 y envía: «No puede
+  superar lo pendiente de devolver (3 pares)». Ya no menciona el stock de la bodega.
+- **D4:** anula una devolución: su fila muestra primero «Devuelve la entrega del…» y después «Anulado por…» (y en una
+  anulación, «Anula…» antes que «Anulado por…»).
+- **D5:** Roles → «Nuevo rol»: los siete permisos de consumibles salen como «Ver consumibles», «Gestionar catálogo de
+  consumibles», «Ingresar a bodega», «Entregar y registrar devoluciones», «Trasladar entre bodegas», «Ajustar stock» y «Anular
+  movimientos». `permissions.test.ts` falla si cualquier permiso del sistema queda sin traducción (y si sobra una traducción).
+- **D6 y D14:** ajuste: «Revisar ajuste» abre una confirmación con filas Bodega, Sentido, Cantidad, **Saldo «35 → 34»**
+  (destacado), Motivo y Nota, y cierra con «Queda en el libro y no se puede editar; solo un administrador puede anularlo».
+  Desactivar una bodega con stock: «Stock en esta bodega: N consumibles» destacado y la lista corta de lo que se bloquea (sin
+  ingresos, traslados hacia ella, devoluciones ni ajustes que sumen; sí permite sacar stock). Desactivar o eliminar un consumible
+  usa el mismo formato.
+- **D7:** en «Ajustar», con una bodega elegida hay una sola línea bajo la cantidad: «Disponible en <bodega>: N» al sumar y
+  «Máximo a restar en <bodega>: N» al restar.
+- **D8:** Roles: las descripciones de Administrador, Operador, Técnico de campo y Lector mencionan consumibles. En una base
+  existente las pone la migración 0021 (solo si la descripción seguía siendo la original).
+- **D9:** anula un traslado, un ajuste y una entrega; en Auditoría cada «Anulación de movimiento» pone «Motivo de la anulación»
+  justo después del tipo anulado, y el traslado dice «Traslado» (no «Traslado (salida)») y no trae «Recibe —» ni «Motivo del
+  movimiento —». Los eventos ya guardados no se reescriben (Q75).
+- **D10:** en Auditoría, «Devolución» y la anulación de una devolución traen «Entrega: Entrega del dd-mm-aaaa HH:mm a <receptor>».
+- **D11 y D12:** Auditoría, entidad «Categoría»: el alta o la edición de una categoría de consumibles no muestra «Tipo de
+  extensión» (la de activos sí). Crear o renombrar una categoría de consumibles con un nombre repetido: «Ya existe una categoría
+  de consumibles con ese nombre».
+- **D13:** Catálogo → Categorías de consumibles (o Unidades de medida) con consumibles asociados: al renombrar (editar) o
+  desactivar, la confirmación trae «Afecta a N consumibles» destacado. Sin consumibles no pregunta.
+- **D15:** traslado (historial, su anulación, el diálogo «Anular», Inicio → «Últimos movimientos»): título «Traslado 5 unidades»
+  y debajo «Bodega Anexo → Bodega Cristobal Gambi» con nombres cortos; pasa el cursor sobre la ruta para ver las completas.
+- **D16:** una bodega con mínimo 5 y 2 en stock avisa; al desactivar la bodega desaparece el aviso (insignia, alerta de la
+  ficha, Inicio y filtro «Bajo mínimo»); en «Stock por bodega» el mínimo se ve atenuado con «(bodega inactiva)».
+- **D17:** abre cualquier selector de bodega: el buscador dice «Buscar bodega…».
+- **D18:** edita los mínimos por bodega de un consumible; en Auditoría solo salen las bodegas que cambiaron, una línea cada una
+  («Bodega Cristobal Gambi: — → 40», «Bodega Anexo: 40 → —»).
+- **D19:** «Stock por bodega» (tabla y tarjetas a 360 px): el nombre de la bodega es el título y la ruta de los padres va debajo,
+  más chica.
+- **D20:** historial a 360 px: un botón «Filtros» y los activos como chips (en escritorio, la barra de Activos y Auditoría).
+- **D21:** a 360 px, «Ir al movimiento» no se parte en dos líneas.
+- **D22:** Inicio: el bloque dice «Activos disponibles por bodega».
+- **D23:** abre «Asignar activo»: Persona no está en rojo; pulsa «Asignar» sin elegir: aparece «Este campo es obligatorio»; elige
+  una persona: desaparece. `dialogErrors.test.ts` lo comprueba con asignar, devolver, cambiar estado, dar de baja y editar.
+- **e2e (Playwright + axe, escritorio y 360 px):** D5 en `admin.spec.ts`; D14 y D15 en `consumables.spec.ts`; D16 es un caso
+  nuevo de `consumables.spec.ts`; D22 en `home-dashboard.spec.ts`; D23 en `inventory.spec.ts`.
 
 ### Backlog de la revisión 2
 

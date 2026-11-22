@@ -39,6 +39,25 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). D
   movimiento»; obligatorios sin marcar antes de interactuar; botones de la ficha en grilla de dos columnas; subtítulo de
   Catálogo; activar/desactivar con ícono inequívoco y confirmación [P12 a P18].
 
+#### Revisión manual 2 del PR #7
+
+- La devolución dice «Devolvió» y su diálogo limita a lo pendiente de devolver [D1, D2]; en las filas anuladas el origen va antes
+  de «Anulado por» [D4].
+- Permisos de consumibles traducidos en la matriz de roles, con un test que exige traducir cada permiso, y descripciones de los
+  roles semilla con sus permisos de consumibles (migración 0021) [D5, D8].
+- Confirmaciones estructuradas (filas con etiqueta y el dato clave destacado) para el ajuste, desactivar una bodega con stock y
+  desactivar o eliminar un consumible; el diálogo de ajuste muestra una sola línea de stock [D6, D7, D14].
+- Auditoría: la anulación trae su motivo primero y solo los campos que aplican, la devolución indica su entrega, las categorías
+  de consumibles no muestran «Tipo de extensión» y los mínimos por bodega muestran solo lo que cambió [D9, D10, D11, D18].
+- Categorías de consumibles: error de duplicado propio; renombrar o desactivar una categoría o unidad en uso dice «Afecta a N
+  consumibles» [D12, D13].
+- Traslado en formato corto (título, ruta con nombres cortos y tooltip) en todas partes; «Stock por bodega» con nombre y ruta;
+  filtros del historial con «Filtros» y chips; «Ir al movimiento» sin cortes; buscador «Buscar bodega…»; Inicio dice «Activos
+  disponibles por bodega» [D15, D17, D19, D20, D21, D22].
+- Los mínimos de una bodega inactiva no generan aviso y se ven atenuados [D16].
+- «Asignar activo» ya no marca Persona en rojo al abrir ni tras elegir; test de componente para todos los diálogos de activos
+  [D23].
+
 ### F3 — LoRaWAN
 
 - Datos LoRaWAN del activo (DevEUI, JoinEUI, AppKey, NwkKey, clase, versión, región): opcionales al crear, obligatorios solo al

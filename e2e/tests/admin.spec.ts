@@ -137,6 +137,20 @@ test.describe('roles (RF: matriz de permisos)', () => {
     await page.getByRole('button', { name: 'Nuevo rol' }).click();
     const dialog = page.getByRole('dialog', { name: 'Nuevo rol' });
     await dialog.getByLabel('Nombre').fill(name);
+    // D5: los permisos de consumibles salen con su texto, no como claves crudas.
+    for (const label of [
+      'Ver consumibles',
+      'Gestionar catálogo de consumibles',
+      'Ingresar a bodega',
+      'Entregar y registrar devoluciones',
+      'Trasladar entre bodegas',
+      'Ajustar stock',
+      'Anular movimientos',
+    ]) {
+      await expect(dialog.getByRole('checkbox', { name: label })).toBeVisible();
+    }
+    await expect(dialog.getByText(/consumables:/)).toHaveCount(0);
+    await expect(dialog.getByText(/permissions\./)).toHaveCount(0);
     await dialog.getByRole('checkbox', { name: 'Ver auditoría' }).check();
     await expectNoA11yViolations(page);
     await dialog.getByRole('button', { name: 'Guardar' }).click();
