@@ -758,7 +758,7 @@ aquí junto con su commit. Cómo probar cada uno: «Cómo probar la revisión 2�
 - [x] D16 Mínimos de una bodega inactiva no generan aviso
 - [x] D17 Buscador de los selectores de bodega: «Buscar bodega…»
 - [x] D18 Auditoría de mínimos por bodega: solo lo que cambió
-- [ ] D19 «Stock por bodega»: nombre y ruta en segunda línea
+- [x] D19 «Stock por bodega»: nombre y ruta en segunda línea
 - [ ] D20 Filtros del historial a 360 px: botón «Filtros» y chips
 - [x] D21 «Ir al movimiento» sin cortarse entre líneas
 - [x] D22 Inicio: «Activos disponibles por bodega»

@@ -153,6 +153,8 @@ const stockColumns = computed(() => [
   { id: 'minimum', header: t('consumables.stock.minimum') },
 ]);
 const qty = (v: string) => formatQuantity(v, unit.value!);
+/** Ruta de los padres de una bodega («Zensi › Chile»), como en los selectores; vacía si es de primer nivel. */
+const parentsOf = (path: string): string => path.split(' > ').slice(0, -1).join(' › ');
 /** Las bodegas que están bajo su propio mínimo: la alerta las nombra (P9). */
 const stockBelowMinimum = computed(() =>
   (consumable.value?.stockByWarehouse ?? []).filter((w) => w.belowMinimum && w.minQuantity),
@@ -395,14 +397,24 @@ async function goTo(movementId: string): Promise<void> {
           :get-row-id="(s: WarehouseStockDto) => s.location.id"
         >
           <template #warehouse-cell="{ row }">
-            {{ row.original.location.path }}
-            <UBadge
-              v-if="!row.original.location.active"
-              :label="t('consumables.stock.inactiveWarehouse')"
-              color="neutral"
-              variant="subtle"
-              class="ml-1"
-            />
+            <span class="flex flex-col">
+              <span class="font-medium break-words text-highlighted">
+                {{ row.original.location.name }}
+                <UBadge
+                  v-if="!row.original.location.active"
+                  :label="t('consumables.stock.inactiveWarehouse')"
+                  color="neutral"
+                  variant="subtle"
+                  class="ml-1"
+                />
+              </span>
+              <span
+                v-if="parentsOf(row.original.location.path)"
+                class="text-xs break-words text-muted"
+                data-testid="stock-path"
+                >{{ parentsOf(row.original.location.path) }}</span
+              >
+            </span>
           </template>
           <template #quantity-cell="{ row }">
             <span class="flex flex-wrap items-center gap-2">
@@ -436,15 +448,23 @@ async function goTo(movementId: string): Promise<void> {
           </template>
           <template #empty>{{ t('consumables.stock.empty') }}</template>
           <template #card="{ item }">
-            <span class="font-semibold text-highlighted">
-              {{ item.location.path }}
-              <UBadge
-                v-if="!item.location.active"
-                :label="t('consumables.stock.inactiveWarehouse')"
-                color="neutral"
-                variant="subtle"
-                class="ml-1"
-              />
+            <span class="flex flex-col">
+              <span class="font-semibold break-words text-highlighted">
+                {{ item.location.name }}
+                <UBadge
+                  v-if="!item.location.active"
+                  :label="t('consumables.stock.inactiveWarehouse')"
+                  color="neutral"
+                  variant="subtle"
+                  class="ml-1"
+                />
+              </span>
+              <span
+                v-if="parentsOf(item.location.path)"
+                class="text-xs break-words text-muted"
+                data-testid="stock-path"
+                >{{ parentsOf(item.location.path) }}</span
+              >
             </span>
             <dl class="m-0 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
               <dt class="text-muted">{{ t('consumables.stock.quantity') }}</dt>

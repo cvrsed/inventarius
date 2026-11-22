@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { router } from '@/app/router';
 import { useAuthStore } from '@/features/auth/useAuthStore';
 import { useConfirm } from '@/shared/ui/useConfirm';
-import { mockApi, pagePlugins } from '@/test-utils';
+import { mockApi, pagePlugins, useMobileViewport } from '@/test-utils';
 import ConsumableDetailPage from './ConsumableDetailPage.vue';
 import { consumable, ids, movement } from './fixtures';
 
@@ -197,6 +197,53 @@ describe('ficha del consumible (RF-73, RF-74)', () => {
     expect(w.findAll('[data-testid="below-warehouse"]')).toHaveLength(0);
     expect(w.text()).not.toContain('bajo mínimo');
     expect(w.text()).not.toContain('Bajo mínimo');
+  });
+
+  describe('Stock por bodega: nombre y ruta en dos líneas (D19)', () => {
+    const nested = () =>
+      consumable({
+        stockByWarehouse: [
+          {
+            location: {
+              id: ids.annex,
+              name: 'Bodega Cristobal Gambi',
+              path: 'Cliente Inventado > Sede Sur > Bodega Cristobal Gambi',
+              active: true,
+            },
+            quantity: '2',
+            minQuantity: null,
+            belowMinimum: false,
+          },
+          {
+            location: {
+              id: ids.main,
+              name: 'Bodega central',
+              path: 'Bodega central',
+              active: true,
+            },
+            quantity: '10',
+            minQuantity: null,
+            belowMinimum: false,
+          },
+        ],
+      });
+
+    it('en escritorio el nombre es el título y la ruta de los padres va en una segunda línea', async () => {
+      const w = await mountPage(['consumables:read'], nested());
+      const row = w.findAll('tbody tr')[0]!;
+      expect(row.text()).toContain('Bodega Cristobal Gambi');
+      expect(row.get('[data-testid="stock-path"]').text()).toBe('Cliente Inventado › Sede Sur');
+      // Una bodega de primer nivel no tiene segunda línea.
+      expect(w.findAll('tbody tr')[1]!.find('[data-testid="stock-path"]').exists()).toBe(false);
+    });
+
+    it('a 360 px la tarjeta hace lo mismo', async () => {
+      useMobileViewport();
+      const w = await mountPage(['consumables:read'], nested());
+      const paths = w.findAll('[data-testid="stock-path"]');
+      expect(paths.map((p) => p.text())).toEqual(['Cliente Inventado › Sede Sur']);
+      expect(w.text()).toContain('Bodega Cristobal Gambi');
+    });
   });
 
   it('el historial usa «Ver más» y filtros de bodega, tipo y fecha', async () => {
