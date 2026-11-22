@@ -743,7 +743,7 @@ aquí junto con su commit. Cómo probar cada uno: «Cómo probar la revisión 2�
 
 - [x] D1 Devolución: la persona se etiqueta «Devolvió» (historial y auditoría)
 - [x] D2 Diálogo de devolución: el límite es lo pendiente de devolver
-- [ ] D4 Filas anuladas: primero la línea de origen y después «Anulado por…»
+- [x] D4 Filas anuladas: primero la línea de origen y después «Anulado por…»
 - [ ] D5 Permisos de consumibles traducidos en la matriz de roles (con test de cobertura)
 - [ ] D6 Confirmaciones estructuradas (ajuste y patrón común)
 - [ ] D7 Diálogo de ajuste: una sola línea de stock disponible

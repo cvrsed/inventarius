@@ -559,25 +559,6 @@ async function goTo(movementId: string): Promise<void> {
                   <span class="text-default">{{ line.value }}</span>
                 </li>
               </ul>
-              <p v-if="m.reversedBy" class="m-0 mt-1 text-sm text-muted">
-                {{
-                  m.reversedBy.actorName
-                    ? t('consumables.history.reversedBy', {
-                        name: m.reversedBy.actorName,
-                        date: formatDateTime(m.reversedBy.at),
-                      })
-                    : t('consumables.history.reversedByUnknown', {
-                        date: formatDateTime(m.reversedBy.at),
-                      })
-                }}
-                <a
-                  v-if="present(m.reversedBy.id)"
-                  :href="`#mov-${m.reversedBy.id}`"
-                  class="ml-1 underline"
-                  @click.prevent="goTo(m.reversedBy.id)"
-                  >{{ t('consumables.history.goTo') }}</a
-                >
-              </p>
               <p v-if="m.reverses" class="m-0 mt-1 text-sm text-muted">
                 {{
                   t('consumables.history.reverses', {
@@ -614,6 +595,25 @@ async function goTo(movementId: string): Promise<void> {
                   :href="`#mov-${m.returnOf.id}`"
                   class="ml-1 underline"
                   @click.prevent="goTo(m.returnOf.id)"
+                  >{{ t('consumables.history.goTo') }}</a
+                >
+              </p>
+              <p v-if="m.reversedBy" class="m-0 mt-1 text-sm text-muted">
+                {{
+                  m.reversedBy.actorName
+                    ? t('consumables.history.reversedBy', {
+                        name: m.reversedBy.actorName,
+                        date: formatDateTime(m.reversedBy.at),
+                      })
+                    : t('consumables.history.reversedByUnknown', {
+                        date: formatDateTime(m.reversedBy.at),
+                      })
+                }}
+                <a
+                  v-if="present(m.reversedBy.id)"
+                  :href="`#mov-${m.reversedBy.id}`"
+                  class="ml-1 underline"
+                  @click.prevent="goTo(m.reversedBy.id)"
                   >{{ t('consumables.history.goTo') }}</a
                 >
               </p>

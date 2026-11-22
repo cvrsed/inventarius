@@ -220,6 +220,22 @@ describe('ficha del consumible (RF-73, RF-74)', () => {
     });
   });
 
+  it('en una fila anulada, primero el origen («Devuelve la entrega…») y después «Anulado por…» (D4)', async () => {
+    const ret = movement({
+      id: '0190d1a0-0000-7000-8000-0000000000f3',
+      kind: 'return',
+      delta: '1',
+      recipient: { userId: null, name: 'Persona Inventada', ref: null },
+      reversible: false,
+      returnOf: { id: '0190d1a0-0000-7000-8000-0000000000f2', at: '2026-11-16T12:00:00.000Z' },
+      reversedBy: { id: ids.movement2, at: '2026-11-17T12:00:00.000Z', actorName: 'Ada Admin' },
+    });
+    const w = await mountPage(ALL, consumable(), [ret]);
+    const text = w.text();
+    expect(text.indexOf('Devuelve la entrega del')).toBeGreaterThan(-1);
+    expect(text.indexOf('Devuelve la entrega del')).toBeLessThan(text.indexOf('Anulado por'));
+  });
+
   describe('fecha pasada en el historial (P6)', () => {
     it('un ingreso retroactivo muestra solo la fecha y una línea «Registrado el … por …»', async () => {
       const past = movement({
