@@ -376,9 +376,16 @@ describe('ficha del consumible (RF-73, RF-74)', () => {
 
     it('el filtro de tipo ofrece un solo «Traslado»', async () => {
       const w = await mountPage(['consumables:read']);
-      const labels = (
-        w.vm as unknown as { $: { setupState: { kindItems: { label: string }[] } } }
-      ).$.setupState.kindItems.map((i) => i.label);
+      const defs = (
+        w.vm as unknown as {
+          $: {
+            setupState: {
+              filterDefs: { key: string; options?: { label: string }[] }[];
+            };
+          };
+        }
+      ).$.setupState.filterDefs;
+      const labels = defs.find((d) => d.key === 'kind')!.options!.map((o) => o.label);
       expect(labels.filter((l) => l === 'Traslado')).toHaveLength(1);
       expect(labels).toContain('Devolución');
     });
@@ -417,23 +424,32 @@ describe('ficha del consumible (RF-73, RF-74)', () => {
     });
   });
 
-  describe('selector de bodega del filtro del historial (P13)', () => {
-    it('lista las bodegas con su stock a la derecha y filtra el historial al elegir una', async () => {
+  describe('filtros del historial con la barra de F2 (D20)', () => {
+    it('en escritorio: botones Bodega, Tipo, Desde y Hasta; al elegir una bodega aparece su chip', async () => {
       const w = await mountPage(['consumables:read']);
-      (document.body.querySelector('#hs-warehouse') as HTMLElement).click();
+      for (const id of ['filter-locationId', 'filter-kind', 'filter-from', 'filter-to'])
+        expect(document.body.querySelector(`#${id}`), id).not.toBeNull();
+      (document.body.querySelector('#filter-locationId') as HTMLElement).click();
       await flushPromises();
       const options = [...document.body.querySelectorAll<HTMLElement>('[role="option"]')];
-      expect(options.map((o) => o.textContent)).toEqual([
-        expect.stringContaining('Todas las bodegas'),
-        expect.stringContaining('Bodega central'),
-        expect.stringContaining('Bodega anexo'),
-      ]);
-      expect(options[1]!.querySelector('[data-testid="warehouse-stock"]')?.textContent).toBe(
-        '10 pares',
+      expect(options.map((o) => o.textContent?.trim())).toEqual(
+        expect.arrayContaining(['Bodega central', 'Bodega anexo']),
       );
-      options[2]!.click();
+      options.find((o) => o.textContent?.includes('Bodega anexo'))!.click();
       await flushPromises();
-      expect(w.text()).toContain('Limpiar filtros');
+      expect(w.text()).toContain('Limpiar todo');
+      expect(w.text()).toContain('Bodega anexo');
+    });
+
+    it('a 360 px los cuatro filtros no ocupan la pantalla: un botón «Filtros» y los activos como chips', async () => {
+      useMobileViewport();
+      const w = await mountPage(['consumables:read']);
+      const history = w.get('[aria-labelledby="cs-history"]');
+      expect(history.find('#filters-panel-button').text()).toContain('Filtros');
+      // Ni selectores ni fechas sueltos en la página: viven dentro del panel.
+      expect(history.find('input[type="date"]').exists()).toBe(false);
+      expect(history.find('#filter-kind').exists()).toBe(false);
+      expect(history.text()).not.toContain('Desde');
     });
   });
 

@@ -10,7 +10,6 @@ import UAlert from '@nuxt/ui/components/Alert.vue';
 import UBadge from '@nuxt/ui/components/Badge.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
 import UIcon from '@nuxt/ui/components/Icon.vue';
-import UInput from '@nuxt/ui/components/Input.vue';
 import { useToast } from '@nuxt/ui/composables/useToast';
 import { computed, nextTick, onBeforeUnmount, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -19,7 +18,8 @@ import { errorMessage } from '@/features/auth/errors';
 import { useAuthStore } from '@/features/auth/useAuthStore';
 import { ApiError } from '@/shared/api/http';
 import { formatDate, formatDateTime } from '@/shared/format/format';
-import AppSelect from '@/shared/ui/AppSelect.vue';
+import FilterToolbar from '@/shared/filters/FilterToolbar.vue';
+import type { FilterDef } from '@/shared/filters/types';
 import ReasonButton from '@/shared/ui/ReasonButton.vue';
 import ResponsiveTable from '@/shared/ui/ResponsiveTable.vue';
 import { useConfirm } from '@/shared/ui/useConfirm';
@@ -35,7 +35,6 @@ import { lowStockLabel } from './lowStock';
 import { ACTION_ICONS, MOVEMENT_ICONS, describeMovement } from './movements';
 import ReturnDialog from './ReturnDialog.vue';
 import ReverseDialog from './ReverseDialog.vue';
-import WarehouseSelect, { type WarehouseOption } from './WarehouseSelect.vue';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -175,23 +174,31 @@ const views = computed(() =>
   unit.value ? movements.value.map((m) => ({ m, view: describeMovement(m, unit.value!, t) })) : [],
 );
 const filtered = computed(() => Object.values(filters.value).some((v) => v !== ''));
-/** Bodegas del filtro del historial: las que tienen o tuvieron stock de este consumible, con su stock a la derecha. */
-const warehouseItems = computed<WarehouseOption[]>(() =>
-  (consumable.value?.stockByWarehouse ?? []).map((s: WarehouseStockDto) => ({
-    id: s.location.id,
-    name: s.location.name,
-    parents: s.location.path.split(' > ').slice(0, -1).join(' › '),
-    stock: qty(s.quantity),
-    ...(s.location.active ? {} : { note: t('consumables.stock.inactiveWarehouse') }),
-  })),
-);
-const kindItems = computed(() => [
-  { value: '', label: t('consumables.history.allKinds') },
-  ...HISTORY_KINDS.map((k) => ({ value: k, label: t(`consumables.kinds.${k}`) })),
+/**
+ * Filtros del historial con la misma barra que Activos y Auditoría: bodega (las que tienen o tuvieron stock de este
+ * consumible), tipo y rango de fechas.
+ */
+const filterDefs = computed<FilterDef[]>(() => [
+  {
+    kind: 'choice',
+    key: 'locationId',
+    label: t('consumables.history.filterWarehouse'),
+    placement: 'bar',
+    options: (consumable.value?.stockByWarehouse ?? []).map((s: WarehouseStockDto) => ({
+      value: s.location.id,
+      label: s.location.path.split(' > ').join(' › '),
+    })),
+  },
+  {
+    kind: 'choice',
+    key: 'kind',
+    label: t('consumables.history.filterKind'),
+    placement: 'bar',
+    options: HISTORY_KINDS.map((k) => ({ value: k, label: t(`consumables.kinds.${k}`) })),
+  },
+  { kind: 'date', key: 'from', label: t('consumables.history.filterFrom'), placement: 'bar' },
+  { kind: 'date', key: 'to', label: t('consumables.history.filterTo'), placement: 'bar' },
 ]);
-const setFilter = (key: keyof HistoryFilters, value: string | number) => {
-  filters.value = { ...filters.value, [key]: String(value) };
-};
 const clearFilters = () => (filters.value = { locationId: '', kind: '', from: '', to: '' });
 
 const kindLabel = (kind: string) => t(`consumables.kinds.${kind}`);
@@ -500,55 +507,13 @@ async function goTo(movementId: string): Promise<void> {
         <h2 id="cs-history" class="m-0 text-lg font-semibold text-highlighted">
           {{ t('consumables.history.title') }}
         </h2>
-        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          <label class="flex flex-col gap-1 text-sm">
-            <span class="text-muted">{{ t('consumables.history.filterWarehouse') }}</span>
-            <WarehouseSelect
-              id="hs-warehouse"
-              :model-value="filters.locationId"
-              :items="warehouseItems"
-              :all-label="t('consumables.history.allWarehouses')"
-              :placeholder="t('consumables.history.allWarehouses')"
-              @update:model-value="(v: string) => setFilter('locationId', v)"
-            />
-          </label>
-          <label class="flex flex-col gap-1 text-sm">
-            <span class="text-muted">{{ t('consumables.history.filterKind') }}</span>
-            <AppSelect
-              :model-value="filters.kind"
-              :items="kindItems"
-              class="w-full"
-              @update:model-value="(v: string | number) => setFilter('kind', v)"
-            />
-          </label>
-          <label class="flex flex-col gap-1 text-sm">
-            <span class="text-muted">{{ t('consumables.history.filterFrom') }}</span>
-            <UInput
-              :model-value="filters.from"
-              type="date"
-              class="w-full"
-              @update:model-value="(v: string | number) => setFilter('from', v)"
-            />
-          </label>
-          <label class="flex flex-col gap-1 text-sm">
-            <span class="text-muted">{{ t('consumables.history.filterTo') }}</span>
-            <UInput
-              :model-value="filters.to"
-              type="date"
-              class="w-full"
-              @update:model-value="(v: string | number) => setFilter('to', v)"
-            />
-          </label>
-        </div>
-        <UButton
-          v-if="filtered"
-          icon="i-lucide-x"
-          :label="t('consumables.history.clear')"
-          color="neutral"
-          variant="ghost"
-          size="sm"
-          class="self-start"
-          @click="clearFilters"
+        <!-- Convención de F2: botón «Filtros» y los activos como chips (en 360 px no ocupan la pantalla). -->
+        <FilterToolbar
+          :defs="filterDefs"
+          :values="filters"
+          :total="history?.pages[0]?.meta.total"
+          @change="(patch: Record<string, string>) => (filters = { ...filters, ...patch })"
+          @clear="clearFilters"
         />
 
         <p v-if="historyPending" class="m-0 text-muted">{{ t('common.loading') }}</p>
