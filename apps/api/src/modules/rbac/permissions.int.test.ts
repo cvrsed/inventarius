@@ -26,6 +26,7 @@ describe('semilla de RBAC', () => {
     for (const seed of SEED_ROLES) {
       const db = roles.find((r) => r.name === seed.name)!;
       expect(db.permissions).toEqual([...seed.permissions].sort());
+      expect(db.description).toBe(seed.description);
       expect(db.isProtected).toBe(seed.isProtected);
       expect(db.isSystem).toBe(true);
     }

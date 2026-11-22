@@ -57,19 +57,22 @@ const OPERATOR: readonly Permission[] = [
 export const SEED_ROLES: readonly SeedRole[] = [
   {
     name: 'Administrador',
-    description: 'Acceso total, incluida la gestión de usuarios, roles y perfiles LNS.',
+    description:
+      'Acceso total, incluida la gestión de usuarios, roles, perfiles LNS y consumibles.',
     isProtected: true,
     permissions: PERMISSIONS,
   },
   {
     name: 'Operador',
-    description: 'Gestiona activos y catálogo; registra en LNS sin ver claves.',
+    description:
+      'Gestiona activos, catálogo y consumibles (ingresa, entrega, traslada y ajusta stock, sin anular); registra en LNS sin ver claves.',
     isProtected: false,
     permissions: OPERATOR,
   },
   {
     name: 'Técnico de campo',
-    description: 'Asigna activos y registra dispositivos en LNS desde terreno.',
+    description:
+      'Asigna activos y registra dispositivos en LNS desde terreno; entrega consumibles y registra devoluciones.',
     isProtected: false,
     permissions: [
       'asset:read',
@@ -82,7 +85,7 @@ export const SEED_ROLES: readonly SeedRole[] = [
   },
   {
     name: 'Lector',
-    description: 'Solo consulta.',
+    description: 'Solo consulta (activos, LoRaWAN y consumibles).',
     isProtected: false,
     permissions: ['asset:read', 'lorawan:read', 'consumables:read'],
   },

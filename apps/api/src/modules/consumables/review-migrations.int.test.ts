@@ -87,3 +87,27 @@ describe('migración 0020: categorías únicas por ámbito (P4)', () => {
     ).rejects.toThrow(/categories_scope_name_lower_uq/);
   });
 });
+
+describe('migración 0021: descripciones de los roles semilla (D8)', () => {
+  it('reescribe la descripción original y respeta la que alguien editó', async () => {
+    const pool = env.db.migratorPool;
+    await pool.query(
+      `UPDATE roles SET description = 'Solo consulta.' WHERE name = 'Lector';
+       UPDATE roles SET description = 'Texto propio del equipo' WHERE name = 'Operador';
+       UPDATE roles SET description = 'Asigna activos y registra dispositivos en LNS desde terreno.'
+        WHERE name = 'Técnico de campo'`,
+    );
+
+    for (const sql of statementsOf('0021_role_descriptions_consumables.sql')) await pool.query(sql);
+
+    const description = async (name: string) =>
+      (
+        await pool.query<{ description: string }>(`SELECT description FROM roles WHERE name = $1`, [
+          name,
+        ])
+      ).rows[0]!.description;
+    expect(await description('Lector')).toContain('consumibles');
+    expect(await description('Técnico de campo')).toContain('consumibles');
+    expect(await description('Operador')).toBe('Texto propio del equipo');
+  });
+});
