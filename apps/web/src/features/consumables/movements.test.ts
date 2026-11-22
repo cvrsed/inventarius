@@ -56,6 +56,19 @@ describe('historial de movimientos', () => {
     expect(v.lines).toEqual([{ label: 'Recibió', value: 'Persona Inventada (ID-000)' }]);
   });
 
+  it('una devolución rotula a la persona «Devolvió», no «Recibió» (D1)', () => {
+    const v = describeMovement(
+      movement({
+        kind: 'return',
+        delta: '1',
+        recipient: { userId: null, name: 'Persona Inventada', ref: null },
+      }),
+      par,
+      t,
+    );
+    expect(v.lines).toEqual([{ label: 'Devolvió', value: 'Persona Inventada' }]);
+  });
+
   it('un ajuste muestra el motivo traducido, no la clave', () => {
     const v = describeMovement(
       movement({ kind: 'adjustment', delta: '-1', reason: 'waste_damage' }),

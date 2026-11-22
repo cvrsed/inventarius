@@ -396,3 +396,24 @@ describe('consumibles: orden fijo de campos y «Bodega» (P11)', () => {
     expect(other[0]!.label).not.toBe('Bodega');
   });
 });
+
+describe('consumibles: la persona de una devolución «Devolvió» (D1)', () => {
+  const label = (diff: Record<string, unknown>, action: string) =>
+    describeAuditDetail(diff, text, { entity: 'consumable', action }).find(
+      (r) => r.field === 'recipient',
+    )?.label;
+
+  it('el evento de devolución y la anulación de una devolución dicen «Devolvió»', () => {
+    expect(label({ recipient: 'Ana Inventada' }, 'consumable.return')).toBe('Devolvió');
+    expect(
+      label({ originalKind: 'return', recipient: 'Ana Inventada' }, 'consumable.reverse'),
+    ).toBe('Devolvió');
+  });
+
+  it('la entrega y la anulación de una entrega siguen diciendo «Recibe»', () => {
+    expect(label({ recipient: 'Ana Inventada' }, 'consumable.deliver')).toBe('Recibe');
+    expect(
+      label({ originalKind: 'delivery', recipient: 'Ana Inventada' }, 'consumable.reverse'),
+    ).toBe('Recibe');
+  });
+});

@@ -54,7 +54,7 @@ export function describeMovement(m: MovementDto, unit: UnitRef, t: Translate): M
   };
   if (m.recipient) {
     add(
-      'recipient',
+      m.kind === 'return' ? 'returnedBy' : 'recipient',
       m.recipient.ref ? `${m.recipient.name} (${m.recipient.ref})` : m.recipient.name,
     );
   }

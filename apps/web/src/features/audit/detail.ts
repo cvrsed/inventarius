@@ -24,6 +24,8 @@ const LIST_LIMIT = 10;
 /** Opciones del detalle: la entidad del evento (rótulos que dependen de ella) y campos que no se muestran. */
 export interface DetailOptions {
   entity?: string;
+  /** Acción auditada (`consumable.return`...): decide rótulos que dependen del evento, como «Devolvió». */
+  action?: string;
   skip?: ReadonlySet<string>;
 }
 
@@ -235,7 +237,15 @@ export function describeAuditDetail(
   const after = isRecord(diff['after']) ? diff['after'] : null;
   const keys = keyRows(before, after ?? (before ? null : diff), entity, text);
   const hide = (f: string) => keys.hidden.has(f) || (options.skip?.has(f) ?? false);
-  const row = (field: string) => ({ field, label: auditFieldLabel(field, entity) });
+  // En una devolución (o en la anulación de una), la persona es quien devuelve, no quien recibe (D1).
+  const isReturn =
+    options.action === 'consumable.return' ||
+    (options.action === 'consumable.reverse' &&
+      (after ?? before ?? diff)['originalKind'] === 'return');
+  const row = (field: string) => ({
+    field,
+    label: isReturn && field === 'recipient' ? 'Devolvió' : auditFieldLabel(field, entity),
+  });
   const fmt = (f: string, v: unknown) => formatDetailValue(f, v, text, entity);
   // `context`: datos que no cambiaron pero ayudan a entender el evento (p. ej. el estado de un activo dado de baja).
   const context = isRecord(diff['context'])

@@ -8,7 +8,11 @@ import { describeAuditDetail } from './detail';
 const props = defineProps<{ entry: AuditEntryDto }>();
 const { t, te } = useI18n();
 const rows = computed(() => [
-  ...describeAuditDetail(props.entry.diff, { t, te }, { entity: props.entry.entity }),
+  ...describeAuditDetail(
+    props.entry.diff,
+    { t, te },
+    { entity: props.entry.entity, action: props.entry.action },
+  ),
   // La IP no tiene columna propia (la tabla no debe desbordar): va aquí, al final del detalle.
   ...(props.entry.ip ? [{ field: 'ip', label: t('audit.ip'), value: props.entry.ip }] : []),
 ]);

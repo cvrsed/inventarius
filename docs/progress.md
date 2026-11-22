@@ -736,6 +736,44 @@ marca aquí junto con su commit. Cómo probar cada uno: ver «Cómo probar la re
 - **P17:** en Catálogo, el subtítulo dice «Categorías, fabricantes, modelos, ubicaciones y estados de los activos; categorías de consumibles y unidades de medida.»
 - **P18:** en Catálogo (tabla y tarjetas) y en la ficha de un consumible, activar/desactivar usa los íconos de encendido (apagar para «Desactivar», encender para «Activar») con su tooltip, en lugar del ojo. Desactivar siempre pide confirmación diciendo qué implica (en una bodega con stock, cuántos consumibles); activar no pregunta. Usuarios no tiene este botón: se desactiva desde su formulario, con su propio aviso.
 
+## F3.5 revisión 2
+
+Segunda revisión manual del PR #7 (D3 se descartó; la numeración salta). Un commit por punto; cada punto se marca
+aquí junto con su commit. Cómo probar cada uno: «Cómo probar la revisión 2» al final de esta sección.
+
+- [x] D1 Devolución: la persona se etiqueta «Devolvió» (historial y auditoría)
+- [ ] D2 Diálogo de devolución: el límite es lo pendiente de devolver
+- [ ] D4 Filas anuladas: primero la línea de origen y después «Anulado por…»
+- [ ] D5 Permisos de consumibles traducidos en la matriz de roles (con test de cobertura)
+- [ ] D6 Confirmaciones estructuradas (ajuste y patrón común)
+- [ ] D7 Diálogo de ajuste: una sola línea de stock disponible
+- [ ] D8 Descripciones de los roles semilla con sus permisos de consumibles
+- [ ] D9 Auditoría de una anulación: motivo primero y solo campos aplicables
+- [ ] D10 La devolución indica a qué entrega pertenece (auditoría)
+- [ ] D11 Auditoría de categorías de consumibles sin «Tipo de extensión»
+- [ ] D12 Nombre duplicado en categorías de consumibles
+- [ ] D13 Renombrar o desactivar categoría/unidad en uso: «Afecta a N consumibles»
+- [ ] D14 Confirmación de desactivar una bodega con stock (formato D6)
+- [ ] D15 Formato corto del traslado en todas partes
+- [ ] D16 Mínimos de una bodega inactiva no generan aviso
+- [ ] D17 Buscador de los selectores de bodega: «Buscar bodega…»
+- [ ] D18 Auditoría de mínimos por bodega: solo lo que cambió
+- [ ] D19 «Stock por bodega»: nombre y ruta en segunda línea
+- [ ] D20 Filtros del historial a 360 px: botón «Filtros» y chips
+- [ ] D21 «Ir al movimiento» sin cortarse entre líneas
+- [ ] D22 Inicio: «Activos disponibles por bodega»
+- [ ] D23 Diálogo «Asignar activo» (y demás de activos): Persona sin error falso
+
+### Cómo probar la revisión 2
+
+(Se completa punto por punto.)
+
+### Backlog de la revisión 2
+
+Fuera de alcance; **no se implementa**.
+
+- El encabezado de la ficha de un activo asignado muestra «Con <persona> · <persona>»: ubicación y asignado repiten el nombre.
+
 ### Backlog post-F3.5
 
 Fuera de alcance de F3.5; **no se implementa**.

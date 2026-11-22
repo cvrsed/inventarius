@@ -407,6 +407,7 @@ export const messages = {
       allKinds: 'Todos los tipos',
       clear: 'Limpiar filtros',
       recipient: 'Recibió',
+      returnedBy: 'Devolvió',
       supplier: 'Proveedor',
       reason: 'Motivo',
       note: 'Nota',
