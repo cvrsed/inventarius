@@ -2,11 +2,13 @@ import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { StatusLabelDto } from '@inventarius/shared';
 import { jsonResponse, mockApi, pagePlugins } from '@/test-utils';
+import { useConfirm } from '@/shared/ui/useConfirm';
 import CatalogFormDialog from './CatalogFormDialog.vue';
 import type { Section } from './entities';
 
 const mounted: VueWrapper[] = [];
 afterEach(() => {
+  useConfirm().close();
   mounted.splice(0).forEach((w) => w.unmount());
   document.body.innerHTML = '';
   vi.unstubAllGlobals();
@@ -165,5 +167,98 @@ describe('CatalogFormDialog', () => {
     expect(document.body.textContent).toContain('Lo usa el sistema');
     expect(q<HTMLButtonElement>('button[type="submit"]').disabled).toBe(true);
     expect(q<HTMLInputElement>('#cf-name').disabled).toBe(true);
+  });
+});
+
+describe('renombrar o desactivar lo que usan consumibles (D13)', () => {
+  const category = (consumableCount: number) => ({
+    id: '018f0000-0000-7000-8000-0000000000c1',
+    name: 'EPP',
+    extension: 'none',
+    scope: 'consumable',
+    active: true,
+    consumableCount,
+    updatedAt: '2026-11-16T12:00:00.000Z',
+  });
+  const patched = (fetchMock: ReturnType<typeof mockApi>) =>
+    fetchMock.mock.calls.some((c) => c[1]?.method === 'PATCH');
+
+  it('renombrar una categoría en uso pide confirmar diciendo «Afecta a N consumibles»', async () => {
+    const fetchMock = mockApi({
+      'PATCH /api/v1/categories/018f0000-0000-7000-8000-0000000000c1': () => category(3),
+    });
+    await open('consumableCategories', category(3));
+    await type('#cf-name', 'Protección personal');
+    await save();
+    const confirm = useConfirm();
+    expect(confirm.state.open).toBe(true);
+    const rows = confirm.state.options!.rows!;
+    expect(rows.find((r) => r.highlight)).toMatchObject({ value: 'Afecta a 3 consumibles' });
+    expect(rows.map((r) => r.value).join(' ')).toContain('«EPP» a «Protección personal»');
+    expect(patched(fetchMock)).toBe(false);
+    await confirm.state.options!.accept();
+    await flushPromises();
+    expect(patched(fetchMock)).toBe(true);
+  });
+
+  it('con un solo consumible dice «Afecta a 1 consumible»', async () => {
+    mockApi({});
+    await open('consumableCategories', category(1));
+    await type('#cf-name', 'Otro nombre');
+    await save();
+    expect(useConfirm().state.options!.rows!.find((r) => r.highlight)!.value).toBe(
+      'Afecta a 1 consumible',
+    );
+  });
+
+  it('una categoría sin consumibles se renombra sin preguntar', async () => {
+    const fetchMock = mockApi({
+      'PATCH /api/v1/categories/018f0000-0000-7000-8000-0000000000c1': () => category(0),
+    });
+    await open('consumableCategories', category(0));
+    await type('#cf-name', 'Otro nombre');
+    await save();
+    expect(useConfirm().state.open).toBe(false);
+    expect(patched(fetchMock)).toBe(true);
+  });
+
+  it('una unidad en uso pide confirmar al renombrarla', async () => {
+    mockApi({});
+    await open('units', {
+      id: '018f0000-0000-7000-8000-0000000000d1',
+      name: 'par',
+      plural: 'pares',
+      abbreviation: 'par',
+      decimals: 0,
+      active: true,
+      inUse: true,
+      consumableCount: 2,
+      updatedAt: '2026-11-16T12:00:00.000Z',
+    });
+    await type('#cf-name', 'pareja');
+    await save();
+    expect(useConfirm().state.options!.rows!.find((r) => r.highlight)!.value).toBe(
+      'Afecta a 2 consumibles',
+    );
+  });
+
+  it('cambiar otra cosa (no el nombre ni el estado) no pregunta', async () => {
+    mockApi({
+      'PATCH /api/v1/measure-units/018f0000-0000-7000-8000-0000000000d1': () => ({}),
+    });
+    await open('units', {
+      id: '018f0000-0000-7000-8000-0000000000d1',
+      name: 'par',
+      plural: 'pares',
+      abbreviation: 'par',
+      decimals: 0,
+      active: true,
+      consumableCount: 2,
+      updatedAt: '2026-11-16T12:00:00.000Z',
+    });
+    await type('#cf-abbreviation', 'pr');
+    await save();
+    // La abreviatura también se ve en todos los consumibles: sí pregunta solo por nombre; aquí no es el nombre.
+    expect(useConfirm().state.open).toBe(false);
   });
 });

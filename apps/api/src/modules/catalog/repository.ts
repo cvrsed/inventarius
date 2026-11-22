@@ -147,6 +147,12 @@ export class CatalogRepository {
   async deleteCategory(exec: Executor, id: string): Promise<void> {
     await exec.delete(categories).where(eq(categories.id, id));
   }
+  async categoryConsumableCount(exec: Executor, id: string): Promise<number> {
+    return pairCount(
+      await exec.select({ n: count() }).from(consumables).where(eq(consumables.categoryId, id)),
+    );
+  }
+
   async categoryInUse(exec: Executor, id: string): Promise<boolean> {
     const [asModels, asConsumables] = await Promise.all([
       exec.select({ n: count() }).from(models).where(eq(models.categoryId, id)),

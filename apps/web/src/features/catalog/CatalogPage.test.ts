@@ -242,6 +242,36 @@ describe('CatalogPage (RF-10 a RF-14)', () => {
     expect(wrapper.html()).toContain('Desactivar Disponible');
   });
 
+  it('desactivar una categoría de consumibles en uso dice «Afecta a N consumibles» (D13)', async () => {
+    const category = {
+      id: '018f0000-0000-7000-8000-0000000000c1',
+      name: 'EPP',
+      extension: 'none',
+      scope: 'consumable',
+      active: true,
+      inUse: true,
+      consumableCount: 4,
+      updatedAt: '2026-11-16T12:00:00.000Z',
+    };
+    const { wrapper, fetchMock } = await mountSection(
+      'consumableCategories',
+      [category],
+      ['consumables:read', 'consumables:manage'],
+      { [`PATCH /api/v1/categories/${category.id}`]: () => ({ ...category, active: false }) },
+    );
+    await wrapper.get('button[aria-label="Desactivar EPP"]').trigger('click');
+    await flushPromises();
+    const confirm = useConfirm();
+    expect(confirm.state.open).toBe(true);
+    expect(confirm.state.options?.rows?.find((r) => r.highlight)?.value).toBe(
+      'Afecta a 4 consumibles',
+    );
+    expect(fetchMock.mock.calls.some((c) => c[1]?.method === 'PATCH')).toBe(false);
+    await confirm.state.options!.accept();
+    await flushPromises();
+    expect(fetchMock.mock.calls.some((c) => c[1]?.method === 'PATCH')).toBe(true);
+  });
+
   it('desactivar una bodega con stock avisa cuántos consumibles hay y solo sigue si se confirma (P7)', async () => {
     const warehouse = {
       id: '018f0000-0000-7000-8000-0000000000b1',

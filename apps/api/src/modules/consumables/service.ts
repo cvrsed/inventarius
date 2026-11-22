@@ -164,6 +164,7 @@ export class ConsumablesService {
         update: (e, id, v) => repo.updateUnit(e, id, compact(v)),
         remove: (e, id) => repo.deleteUnit(e, id),
         inUse: (e, id) => repo.unitInUse(e, id),
+        consumableCount: (e, r) => repo.unitConsumableCount(e, r.id),
         beforeUpdate: async (tx, current, patch) => {
           // Bajar los decimales dejaría cantidades ya registradas que la unidad no admite.
           if (

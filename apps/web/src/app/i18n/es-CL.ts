@@ -297,6 +297,20 @@ export const messages = {
     deleteConfirm: '¿Eliminar «{name}»? Si está en uso no se podrá; en ese caso desactívalo.',
     deactivate: 'Desactivar',
     activate: 'Activar',
+    affects: 'Afecta a {n} consumible | Afecta a {n} consumibles',
+    affectsRows: {
+      record: 'Registro',
+      change: 'Cambio',
+      scope: 'Alcance',
+      rename: 'Se renombra de «{from}» a «{to}»',
+      deactivate: 'Se desactiva',
+      renameAndDeactivate: 'Se renombra de «{from}» a «{to}» y se desactiva',
+    },
+    affectsTitle: 'Confirmar cambio de {section}',
+    affectsMessage: 'Revisa a cuántos consumibles llega este cambio antes de confirmarlo.',
+    affectsDeactivateBullet:
+      'Dejará de poder elegirse en consumibles nuevos; los que ya la usan la conservan.',
+    affectsConfirm: 'Confirmar cambio',
     deactivateTitle: 'Desactivar {section}',
     deactivateConfirm:
       '¿Desactivar «{name}»? Dejará de poder elegirse en registros nuevos; lo ya registrado se conserva y puedes volver a activarlo.',

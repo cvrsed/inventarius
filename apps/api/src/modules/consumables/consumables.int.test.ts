@@ -275,6 +275,36 @@ describe('categorías de consumibles: permiso y unicidad por ámbito (P4, cierra
   });
 });
 
+describe('cuántos consumibles afecta una categoría o una unidad (D13)', () => {
+  it('los listados con withUsage traen consumableCount; sin withUsage, no', async () => {
+    const cat = await operator.post(`${base}/categories`, {
+      name: 'Afectada D13',
+      scope: 'consumable',
+    });
+    const unit = await create(operator, 'measure-units', {
+      name: 'tubo',
+      plural: 'tubos',
+      abbreviation: 'tubo',
+      decimals: 0,
+    });
+    await newConsumable({ categoryId: cat.json().id, unitId: unit.id });
+    await newConsumable({ categoryId: cat.json().id, unitId: unit.id });
+    const withUsage = async (path: string) =>
+      (await admin.get(`${base}/${path}?pageSize=100&withUsage=true`)).json().data as Json[];
+    const category = (await withUsage('categories')).find((c) => c.id === cat.json().id);
+    expect(category).toMatchObject({ inUse: true, consumableCount: 2 });
+    expect((await withUsage('measure-units')).find((u) => u.id === unit.id)).toMatchObject({
+      inUse: true,
+      consumableCount: 2,
+    });
+    // Una categoría de activos no cuenta consumibles, y sin withUsage no se pregunta.
+    const assetCat = (await withUsage('categories')).find((c) => c.scope === 'asset')!;
+    expect(assetCat).not.toHaveProperty('consumableCount');
+    const plain = (await admin.get(`${base}/measure-units?pageSize=100`)).json().data as Json[];
+    expect(plain[0]).not.toHaveProperty('consumableCount');
+  });
+});
+
 describe('catálogo de consumibles (RF-70)', () => {
   it('crea con categoría de consumibles y unidad; lista con stock total en 0', async () => {
     const c = await newConsumable({ minStock: '10' });

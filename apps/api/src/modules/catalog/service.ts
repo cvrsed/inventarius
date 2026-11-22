@@ -141,6 +141,8 @@ export class CatalogService {
         update: (e, id, v) => repo.updateCategory(e, id, compact(v)),
         remove: (e, id) => repo.deleteCategory(e, id),
         inUse: (e, id) => repo.categoryInUse(e, id),
+        consumableCount: async (e, r) =>
+          r.scope === 'consumable' ? repo.categoryConsumableCount(e, r.id) : undefined,
         beforeUpdate: async (_tx, current, patch) => {
           if (current.scope === 'consumable' && patch.extension && patch.extension !== 'none') {
             throw new ValidationError('Las categorías de consumibles no tienen extensión', {

@@ -140,6 +140,8 @@ export const measureUnitSchema = z.object({
   updatedAt: z.iso.datetime(),
   /** Solo en listados con `withUsage=true`. */
   inUse: z.boolean().optional(),
+  /** Solo en listados con `withUsage=true`: cuántos consumibles usan esta unidad. */
+  consumableCount: z.number().int().optional(),
 });
 export type MeasureUnitDto = z.infer<typeof measureUnitSchema>;
 export const createMeasureUnitSchema = z.object({

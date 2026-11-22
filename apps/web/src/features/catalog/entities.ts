@@ -47,6 +47,15 @@ export const SECTION_WRITE: Record<Section, Permission> = {
   units: 'consumables:manage',
 };
 
+/**
+ * Cuántos consumibles usan una categoría de consumibles o una unidad de medida: renombrarla o desactivarla los afecta
+ * a todos (D13). En el resto de las secciones es 0.
+ */
+export function affectedConsumables(section: Section, item: CatalogItem | null): number {
+  if (!item || (section !== 'consumableCategories' && section !== 'units')) return 0;
+  return (item as { consumableCount?: number }).consumableCount ?? 0;
+}
+
 /** Valor de un campo del formulario: texto, interruptor o referencia elegida en un `RemoteSelect`. */
 export type FormValue = string | boolean | RemoteOption | null;
 export type FormState = Record<string, FormValue>;

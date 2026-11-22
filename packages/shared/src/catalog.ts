@@ -64,6 +64,8 @@ export const categorySchema = z.object({
   extension: categoryExtensionSchema,
   scope: categoryScopeSchema,
   active: z.boolean(),
+  /** Solo en listados con `withUsage=true`, en categorías de consumibles: cuántos consumibles la usan. */
+  consumableCount: z.number().int().optional(),
   ...versioned,
 });
 export type CategoryDto = z.infer<typeof categorySchema>;

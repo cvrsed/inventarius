@@ -210,6 +210,12 @@ export class ConsumablesRepository {
   async deleteUnit(exec: Executor, id: string): Promise<void> {
     await exec.delete(measureUnits).where(eq(measureUnits.id, id));
   }
+  async unitConsumableCount(exec: Executor, id: string): Promise<number> {
+    return pairCount(
+      await exec.select({ n: count() }).from(consumables).where(eq(consumables.unitId, id)),
+    );
+  }
+
   async unitInUse(exec: Executor, id: string): Promise<boolean> {
     return (
       pairCount(

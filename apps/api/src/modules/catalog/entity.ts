@@ -43,6 +43,8 @@ export interface EntityDef<Row extends Versioned, Dto, Create, Patch, Query> {
   update(exec: Executor, id: string, patch: Patch): Promise<Row>;
   remove(exec: Executor, id: string): Promise<void>;
   inUse(exec: Executor, id: string): Promise<boolean>;
+  /** Cuántos consumibles dependen del registro (categorías de consumibles y unidades), para avisar al editarlo. */
+  consumableCount?(exec: Executor, row: Row): Promise<number | undefined>;
   beforeCreate?(tx: Executor, input: Create): Promise<Create>;
   beforeUpdate?(tx: Executor, current: Row, patch: Patch): Promise<Patch>;
   beforeDelete?(tx: Executor, row: Row): void;
@@ -73,10 +75,15 @@ export class CatalogEntity<
     const usage = query.withUsage
       ? await Promise.all(rows.map((r) => this.def.inUse(this.db, r.id)))
       : null;
+    const counts =
+      query.withUsage && this.def.consumableCount
+        ? await Promise.all(rows.map((r) => this.def.consumableCount!(this.db, r)))
+        : null;
     return {
       data: rows.map((r, i) => ({
         ...this.def.toDto(r),
         ...(usage ? { inUse: usage[i]! } : {}),
+        ...(counts && counts[i] !== undefined ? { consumableCount: counts[i]! } : {}),
       })),
       meta: { page: query.page, pageSize: query.pageSize, total },
     };

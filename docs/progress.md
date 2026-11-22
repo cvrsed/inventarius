@@ -752,7 +752,7 @@ aquí junto con su commit. Cómo probar cada uno: «Cómo probar la revisión 2�
 - [x] D10 La devolución indica a qué entrega pertenece (auditoría)
 - [x] D11 Auditoría de categorías de consumibles sin «Tipo de extensión»
 - [x] D12 Nombre duplicado en categorías de consumibles
-- [ ] D13 Renombrar o desactivar categoría/unidad en uso: «Afecta a N consumibles»
+- [x] D13 Renombrar o desactivar categoría/unidad en uso: «Afecta a N consumibles»
 - [ ] D14 Confirmación de desactivar una bodega con stock (formato D6)
 - [ ] D15 Formato corto del traslado en todas partes
 - [ ] D16 Mínimos de una bodega inactiva no generan aviso

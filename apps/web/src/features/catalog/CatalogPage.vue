@@ -18,7 +18,13 @@ import PagedFooter from '@/shared/ui/PagedFooter.vue';
 import { useConfirm } from '@/shared/ui/useConfirm';
 import { useCatalogList, useCatalogMutations, type CatalogItem } from './api';
 import CatalogFormDialog from './CatalogFormDialog.vue';
-import { SECTIONS, SECTION_READ, SECTION_WRITE, type Section } from './entities';
+import {
+  SECTIONS,
+  SECTION_READ,
+  SECTION_WRITE,
+  affectedConsumables,
+  type Section,
+} from './entities';
 import { columnsOf, displayCells } from './columns';
 
 const { t } = useI18n();
@@ -134,6 +140,25 @@ function onToggle(item: CatalogItem): void {
   if (!item.active) return void toggleActive(item);
   const name = displayCells(section.value, item, t).title;
   const n = stockedIn(item);
+  const affected = affectedConsumables(section.value, item);
+  if (affected > 0) {
+    return confirm.require({
+      title: t('catalog.deactivateTitle', { section: t(`catalog.singular.${section.value}`) }),
+      message: t('catalog.affectsMessage'),
+      rows: [
+        { label: t('catalog.affectsRows.record'), value: name },
+        {
+          label: t('catalog.affectsRows.scope'),
+          value: t('catalog.affects', { n: affected }, affected),
+          highlight: true,
+        },
+      ],
+      bullets: [t('catalog.affectsDeactivateBullet')],
+      acceptLabel: t('catalog.deactivate'),
+      rejectLabel: t('common.cancel'),
+      accept: () => toggleActive(item),
+    });
+  }
   confirm.require({
     title:
       n > 0
