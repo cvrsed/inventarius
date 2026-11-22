@@ -442,9 +442,13 @@ describe('ficha del consumible (RF-73, RF-74)', () => {
       await flushPromises();
       const confirm = useConfirm();
       expect(confirm.state.open).toBe(true);
-      expect(confirm.state.options?.message).toContain('Guantes de nitrilo');
-      expect(confirm.state.options?.message).toContain(
-        'ingresos, entregas, devoluciones y traslados',
+      expect(confirm.state.options?.rows?.[0]).toEqual({
+        label: 'Consumible',
+        value: 'Guantes de nitrilo',
+      });
+      expect(confirm.state.options?.rows?.find((r) => r.highlight)?.label).toBe('Stock total');
+      expect(confirm.state.options?.bullets?.[0]).toContain(
+        'ingresos, entregas, devoluciones ni traslados',
       );
       expect(fetchMock.mock.calls.some((c) => c[1]?.method === 'PATCH')).toBe(false);
       await confirm.state.options!.accept();

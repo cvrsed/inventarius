@@ -316,8 +316,21 @@ export const messages = {
       '¿Desactivar «{name}»? Dejará de poder elegirse en registros nuevos; lo ya registrado se conserva y puedes volver a activarlo.',
     toggled: 'Estado actualizado',
     deactivateWarehouseTitle: 'Desactivar bodega con stock',
-    deactivateWarehouseStock:
-      'En «{name}» hay stock de {n} consumible. Al desactivarla dejará de admitir entradas (ingresos, traslados hacia ella, devoluciones y ajustes que sumen); podrás seguir sacando stock hasta vaciarla. | En «{name}» hay stock de {n} consumibles. Al desactivarla dejará de admitir entradas (ingresos, traslados hacia ella, devoluciones y ajustes que sumen); podrás seguir sacando stock hasta vaciarla.',
+    deactivateWarehouseMessage:
+      'Esta bodega todavía tiene stock: al desactivarla se bloquean sus entradas.',
+    deactivateWarehouseRows: {
+      warehouse: 'Bodega',
+      stock: 'Stock en esta bodega',
+      stockValue: '{n} consumible | {n} consumibles',
+    },
+    deactivateWarehouseBlocks: {
+      receipts: 'No admite ingresos',
+      transfersIn: 'No admite traslados hacia ella',
+      returns: 'No admite devoluciones',
+      adjustmentsAdd: 'No admite ajustes que sumen',
+    },
+    deactivateWarehouseAllows:
+      'Sí permite sacar stock: entregas, traslados desde ella y ajustes que restan',
   },
   consumables: {
     title: 'Consumibles',
@@ -480,11 +493,18 @@ export const messages = {
       saved: 'Consumible actualizado',
       toggled: 'Estado actualizado',
       deactivateTitle: 'Desactivar consumible',
-      deactivateConfirm:
-        '¿Desactivar «{name}»? Dejará de admitir ingresos, entregas, devoluciones y traslados (los ajustes y las anulaciones sí) y de avisar bajo mínimo. Su historial se conserva y puedes volver a activarlo.',
+      deactivateMessage: 'Revisa qué deja de admitir antes de desactivarlo.',
+      confirmRows: { consumable: 'Consumible', stock: 'Stock total' },
+      deactivateBlocks: {
+        entries: 'No admite ingresos, entregas, devoluciones ni traslados',
+        allows: 'Sí admite ajustes y anulaciones',
+        alerts: 'Deja de avisar bajo mínimo',
+      },
+      deactivateFootnote: 'Su historial se conserva y puedes volver a activarlo.',
       deleted: 'Consumible eliminado',
       deleteTitle: 'Eliminar consumible',
-      deleteConfirm: '¿Eliminar «{name}»? Solo se puede mientras no tenga movimientos.',
+      deleteMessage: 'El consumible se borra de forma definitiva.',
+      deleteFootnote: 'Solo se puede eliminar mientras no tenga movimientos.',
     },
     decimals: {
       none: 'solo cantidades enteras',

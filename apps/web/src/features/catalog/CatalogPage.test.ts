@@ -294,8 +294,18 @@ describe('CatalogPage (RF-10 a RF-14)', () => {
     await flushPromises();
     const confirm = useConfirm();
     expect(confirm.state.open).toBe(true);
-    expect(confirm.state.options?.message).toContain('hay stock de 3 consumibles');
-    expect(confirm.state.options?.message).toContain('seguir sacando stock');
+    // Formato estructurado (D14): dato clave destacado y lo que se bloquea en lista corta.
+    expect(confirm.state.options?.rows).toEqual([
+      { label: 'Bodega', value: 'Bodega central' },
+      { label: 'Stock en esta bodega', value: '3 consumibles', highlight: true },
+    ]);
+    expect(confirm.state.options?.bullets).toEqual([
+      'No admite ingresos',
+      'No admite traslados hacia ella',
+      'No admite devoluciones',
+      'No admite ajustes que sumen',
+      'Sí permite sacar stock: entregas, traslados desde ella y ajustes que restan',
+    ]);
     expect(fetchMock.mock.calls.some((c) => c[1]?.method === 'PATCH')).toBe(false);
     await confirm.state.options!.accept();
     await flushPromises();

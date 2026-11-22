@@ -745,7 +745,7 @@ aquí junto con su commit. Cómo probar cada uno: «Cómo probar la revisión 2�
 - [x] D2 Diálogo de devolución: el límite es lo pendiente de devolver
 - [x] D4 Filas anuladas: primero la línea de origen y después «Anulado por…»
 - [x] D5 Permisos de consumibles traducidos en la matriz de roles (con test de cobertura)
-- [ ] D6 Confirmaciones estructuradas (ajuste y patrón común)
+- [x] D6 Confirmaciones estructuradas (ajuste y patrón común)
 - [x] D7 Diálogo de ajuste: una sola línea de stock disponible
 - [x] D8 Descripciones de los roles semilla con sus permisos de consumibles
 - [x] D9 Auditoría de una anulación: motivo primero y solo campos aplicables
@@ -753,7 +753,7 @@ aquí junto con su commit. Cómo probar cada uno: «Cómo probar la revisión 2�
 - [x] D11 Auditoría de categorías de consumibles sin «Tipo de extensión»
 - [x] D12 Nombre duplicado en categorías de consumibles
 - [x] D13 Renombrar o desactivar categoría/unidad en uso: «Afecta a N consumibles»
-- [ ] D14 Confirmación de desactivar una bodega con stock (formato D6)
+- [x] D14 Confirmación de desactivar una bodega con stock (formato D6)
 - [ ] D15 Formato corto del traslado en todas partes
 - [ ] D16 Mínimos de una bodega inactiva no generan aviso
 - [ ] D17 Buscador de los selectores de bodega: «Buscar bodega…»

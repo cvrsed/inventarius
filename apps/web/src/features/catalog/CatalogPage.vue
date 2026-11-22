@@ -159,15 +159,32 @@ function onToggle(item: CatalogItem): void {
       accept: () => toggleActive(item),
     });
   }
+  if (n > 0) {
+    return confirm.require({
+      title: t('catalog.deactivateWarehouseTitle'),
+      message: t('catalog.deactivateWarehouseMessage'),
+      rows: [
+        { label: t('catalog.deactivateWarehouseRows.warehouse'), value: name },
+        {
+          label: t('catalog.deactivateWarehouseRows.stock'),
+          value: t('catalog.deactivateWarehouseRows.stockValue', { n }, n),
+          highlight: true,
+        },
+      ],
+      bullets: [
+        ...(['receipts', 'transfersIn', 'returns', 'adjustmentsAdd'] as const).map((k) =>
+          t(`catalog.deactivateWarehouseBlocks.${k}`),
+        ),
+        t('catalog.deactivateWarehouseAllows'),
+      ],
+      acceptLabel: t('catalog.deactivate'),
+      rejectLabel: t('common.cancel'),
+      accept: () => toggleActive(item),
+    });
+  }
   confirm.require({
-    title:
-      n > 0
-        ? t('catalog.deactivateWarehouseTitle')
-        : t('catalog.deactivateTitle', { section: t(`catalog.singular.${section.value}`) }),
-    message:
-      n > 0
-        ? t('catalog.deactivateWarehouseStock', { name, n }, n)
-        : t('catalog.deactivateConfirm', { name }),
+    title: t('catalog.deactivateTitle', { section: t(`catalog.singular.${section.value}`) }),
+    message: t('catalog.deactivateConfirm', { name }),
     acceptLabel: t('catalog.deactivate'),
     rejectLabel: t('common.cancel'),
     accept: () => toggleActive(item),

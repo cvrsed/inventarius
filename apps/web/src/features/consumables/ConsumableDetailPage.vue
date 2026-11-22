@@ -111,7 +111,19 @@ function onToggle(): void {
   if (!consumable.value!.active) return void toggleActive();
   confirm.require({
     title: t('consumables.form.deactivateTitle'),
-    message: t('consumables.form.deactivateConfirm', { name: consumable.value!.name }),
+    message: t('consumables.form.deactivateMessage'),
+    rows: [
+      { label: t('consumables.form.confirmRows.consumable'), value: consumable.value!.name },
+      {
+        label: t('consumables.form.confirmRows.stock'),
+        value: qty(consumable.value!.totalStock),
+        highlight: true,
+      },
+    ],
+    bullets: (['entries', 'allows', 'alerts'] as const).map((k) =>
+      t(`consumables.form.deactivateBlocks.${k}`),
+    ),
+    footnote: t('consumables.form.deactivateFootnote'),
     acceptLabel: t('consumables.actions.deactivate'),
     rejectLabel: t('common.cancel'),
     accept: toggleActive,
@@ -120,7 +132,9 @@ function onToggle(): void {
 function askDelete(): void {
   confirm.require({
     title: t('consumables.form.deleteTitle'),
-    message: t('consumables.form.deleteConfirm', { name: consumable.value!.name }),
+    message: t('consumables.form.deleteMessage'),
+    rows: [{ label: t('consumables.form.confirmRows.consumable'), value: consumable.value!.name }],
+    footnote: t('consumables.form.deleteFootnote'),
     acceptLabel: t('common.delete'),
     rejectLabel: t('common.cancel'),
     danger: true,
