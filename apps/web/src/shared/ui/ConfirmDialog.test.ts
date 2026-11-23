@@ -52,4 +52,31 @@ describe('ConfirmDialog', () => {
     expect(useConfirm().state.open).toBe(false);
     w.unmount();
   });
+
+  it('con filas muestra etiqueta y dato, destaca el dato clave y cierra con la nota (D6)', async () => {
+    const w = mount(ConfirmDialog, { global: pagePlugins(), attachTo: document.body });
+    useConfirm().require({
+      title: 'Confirmar ajuste',
+      message: 'Revisa el ajuste antes de confirmar.',
+      rows: [
+        { label: 'Bodega', value: 'Bodega central' },
+        { label: 'Saldo', value: '35 → 34', highlight: true },
+      ],
+      bullets: ['No admite ingresos'],
+      footnote: 'Queda en el libro.',
+      acceptLabel: 'Confirmar',
+      rejectLabel: 'Volver',
+      accept: vi.fn(),
+    });
+    await flushPromises();
+    const dialog = document.body.querySelector('[role="dialog"]')!;
+    const terms = [...dialog.querySelectorAll('dt')].map((d) => d.textContent?.trim());
+    expect(terms).toEqual(['Bodega', 'Saldo']);
+    const highlighted = dialog.querySelectorAll('[data-highlight="true"]');
+    expect(highlighted).toHaveLength(1);
+    expect(highlighted[0]!.textContent?.trim()).toBe('35 → 34');
+    expect(dialog.querySelector('li')?.textContent).toBe('No admite ingresos');
+    expect(dialog.textContent).toContain('Queda en el libro.');
+    w.unmount();
+  });
 });

@@ -55,6 +55,10 @@ async function grantAppAccess(migrationUrl: string): Promise<void> {
         IF to_regclass('public.audit_log') IS NOT NULL THEN
           REVOKE UPDATE, DELETE, TRUNCATE ON public.audit_log FROM ${APP_ROLE};
         END IF;
+        -- El libro de movimientos de consumibles también es append-only (D2).
+        IF to_regclass('public.consumable_movements') IS NOT NULL THEN
+          REVOKE UPDATE, DELETE, TRUNCATE ON public.consumable_movements FROM ${APP_ROLE};
+        END IF;
       END
       $do$;
     `);

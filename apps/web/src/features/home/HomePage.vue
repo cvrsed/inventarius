@@ -5,14 +5,14 @@ import UIcon from '@nuxt/ui/components/Icon.vue';
 import USkeleton from '@nuxt/ui/components/Skeleton.vue';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { actorDisplay } from '@/features/audit/actor';
-import { auditActionLabel } from '@/app/i18n/audit';
 import { useAuthStore } from '@/features/auth/useAuthStore';
 import StatusCard from '@/features/system/StatusCard.vue';
 import { formatDateOnly, formatDateTime } from '@/shared/format/format';
 import { useDashboard } from './api';
 import HomeBars, { type BarItem } from './HomeBars.vue';
 import HomeTile from './HomeTile.vue';
+import RecentMovements from './RecentMovements.vue';
+import LowStockNotice from '@/features/consumables/LowStockNotice.vue';
 import { statusBarClass } from '@/features/assets/status';
 import { hasNoAssets, isFieldTech, links } from './summary';
 
@@ -56,6 +56,11 @@ const warehouseBars = computed<BarItem[]>(() =>
 <template>
   <div class="flex flex-col gap-6">
     <h1 class="m-0 text-2xl font-semibold text-highlighted">{{ t('home.title') }}</h1>
+
+    <LowStockNotice />
+
+    <!-- Quien solo puede leer consumibles también ve sus últimos movimientos. -->
+    <RecentMovements v-if="!canRead && auth.can('consumables:read')" :assets="[]" />
 
     <template v-if="canRead">
       <div
@@ -199,32 +204,7 @@ const warehouseBars = computed<BarItem[]>(() =>
             </section>
           </div>
 
-          <section aria-labelledby="recent-title" class="flex flex-col gap-2">
-            <h2 id="recent-title" class="m-0 text-lg font-semibold text-highlighted">
-              {{ t('home.recentTitle') }}
-            </h2>
-            <p v-if="!data.recent.length" class="m-0 text-sm text-muted">{{ t('home.noData') }}</p>
-            <ol v-else class="m-0 flex list-none flex-col gap-1 p-0">
-              <li v-for="r in data.recent" :key="r.id">
-                <component
-                  :is="r.assetId ? 'RouterLink' : 'div'"
-                  :to="r.assetId ? { name: 'asset', params: { id: r.assetId } } : undefined"
-                  class="flex min-h-11 flex-col justify-center rounded-md px-1 no-underline hover:bg-elevated"
-                >
-                  <span class="text-sm">
-                    <span class="font-medium text-highlighted">{{
-                      auditActionLabel(r.action)
-                    }}</span>
-                    {{ r.assetTag ?? '' }} {{ r.assetName ?? '' }}
-                  </span>
-                  <span class="text-xs text-muted">
-                    {{ formatDateTime(r.at) }} ·
-                    {{ t('assets.history.by', { name: actorDisplay(r, t) }) }}
-                  </span>
-                </component>
-              </li>
-            </ol>
-          </section>
+          <RecentMovements :assets="data.recent" />
         </template>
       </template>
     </template>

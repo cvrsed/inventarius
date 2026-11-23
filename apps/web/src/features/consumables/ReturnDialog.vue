@@ -1,0 +1,196 @@
+<script setup lang="ts">
+import {
+  compareQuantities,
+  formatQuantity,
+  subtractQuantities,
+  type ConsumableDetailDto,
+  type MovementDto,
+} from '@inventarius/shared';
+import UAlert from '@nuxt/ui/components/Alert.vue';
+import UButton from '@nuxt/ui/components/Button.vue';
+import UFormField from '@nuxt/ui/components/FormField.vue';
+import UInput from '@nuxt/ui/components/Input.vue';
+import UModal from '@nuxt/ui/components/Modal.vue';
+import UTextarea from '@nuxt/ui/components/Textarea.vue';
+import { useToast } from '@nuxt/ui/composables/useToast';
+import { computed, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { errorMessage } from '@/features/auth/errors';
+import { ApiError } from '@/shared/api/http';
+import { useConsumableMutations, useWarehouses } from './api';
+import { quantityProblem, toApiQuantity } from './quantity';
+import WarehouseSelect, { type WarehouseOption } from './WarehouseSelect.vue';
+
+/** Devolución de (parte de) una entrega (P1): vuelve a la bodega de la entrega u otra bodega activa. */
+const props = defineProps<{ delivery: MovementDto | null; consumable: ConsumableDetailDto }>();
+const visible = defineModel<boolean>('visible', { required: true });
+
+const { t } = useI18n();
+const toast = useToast();
+const { giveBack } = useConsumableMutations();
+
+const unit = computed(() => props.consumable.unit);
+const delivered = computed(() => props.delivery?.delta.replace('-', '') ?? '0');
+const remaining = computed(() =>
+  compareQuantities(delivered.value, props.delivery?.returned ?? '0') <= 0
+    ? '0'
+    : subtractQuantities(delivered.value, props.delivery?.returned ?? '0'),
+);
+
+const warehouseId = ref('');
+const { data: allWarehouses } = useWarehouses();
+const items = computed<WarehouseOption[]>(() =>
+  (allWarehouses.value ?? []).map((w) => {
+    const balance =
+      props.consumable.stockByWarehouse.find((s) => s.location.id === w.id)?.quantity ?? '0';
+    return {
+      id: w.id,
+      name: w.name,
+      parents: w.parents,
+      stock: formatQuantity(balance, unit.value),
+      ...(w.active ? {} : { disabledReason: t('consumables.picker.inactiveEntry') }),
+    };
+  }),
+);
+const quantity = ref('');
+const note = ref('');
+const touched = ref(false);
+const errors = ref<Record<string, string>>({});
+const error = ref('');
+
+watch(visible, (open) => {
+  if (!open || !props.delivery) return;
+  warehouseId.value = props.delivery.location.id;
+  quantity.value = '';
+  note.value = '';
+  touched.value = false;
+  errors.value = {};
+  error.value = '';
+});
+
+function validate(): boolean {
+  const e: Record<string, string> = {};
+  const problem = quantityProblem(quantity.value, unit.value);
+  if (problem === 'decimals') {
+    e['quantity'] = t('consumables.movement.problems.decimals', {
+      decimals: unit.value.decimals
+        ? t('consumables.decimals.some', { n: unit.value.decimals }, unit.value.decimals)
+        : t('consumables.decimals.none'),
+    });
+  } else if (problem) e['quantity'] = t(`consumables.movement.problems.${problem}`);
+  else if (compareQuantities(toApiQuantity(quantity.value), remaining.value) > 0) {
+    e['quantity'] = t('consumables.returnDialog.exceeds', {
+      max: formatQuantity(remaining.value, unit.value),
+    });
+  }
+  if (!warehouseId.value) e['locationId'] = t('common.required');
+  errors.value = e;
+  return Object.keys(e).length === 0;
+}
+
+async function submit(): Promise<void> {
+  error.value = '';
+  touched.value = true;
+  if (!validate()) return;
+  try {
+    await giveBack.mutateAsync({
+      deliveryId: props.delivery!.id,
+      body: {
+        locationId: warehouseId.value,
+        quantity: toApiQuantity(quantity.value),
+        note: note.value.trim() || null,
+      },
+    });
+    toast.add({ title: t('consumables.returnDialog.done'), color: 'success', duration: 4000 });
+    visible.value = false;
+  } catch (e) {
+    if (
+      e instanceof ApiError &&
+      [400, 422].includes(e.status) &&
+      Object.keys(e.fieldErrors).length
+    ) {
+      errors.value = Object.fromEntries(
+        Object.entries(e.fieldErrors).map(([k, v]) => [k, v.join(' ')]),
+      );
+    } else error.value = errorMessage(e, t);
+  }
+}
+</script>
+
+<template>
+  <UModal
+    v-model:open="visible"
+    :title="t('consumables.returnDialog.title')"
+    :description="t('consumables.returnDialog.description')"
+  >
+    <template #body>
+      <form
+        v-if="delivery"
+        id="return-form"
+        class="flex flex-col gap-4"
+        novalidate
+        @submit.prevent="submit"
+      >
+        <UAlert v-if="error" color="error" variant="subtle" role="alert" :description="error" />
+        <p class="m-0 text-sm text-default">
+          {{
+            t('consumables.returnDialog.summary', {
+              what: formatQuantity(delivered, unit),
+              who: delivery.recipient?.name ?? '',
+            })
+          }}
+          {{ t('consumables.returnDialog.remaining', { qty: formatQuantity(remaining, unit) }) }}
+        </p>
+        <UFormField
+          :label="t('consumables.returnDialog.warehouse')"
+          name="rt-warehouse"
+          required
+          :error="touched ? errors['locationId'] : undefined"
+        >
+          <WarehouseSelect
+            id="rt-warehouse"
+            v-model="warehouseId"
+            :items="items"
+            :placeholder="t('consumables.form.warehousePlaceholder')"
+          />
+        </UFormField>
+        <UFormField
+          :label="t('consumables.returnDialog.quantity')"
+          name="rt-quantity"
+          required
+          :help="
+            t('consumables.returnDialog.quantityHelp', { max: formatQuantity(remaining, unit) })
+          "
+          :error="touched ? errors['quantity'] : undefined"
+        >
+          <UInput
+            id="rt-quantity"
+            v-model="quantity"
+            inputmode="decimal"
+            autocomplete="off"
+            class="w-full"
+          />
+        </UFormField>
+        <UFormField :label="t('consumables.returnDialog.note')" name="rt-note">
+          <UTextarea id="rt-note" v-model="note" :rows="2" :maxlength="500" class="w-full" />
+        </UFormField>
+      </form>
+    </template>
+    <template #footer>
+      <div class="flex w-full justify-end gap-2">
+        <UButton
+          :label="t('common.cancel')"
+          color="neutral"
+          variant="ghost"
+          @click="visible = false"
+        />
+        <UButton
+          type="submit"
+          form="return-form"
+          :label="t('consumables.returnDialog.submit')"
+          :loading="giveBack.isPending.value"
+        />
+      </div>
+    </template>
+  </UModal>
+</template>

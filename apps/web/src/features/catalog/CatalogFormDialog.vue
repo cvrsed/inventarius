@@ -14,8 +14,10 @@ import { ApiError } from '@/shared/api/http';
 import AppSelect from '@/shared/ui/AppSelect.vue';
 import SearchSelect from '@/shared/ui/SearchSelect.vue';
 import RemoteSelect, { type RemoteOption } from '@/shared/ui/RemoteSelect.vue';
+import { useConfirm } from '@/shared/ui/useConfirm';
 import { fetchOptions, useCatalogMutations, type CatalogItem } from './api';
 import {
+  affectedConsumables,
   emptyForm,
   type FieldDef,
   formFromItem,
@@ -31,6 +33,7 @@ const visible = defineModel<boolean>('visible', { required: true });
 
 const { t } = useI18n();
 const toast = useToast();
+const confirm = useConfirm();
 const { create, update } = useCatalogMutations(toRef(props, 'section'));
 
 const form = ref<FormState>(emptyForm(props.section));
@@ -78,10 +81,47 @@ function validate(): boolean {
   return Object.keys(e).length === 0;
 }
 
+/**
+ * Renombrar o desactivar una categoría de consumibles o una unidad en uso cambia lo que ven todos los consumibles que
+ * la tienen: se confirma diciendo cuántos son (D13).
+ */
+async function confirmAffected(): Promise<boolean> {
+  const item = props.item;
+  const n = affectedConsumables(props.section, item);
+  if (!item || n === 0) return true;
+  const current = item as { name: string; active: boolean };
+  const to = textOf('name').trim();
+  const renamed = to !== current.name;
+  const deactivated = current.active && form.value['active'] !== true;
+  if (!renamed && !deactivated) return true;
+  const change = renamed
+    ? t(deactivated ? 'catalog.affectsRows.renameAndDeactivate' : 'catalog.affectsRows.rename', {
+        from: current.name,
+        to,
+      })
+    : t('catalog.affectsRows.deactivate');
+  return confirm.ask({
+    title: t('catalog.affectsTitle', { section: t(`catalog.singular.${props.section}`) }),
+    message: t('catalog.affectsMessage'),
+    rows: [
+      { label: t('catalog.affectsRows.record'), value: current.name },
+      { label: t('catalog.affectsRows.change'), value: change },
+      {
+        label: t('catalog.affectsRows.scope'),
+        value: t('catalog.affects', { n }, n),
+        highlight: true,
+      },
+    ],
+    acceptLabel: t('catalog.affectsConfirm'),
+    rejectLabel: t('common.back'),
+  });
+}
+
 async function submit(): Promise<void> {
   error.value = '';
   if (!validate()) return;
   const body = toPayload(props.section, form.value, creating.value ? 'create' : 'edit');
+  if (!(await confirmAffected())) return;
   try {
     if (props.item) await update.mutateAsync({ item: props.item, body });
     else await create.mutateAsync(body);

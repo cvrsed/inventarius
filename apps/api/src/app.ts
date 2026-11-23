@@ -24,6 +24,7 @@ import { auditRoutes } from './modules/audit/routes.js';
 import { authRoutes } from './modules/auth/routes.js';
 import { assetsRoutes } from './modules/assets/routes.js';
 import { catalogRoutes } from './modules/catalog/routes.js';
+import { consumablesRoutes } from './modules/consumables/routes.js';
 import { rbacRoutes } from './modules/rbac/routes.js';
 import { dashboardRoutes } from './modules/dashboard/routes.js';
 import { lorawanRoutes } from './modules/lorawan/routes.js';
@@ -214,6 +215,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
             await v1.register(auditRoutes, { audit: services.audit });
             await v1.register(catalogRoutes, { catalog: services.catalog });
             await v1.register(assetsRoutes, { assets: services.assets });
+            await v1.register(consumablesRoutes, { consumables: services.consumables });
             await v1.register(lorawanRoutes, {
               lorawan: services.lorawan,
               imports: services.lorawanImport,

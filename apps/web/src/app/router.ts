@@ -62,7 +62,19 @@ export const router = createRouter({
       path: `/catalogo/:section(${CATALOG_SECTIONS.join('|')})`,
       name: 'catalog',
       component: () => import('@/features/catalog/CatalogPage.vue'),
-      meta: { permissions: ['asset:read'] },
+      meta: { permissions: ['asset:read', 'consumables:read'] },
+    },
+    {
+      path: '/consumibles',
+      name: 'consumables',
+      component: () => import('@/features/consumables/ConsumablesPage.vue'),
+      meta: { permissions: ['consumables:read'] },
+    },
+    {
+      path: '/consumibles/:id',
+      name: 'consumable',
+      component: () => import('@/features/consumables/ConsumableDetailPage.vue'),
+      meta: { permissions: ['consumables:read'] },
     },
     {
       path: '/usuarios',

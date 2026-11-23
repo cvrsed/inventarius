@@ -1,4 +1,10 @@
-import type { AssetModelDto, CategoryDto, LocationDto, StatusLabelDto } from '@inventarius/shared';
+import type {
+  AssetModelDto,
+  CategoryDto,
+  LocationDto,
+  MeasureUnitDto,
+  StatusLabelDto,
+} from '@inventarius/shared';
 import type { CatalogItem } from './api';
 import type { Section } from './entities';
 
@@ -28,6 +34,16 @@ export function columnsOf(section: Section, t: Translate) {
       return [col('name', 'path'), col('second', 'locationType'), col('third', 'address'), ...tail];
     case 'statuses':
       return [col('name', 'name'), col('second', 'kind'), ...tail];
+    case 'consumableCategories':
+      return [col('name', 'name'), ...tail];
+    case 'units':
+      return [
+        col('name', 'name'),
+        col('second', 'plural'),
+        col('third', 'abbreviation'),
+        col('fourth', 'decimals'),
+        ...tail,
+      ];
   }
 }
 
@@ -74,6 +90,10 @@ export function displayCells(section: Section, item: CatalogItem, t?: Translate)
         third: '',
         fourth: '',
       };
+    case 'units': {
+      const u = item as MeasureUnitDto;
+      return { title: u.name, second: u.plural, third: u.abbreviation, fourth: String(u.decimals) };
+    }
     default:
       return { title: item.name, second: '', third: '', fourth: '' };
   }

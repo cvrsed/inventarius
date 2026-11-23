@@ -1,6 +1,7 @@
 export * from './assets.js';
 export * from './audit.js';
 export * from './catalog.js';
+export * from './consumables.js';
 export * from './currency.js';
 export * from './dashboard.js';
 export * from './health.js';

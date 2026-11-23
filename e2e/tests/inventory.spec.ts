@@ -102,7 +102,12 @@ test.describe('catálogo (RF-10 a RF-14)', () => {
     await expect(toast(page, 'Cambios guardados')).toBeVisible();
     await expect(page.getByRole('button', { name: `Editar ${name} SpA` })).toBeVisible();
 
+    // Desactivar pide confirmación (P18); activar, no.
     await page.getByRole('button', { name: `Desactivar ${name} SpA` }).click();
+    const deactivate = page.getByRole('dialog', { name: 'Desactivar fabricante' });
+    await expect(deactivate).toContainText(`¿Desactivar «${name} SpA»?`);
+    await expectNoA11yViolations(page); // confirmación abierta
+    await deactivate.getByRole('button', { name: 'Desactivar' }).click();
     await expect(toast(page, 'Estado actualizado')).toBeVisible();
     await expect(page.getByRole('button', { name: `Activar ${name} SpA` })).toBeVisible();
 
@@ -380,6 +385,12 @@ test.describe('activos: CRUD completo (RF-20 a RF-25)', () => {
     await page.getByRole('button', { name: 'Cambiar estado' }).click();
     const dialog = page.getByRole('dialog', { name: 'Cambiar estado' });
     await expectNoA11yViolations(page); // diálogo abierto
+    // R5: la baja no es un estado más; el selector no la ofrece (solo «Dar de baja»).
+    await dialog.getByRole('button', { name: /^Nuevo estado/ }).click();
+    await expect(page.getByRole('option', { name: 'En reparación' })).toBeVisible();
+    await expect(page.getByRole('option', { name: 'Dado de baja' })).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('listbox')).toBeHidden();
     await pick(page, dialog, /^Nuevo estado/, 'En reparación');
     await dialog.getByLabel('Nota').fill('Pantalla rota');
     await dialog.getByRole('button', { name: 'Guardar' }).click();
@@ -405,6 +416,19 @@ test.describe('activos: CRUD completo (RF-20 a RF-25)', () => {
     const fixture = await createCatalogFixture(page.request);
     const asset = await createAssetViaApi(page.request, fixture);
     await page.goto(`/activos/${asset.id}`);
+
+    // D23: «Persona» no sale en rojo al abrir; sí al enviar vacío y deja de estarlo al elegir una persona.
+    await page.getByRole('button', { name: 'Asignar' }).click();
+    const fresh = page.getByRole('dialog', { name: 'Asignar activo' });
+    await expect(fresh.getByText('Este campo es obligatorio')).toHaveCount(0);
+    await expect(fresh.locator('[aria-invalid="true"]')).toHaveCount(0);
+    await fresh.getByRole('button', { name: 'Asignar' }).click();
+    await expect(fresh.getByText('Este campo es obligatorio')).toBeVisible();
+    await pick(page, fresh, /^Persona/, 'Admin E2E');
+    await expect(fresh.getByText('Este campo es obligatorio')).toHaveCount(0);
+    await expect(fresh.locator('[aria-invalid="true"]')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(fresh).toBeHidden();
 
     for (const theme of ['light', 'dark'] as const) {
       await page.getByRole('button', { name: 'Asignar' }).click();

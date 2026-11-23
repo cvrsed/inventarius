@@ -186,3 +186,25 @@ Ninguna dependencia npm ni acción de GitHub: todas son exactas. Quedan sin fija
 2. **Matriz de Node del CI:** `'24.22.3'` es exacta (igual que `.nvmrc` y la imagen); `'26'` flota a propósito, como alerta temprana de compatibilidad (`ci.yml:41`, ADR 0006). `engines` pide rangos mínimos (`node >=24.22.0`, `pnpm >=12.21.0`, `package.json:7-10`), mientras `.nvmrc` y `packageManager` son exactos.
 3. **Imagen `api`:** `apt-get upgrade -y` al construirla (`Dockerfile:38-39`) trae los paquetes de Debian vigentes ese día, así que la imagen no es reproducible bit a bit (es deliberado, por parches de seguridad). Además `npm` (solo en las etapas de build) viene de la imagen base.
 4. Las imágenes de Postgres, Caddy, Node y Playwright llevan etiqueta **y** digest, por lo que están fijadas de forma exacta; Renovate propone las actualizaciones por PR (`renovate.json`).
+
+## 10. Consumibles (F3.5)
+
+- **Modelo de datos.** `measure_units`, `consumables`, `consumable_warehouse_minimums`, `consumable_movements` (libro) y
+  `consumable_stock` (saldo por consumible y bodega); `categories.scope` separa las categorías de activos de las de
+  consumibles. Migración `0017_consumables.sql` (incluye la semilla de unidades y los permisos). Revisión: `0018_consumable_returns`
+  (tipo `return` y `returns_id`), `0019_consumables_reverse_permission` y `0020_categories_unique_per_scope`.
+- **Cantidades.** `numeric(14,3)`. En la API y el web son texto; los cálculos usan milésimas en `bigint`
+  (`packages/shared/src/consumables.ts`). El servidor nunca convierte una cantidad a `number`.
+- **Libro append-only.** `inventarius_app` no tiene `UPDATE`, `DELETE` ni `TRUNCATE` sobre `consumable_movements` (lo aplica
+  `grantAppAccess` del migrador, como en `audit_log`). `reverses_id` es `UNIQUE`: un movimiento se anula una vez.
+- **Concurrencia.** Consumible `FOR SHARE`, luego saldos `FOR UPDATE` ordenados por id; el `CHECK (quantity >= 0)` de
+  `consumable_stock` es el respaldo. Todo dentro de una sola transacción y una sola conexión.
+- **Cuadratura.** `pnpm --filter @inventarius/api cli verify-consumables` (ver `docs/operations.md`).
+- **Rutas** (`/api/v1`): `GET|POST /measure-units`, `PATCH|DELETE /measure-units/:id`, `GET|POST /consumables`,
+  `GET|PATCH|DELETE /consumables/:id`, `GET /consumables/:id/movements`, `POST /consumables/:id/{receipts,deliveries,transfers,adjustments}`,
+  `POST /consumable-movements/:id/{returns,reversals}`, `GET /consumable-movements/recent`, `GET /consumable-recipients`. Cada una
+  declara su permiso `consumables:*` (`adjustments` exige `adjust`; `reversals`, `reverse`). `GET /locations` informa
+  `stockedConsumables` por ubicación.
+- **Interfaz.** Un solo selector de bodega (`WarehouseSelect`): nombre, ruta de los padres y stock, con opciones apagadas y su
+  motivo. El orden de los campos de la auditoría de consumibles está en `features/audit/detail.ts` (`FIELD_ORDER`).
+- **Decisiones y preguntas abiertas:** ADR 0008 y `docs/open-questions.md` (Q56 a Q74).

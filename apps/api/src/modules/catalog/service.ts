@@ -3,6 +3,7 @@ import type {
   CatalogListQuery,
   CategoryDto,
   CategoryExtension,
+  CategoryScope,
   LocationDto,
   LocationType,
   ManufacturerDto,
@@ -73,9 +74,9 @@ export class CatalogService {
   readonly categories: CatalogEntity<
     CategoryRow,
     CategoryDto,
-    { name: string; extension: string },
+    { name: string; extension: string; scope: string },
     { name?: string | undefined; extension?: string | undefined; active?: boolean | undefined },
-    ListQuery
+    ListQuery & { scope?: string | undefined }
   >;
   readonly manufacturers: CatalogEntity<
     ManufacturerRow,
@@ -115,21 +116,41 @@ export class CatalogService {
       {
         entity: 'category',
         notFound: 'Categoría no encontrada',
-        duplicate: 'Ya existe una categoría con ese nombre',
+        duplicate: (subject) =>
+          subject.scope === 'consumable'
+            ? 'Ya existe una categoría de consumibles con ese nombre'
+            : 'Ya existe una categoría con ese nombre',
         toDto: (r) => ({
           id: r.id,
           name: r.name,
           extension: r.extension as CategoryExtension,
+          scope: r.scope as CategoryScope,
           active: r.active,
           updatedAt: iso(r.updatedAt),
         }),
-        snapshot: (r) => ({ name: r.name, extension: r.extension, active: r.active }),
-        list: (e, q) => repo.listCategories(e, listOpts(q)),
+        // El tipo de extensión solo existe en las categorías de activos: en las de consumibles no se audita (D11).
+        snapshot: (r) => ({
+          name: r.name,
+          ...(r.scope === 'consumable' ? {} : { extension: r.extension }),
+          scope: r.scope,
+          active: r.active,
+        }),
+        list: (e, q) => repo.listCategories(e, { ...listOpts(q), scope: q.scope }),
         get: (e, id) => repo.getCategory(e, id),
         insert: (e, v) => repo.insertCategory(e, v),
         update: (e, id, v) => repo.updateCategory(e, id, compact(v)),
         remove: (e, id) => repo.deleteCategory(e, id),
         inUse: (e, id) => repo.categoryInUse(e, id),
+        consumableCount: async (e, r) =>
+          r.scope === 'consumable' ? repo.categoryConsumableCount(e, r.id) : undefined,
+        beforeUpdate: async (_tx, current, patch) => {
+          if (current.scope === 'consumable' && patch.extension && patch.extension !== 'none') {
+            throw new ValidationError('Las categorías de consumibles no tienen extensión', {
+              extension: ['Las categorías de consumibles no tienen extensión'],
+            });
+          }
+          return patch;
+        },
       },
       db,
       audit,
@@ -218,6 +239,7 @@ export class CatalogService {
           type: r.type as LocationType,
           address: r.address,
           active: r.active,
+          stockedConsumables: r.stockedConsumables,
           updatedAt: iso(r.updatedAt),
         }),
         snapshot: (r) => ({ path: r.path, type: r.type, address: r.address, active: r.active }),
@@ -313,6 +335,8 @@ export class CatalogService {
       else {
         extension = c.extension;
         if (!c.active) errors['categoryId'] = ['La categoría está inactiva'];
+        else if (c.scope !== 'asset')
+          errors['categoryId'] = ['Esa categoría es de consumibles, no de activos'];
       }
     }
     let out = input;
@@ -395,6 +419,55 @@ export class CatalogService {
       });
     }
     return row;
+  }
+
+  /** Bodega (ubicación de tipo bodega, D1) o error de validación. */
+  async requireWarehouse(
+    exec: Executor,
+    id: string,
+    field = 'locationId',
+    opts: { allowInactive?: boolean } = {},
+  ): Promise<LocationRow> {
+    const row = await this.requireLocation(exec, id, field);
+    if (row.type !== 'warehouse') {
+      const message = `«${row.path}» no es una bodega`;
+      throw new ValidationError(message, { [field]: [message] });
+    }
+    if (!row.active && !opts.allowInactive) {
+      const message = `La bodega «${row.path}» está inactiva`;
+      throw new ValidationError(message, { [field]: [message] });
+    }
+    return row;
+  }
+
+  /** Categoría del ámbito indicado (activos o consumibles), o error de validación. */
+  async requireCategory(
+    exec: Executor,
+    id: string,
+    scope: CategoryScope,
+    opts: { allowInactive?: boolean } = {},
+  ): Promise<CategoryRow> {
+    const row = await this.repo.getCategory(exec, id);
+    const field = 'categoryId';
+    const fail = (message: string): never => {
+      throw new ValidationError(message, { [field]: [message] });
+    };
+    if (!row) return fail('La categoría no existe');
+    if (row.scope !== scope) {
+      return fail(
+        scope === 'consumable'
+          ? 'Esa categoría es de activos, no de consumibles'
+          : 'Esa categoría es de consumibles, no de activos',
+      );
+    }
+    if (!row.active && !opts.allowInactive) return fail('La categoría está inactiva');
+    return row;
+  }
+
+  /** Ubicaciones por id (con su ruta completa) para armar vistas de otros módulos. */
+  async locationsByIds(exec: Executor, ids: string[]): Promise<Map<string, LocationRow>> {
+    const rows = await Promise.all([...new Set(ids)].map((id) => this.repo.getLocation(exec, id)));
+    return new Map(rows.flatMap((r) => (r ? [[r.id, r] as const] : [])));
   }
 
   /** Estado que pone el check-out (`system_key = 'assigned'`). */

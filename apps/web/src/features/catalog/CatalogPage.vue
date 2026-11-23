@@ -18,7 +18,13 @@ import PagedFooter from '@/shared/ui/PagedFooter.vue';
 import { useConfirm } from '@/shared/ui/useConfirm';
 import { useCatalogList, useCatalogMutations, type CatalogItem } from './api';
 import CatalogFormDialog from './CatalogFormDialog.vue';
-import { SECTIONS, type Section } from './entities';
+import {
+  SECTIONS,
+  SECTION_READ,
+  SECTION_WRITE,
+  affectedConsumables,
+  type Section,
+} from './entities';
 import { columnsOf, displayCells } from './columns';
 
 const { t } = useI18n();
@@ -27,18 +33,21 @@ const toast = useToast();
 const confirm = useConfirm();
 const auth = useAuthStore();
 
+/** Solo las secciones que el usuario puede ver: quien solo gestiona consumibles no ve las de activos. */
+const visibleSections = computed(() => SECTIONS.filter((s) => auth.can(SECTION_READ[s])));
 const section = computed<Section>(() => {
   const s = String(route.params['section'] ?? '');
-  return (SECTIONS as readonly string[]).includes(s) ? (s as Section) : 'categories';
+  const wanted = (SECTIONS as readonly string[]).includes(s) ? (s as Section) : 'categories';
+  return visibleSections.value.includes(wanted) ? wanted : (visibleSections.value[0] ?? wanted);
 });
 const router = useRouter();
 /** En móvil las secciones son un select; en escritorio, pestañas. */
 const sectionItems = computed(() =>
-  SECTIONS.map((s) => ({ label: t(`catalog.sections.${s}`), value: s })),
+  visibleSections.value.map((s) => ({ label: t(`catalog.sections.${s}`), value: s })),
 );
 const goToSection = (value: string | number) =>
   router.push({ name: 'catalog', params: { section: String(value) } });
-const canWrite = computed(() => auth.can('catalog:write'));
+const canWrite = computed(() => auth.can(SECTION_WRITE[section.value]));
 
 const { query, update, setPage, reset } = useListQuery({
   page: 1,
@@ -116,6 +125,71 @@ function askDelete(item: CatalogItem): void {
 
 const toggleActive = (item: CatalogItem) =>
   run(() => patch.mutateAsync({ item, body: { active: !item.active } }), 'catalog.toggled');
+
+/** Cuántos consumibles tienen stock en una bodega que se va a desactivar (0 si no es una bodega). */
+const stockedIn = (i: CatalogItem): number =>
+  section.value === 'locations' && 'type' in i && i.type === 'warehouse'
+    ? ((i as { stockedConsumables?: number }).stockedConsumables ?? 0)
+    : 0;
+
+/**
+ * Activar es inocuo y no pregunta. Desactivar siempre confirma (P18), y en una bodega con stock avisa además qué pasa con
+ * él (P7): solo seguirá admitiendo salidas.
+ */
+function onToggle(item: CatalogItem): void {
+  if (!item.active) return void toggleActive(item);
+  const name = displayCells(section.value, item, t).title;
+  const n = stockedIn(item);
+  const affected = affectedConsumables(section.value, item);
+  if (affected > 0) {
+    return confirm.require({
+      title: t('catalog.deactivateTitle', { section: t(`catalog.singular.${section.value}`) }),
+      message: t('catalog.affectsMessage'),
+      rows: [
+        { label: t('catalog.affectsRows.record'), value: name },
+        {
+          label: t('catalog.affectsRows.scope'),
+          value: t('catalog.affects', { n: affected }, affected),
+          highlight: true,
+        },
+      ],
+      bullets: [t('catalog.affectsDeactivateBullet')],
+      acceptLabel: t('catalog.deactivate'),
+      rejectLabel: t('common.cancel'),
+      accept: () => toggleActive(item),
+    });
+  }
+  if (n > 0) {
+    return confirm.require({
+      title: t('catalog.deactivateWarehouseTitle'),
+      message: t('catalog.deactivateWarehouseMessage'),
+      rows: [
+        { label: t('catalog.deactivateWarehouseRows.warehouse'), value: name },
+        {
+          label: t('catalog.deactivateWarehouseRows.stock'),
+          value: t('catalog.deactivateWarehouseRows.stockValue', { n }, n),
+          highlight: true,
+        },
+      ],
+      bullets: [
+        ...(['receipts', 'transfersIn', 'returns', 'adjustmentsAdd'] as const).map((k) =>
+          t(`catalog.deactivateWarehouseBlocks.${k}`),
+        ),
+        t('catalog.deactivateWarehouseAllows'),
+      ],
+      acceptLabel: t('catalog.deactivate'),
+      rejectLabel: t('common.cancel'),
+      accept: () => toggleActive(item),
+    });
+  }
+  confirm.require({
+    title: t('catalog.deactivateTitle', { section: t(`catalog.singular.${section.value}`) }),
+    message: t('catalog.deactivateConfirm', { name }),
+    acceptLabel: t('catalog.deactivate'),
+    rejectLabel: t('common.cancel'),
+    accept: () => toggleActive(item),
+  });
+}
 </script>
 
 <template>
@@ -143,7 +217,7 @@ const toggleActive = (item: CatalogItem) =>
 
     <nav :aria-label="t('catalog.tabsLabel')" class="hidden md:block">
       <ul class="m-0 flex list-none gap-1 p-0">
-        <li v-for="s in SECTIONS" :key="s">
+        <li v-for="s in visibleSections" :key="s">
           <RouterLink
             v-slot="{ href, navigate }"
             custom
@@ -228,10 +302,10 @@ const toggleActive = (item: CatalogItem) =>
           />
           <IconAction
             v-if="!isSystem(row.original)"
-            :icon="row.original.active ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+            :icon="row.original.active ? 'i-lucide-power-off' : 'i-lucide-power'"
             :label="row.original.active ? t('catalog.deactivate') : t('catalog.activate')"
             :target="displayCells(section, row.original).title"
-            @click="toggleActive(row.original)"
+            @click="onToggle(row.original)"
           />
           <IconAction
             icon="i-lucide-trash-2"
@@ -286,13 +360,13 @@ const toggleActive = (item: CatalogItem) =>
           />
           <UButton
             v-if="!isSystem(item)"
-            :icon="item.active ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+            :icon="item.active ? 'i-lucide-power-off' : 'i-lucide-power'"
             :label="item.active ? t('catalog.deactivate') : t('catalog.activate')"
             :aria-label="`${item.active ? t('catalog.deactivate') : t('catalog.activate')} ${displayCells(section, item).title}`"
             color="neutral"
             variant="outline"
             size="sm"
-            @click="toggleActive(item)"
+            @click="onToggle(item)"
           />
           <UButton
             icon="i-lucide-trash-2"

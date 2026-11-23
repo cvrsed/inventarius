@@ -5,6 +5,59 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). D
 
 ## [Sin publicar]
 
+### F3.5 — Consumibles por cantidad
+
+- Consumibles con categoría, unidad de medida y stock mínimo global y por bodega (RF-70, D9); con movimientos no se borran,
+  se desactivan (D10).
+- Libro de movimientos append-only como fuente de verdad (D2): ingreso, entrega, ajuste, traslado atómico entre bodegas y
+  anulación ligada al original, con saldo por (consumible, bodega) bloqueado `FOR UPDATE` y `CHECK` de no negativo (D3).
+  `cli verify-consumables` cuadra cada saldo con el libro (RF-71 a RF-73).
+- Cantidades decimales según la unidad (0 a 3 decimales), como texto y enteros escalados, nunca `number`; catálogo de unidades
+  administrable con semilla (unidad, par, caja, litro, metro, kilogramo) (D4).
+- Entrega a un usuario del sistema o a una persona en texto libre con identificador opcional (D5).
+- Ajuste con motivo (nota obligatoria con «otro») y anulación con motivo, solo con `consumables:adjust`, que por defecto es del
+  Administrador; la confirmación muestra el saldo antes y después (D6, D7).
+- Aviso de stock mínimo en el listado, la ficha e Inicio, con el filtro «Bajo mínimo» (RF-74).
+- Seis permisos `consumables:*`; cada movimiento y cambio de catálogo queda en la auditoría con textos traducidos (D12, D13).
+- Categorías de consumibles reutilizan el catálogo con un ámbito (D11). Migración 0017. ADR 0008.
+
+#### Revisión manual del PR #7
+
+- Devolución como movimiento propio ligado a la entrega, con «Devuelto x de y»; una entrega con devoluciones vigentes no se
+  anula [P1]. Migración 0018.
+- `consumables:adjust` y `consumables:reverse` separados: el Operador ajusta, solo el Administrador anula [P2]. Migración 0019.
+- La auditoría de una anulación trae el movimiento anulado completo y los saldos antes y después; los eventos de consumibles
+  salen con un orden fijo de campos y dicen «Bodega» [P3, P11].
+- Categorías de consumibles con `consumables:manage` y nombre único por ámbito [P4]. Migración 0020.
+- Pruebas de concurrencia del primer movimiento en una bodega sin saldo [P5].
+- Solo el ingreso admite fecha pasada, hasta 90 días; el historial muestra «Registrado el … por …» [P6].
+- Bodega inactiva con stock: salidas sí, entradas no; los selectores la apagan con el motivo y desactivarla avisa cuántos
+  consumibles tienen stock en ella [P7].
+- Traslado como una sola entrada del historial y de Inicio; «Últimos movimientos» incluye consumibles [P8, P10].
+- «Bajo mínimo» dice el motivo y la ficha nombra las bodegas [P9].
+- Íconos distintos por tipo de movimiento; selectores de bodega con nombre, ruta y stock; resaltado visible de «Ir al
+  movimiento»; obligatorios sin marcar antes de interactuar; botones de la ficha en grilla de dos columnas; subtítulo de
+  Catálogo; activar/desactivar con ícono inequívoco y confirmación [P12 a P18].
+
+#### Revisión manual 2 del PR #7
+
+- La devolución dice «Devolvió» y su diálogo limita a lo pendiente de devolver [D1, D2]; en las filas anuladas el origen va antes
+  de «Anulado por» [D4].
+- Permisos de consumibles traducidos en la matriz de roles, con un test que exige traducir cada permiso, y descripciones de los
+  roles semilla con sus permisos de consumibles (migración 0021) [D5, D8].
+- Confirmaciones estructuradas (filas con etiqueta y el dato clave destacado) para el ajuste, desactivar una bodega con stock y
+  desactivar o eliminar un consumible; el diálogo de ajuste muestra una sola línea de stock [D6, D7, D14].
+- Auditoría: la anulación trae su motivo primero y solo los campos que aplican, la devolución indica su entrega, las categorías
+  de consumibles no muestran «Tipo de extensión» y los mínimos por bodega muestran solo lo que cambió [D9, D10, D11, D18].
+- Categorías de consumibles: error de duplicado propio; renombrar o desactivar una categoría o unidad en uso dice «Afecta a N
+  consumibles» [D12, D13].
+- Traslado en formato corto (título, ruta con nombres cortos y tooltip) en todas partes; «Stock por bodega» con nombre y ruta;
+  filtros del historial con «Filtros» y chips; «Ir al movimiento» sin cortes; buscador «Buscar bodega…»; Inicio dice «Activos
+  disponibles por bodega» [D15, D17, D19, D20, D21, D22].
+- Los mínimos de una bodega inactiva no generan aviso y se ven atenuados [D16].
+- «Asignar activo» ya no marca Persona en rojo al abrir ni tras elegir; test de componente para todos los diálogos de activos
+  [D23].
+
 ### F3 — LoRaWAN
 
 - Datos LoRaWAN del activo (DevEUI, JoinEUI, AppKey, NwkKey, clase, versión, región): opcionales al crear, obligatorios solo al

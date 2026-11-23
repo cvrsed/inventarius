@@ -12,6 +12,11 @@ export const CATEGORY_EXTENSIONS = ['none', 'lorawan'] as const;
 export const categoryExtensionSchema = z.enum(CATEGORY_EXTENSIONS);
 export type CategoryExtension = z.infer<typeof categoryExtensionSchema>;
 
+/** Ámbito de una categoría: la usan los modelos de activos o los consumibles (D11). */
+export const CATEGORY_SCOPES = ['asset', 'consumable'] as const;
+export const categoryScopeSchema = z.enum(CATEGORY_SCOPES);
+export type CategoryScope = z.infer<typeof categoryScopeSchema>;
+
 /** Tipo de estado (RF-13): solo los `deployable` se pueden asignar (RF-23). */
 export const STATUS_KINDS = ['deployable', 'pending', 'undeployable', 'archived'] as const;
 export const statusKindSchema = z.enum(STATUS_KINDS);
@@ -57,13 +62,26 @@ export const categorySchema = z.object({
   id: z.uuid(),
   name: z.string(),
   extension: categoryExtensionSchema,
+  scope: categoryScopeSchema,
   active: z.boolean(),
+  /** Solo en listados con `withUsage=true`, en categorías de consumibles: cuántos consumibles la usan. */
+  consumableCount: z.number().int().optional(),
   ...versioned,
 });
 export type CategoryDto = z.infer<typeof categorySchema>;
-export const createCategorySchema = z.object({
-  name,
-  extension: categoryExtensionSchema.default('none'),
+export const createCategorySchema = z
+  .object({
+    name,
+    extension: categoryExtensionSchema.default('none'),
+    /** No se cambia después: una categoría con modelos o consumibles no puede cambiar de ámbito. */
+    scope: categoryScopeSchema.default('asset'),
+  })
+  .refine((v) => v.scope === 'asset' || v.extension === 'none', {
+    path: ['extension'],
+    message: 'Las categorías de consumibles no tienen extensión',
+  });
+export const categoryListQuerySchema = catalogListQuerySchema.extend({
+  scope: categoryScopeSchema.optional(),
 });
 export const updateCategorySchema = z
   .object({ name, extension: categoryExtensionSchema, active: z.boolean() })
@@ -142,6 +160,8 @@ export const locationSchema = z.object({
   type: locationTypeSchema,
   address: z.string().nullable(),
   active: z.boolean(),
+  /** Consumibles con stock en esta ubicación (una bodega): la confirmación de desactivarla lo avisa. */
+  stockedConsumables: z.number().int().optional(),
   ...versioned,
 });
 export type LocationDto = z.infer<typeof locationSchema>;

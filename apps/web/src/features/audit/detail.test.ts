@@ -272,3 +272,251 @@ describe('describeAuditDetail (RF-31)', () => {
     });
   });
 });
+
+describe('consumibles: movimientos sin claves crudas', () => {
+  it('muestra cantidades con coma decimal y el motivo del ajuste traducido', () => {
+    const rows = describeAuditDetail(
+      {
+        location: 'Bodega central',
+        direction: 'subtract',
+        quantity: '2.5',
+        unit: 'litro',
+        reason: 'waste_damage',
+        stockBefore: '1234.5',
+        stockAfter: '1232',
+      },
+      text,
+      { entity: 'consumable' },
+    );
+    const by = Object.fromEntries(rows.map((r) => [r.field, r.value]));
+    expect(by['quantity']).toBe('2,5');
+    expect(by['stockBefore']).toBe('1.234,5');
+    expect(by['direction']).toBe('Resta');
+    expect(by['reason']).toBe('Merma o daño');
+    expect(by['location']).toBe('Bodega central');
+  });
+});
+
+describe('consumibles: anulación con el detalle del movimiento anulado (P3)', () => {
+  it('traduce el motivo original, muestra las fechas y el saldo del origen y del destino', () => {
+    const rows = describeAuditDetail(
+      {
+        originalKind: 'transfer_out',
+        quantity: '3',
+        unit: 'par',
+        fromLocation: 'Bodega central',
+        toLocation: 'Bodega anexo',
+        fromStockBefore: '1234.5',
+        toStockBefore: '3',
+        originalReason: 'loss',
+        originalNote: 'Se cayó la caja',
+        reversalReason: 'Error de bodega',
+        originalActor: 'Olga Operadora',
+        movementDate: '2026-11-18',
+        registeredAt: '2026-11-20T15:30:00.000Z',
+      },
+      text,
+      { entity: 'consumable' },
+    );
+    const by = Object.fromEntries(rows.map((r) => [r.label, r.value]));
+    expect(by['Movimiento anulado']).toBe('Traslado');
+    expect(by['Saldo del origen antes']).toBe('1.234,5');
+    expect(by['Saldo del destino antes']).toBe('3');
+    expect(by['Motivo del movimiento']).toBe('Pérdida');
+    expect(by['Nota del movimiento']).toBe('Se cayó la caja');
+    expect(by['Motivo de la anulación']).toBe('Error de bodega');
+    expect(by['Registrado por']).toBe('Olga Operadora');
+    expect(by['Fecha del movimiento']).toBe('18-11-2026');
+    expect(by['Registrado el']).toBe('20-11-2026 12:30');
+  });
+});
+
+describe('consumibles: orden fijo de campos y «Bodega» (P11)', () => {
+  const labels = (diff: Record<string, unknown>) =>
+    describeAuditDetail(diff, text, { entity: 'consumable' }).map((r) => r.label);
+
+  it('muestra tipo, cantidad, unidad, bodega, saldos, receptor, motivo, nota y fechas, aunque lleguen desordenados', () => {
+    // Postgres devuelve el jsonb con las claves en otro orden: el orden de lectura lo pone la web.
+    expect(
+      labels({
+        registeredAt: '2026-11-20T15:30:00.000Z',
+        note: 'Cambio de turno',
+        stockAfter: '6',
+        unit: 'par',
+        recipient: 'Persona Inventada',
+        stockBefore: '10',
+        location: 'Bodega central',
+        quantity: '4',
+        receivedOn: '2026-11-18',
+      }),
+    ).toEqual([
+      'Cantidad',
+      'Unidad',
+      'Bodega',
+      'Saldo antes',
+      'Saldo después',
+      'Recibe',
+      'Nota',
+      'Fecha del ingreso',
+      'Registrado el',
+    ]);
+  });
+
+  it('un traslado usa origen y destino con sus saldos, y una anulación pone el tipo primero', () => {
+    expect(
+      labels({
+        toStockAfter: '4',
+        reversalReason: 'Error',
+        fromLocation: 'Bodega central',
+        quantity: '4',
+        toStockBefore: '0',
+        originalKind: 'transfer_out',
+        fromStockAfter: '10',
+        toLocation: 'Bodega anexo',
+        fromStockBefore: '6',
+        unit: 'par',
+      }),
+    ).toEqual([
+      'Movimiento anulado',
+      'Motivo de la anulación',
+      'Cantidad',
+      'Unidad',
+      'Bodega de origen',
+      'Bodega de destino',
+      'Saldo del origen antes',
+      'Saldo del origen después',
+      'Saldo del destino antes',
+      'Saldo del destino después',
+    ]);
+  });
+
+  it('en los eventos de consumibles la ubicación se llama «Bodega»; en el resto, no', () => {
+    expect(labels({ location: 'Bodega central' })).toEqual(['Bodega']);
+    const other = describeAuditDetail({ location: 'Sala 1' }, text, { entity: 'asset' });
+    expect(other[0]!.label).not.toBe('Bodega');
+  });
+});
+
+describe('consumibles: la persona de una devolución «Devolvió» (D1)', () => {
+  const label = (diff: Record<string, unknown>, action: string) =>
+    describeAuditDetail(diff, text, { entity: 'consumable', action }).find(
+      (r) => r.field === 'recipient',
+    )?.label;
+
+  it('el evento de devolución y la anulación de una devolución dicen «Devolvió»', () => {
+    expect(label({ recipient: 'Ana Inventada' }, 'consumable.return')).toBe('Devolvió');
+    expect(
+      label({ originalKind: 'return', recipient: 'Ana Inventada' }, 'consumable.reverse'),
+    ).toBe('Devolvió');
+  });
+
+  it('el identificador dice «Identificador de quien devolvió» (R6) y en la entrega sigue «del receptor»', () => {
+    const ref = (diff: Record<string, unknown>, action: string) =>
+      describeAuditDetail(diff, text, { entity: 'consumable', action }).find(
+        (r) => r.field === 'recipientRef',
+      )?.label;
+    expect(ref({ recipientRef: 'ID-1' }, 'consumable.return')).toBe(
+      'Identificador de quien devolvió',
+    );
+    expect(ref({ originalKind: 'return', recipientRef: 'ID-1' }, 'consumable.reverse')).toBe(
+      'Identificador de quien devolvió',
+    );
+    expect(ref({ recipientRef: 'ID-1' }, 'consumable.deliver')).toBe('Identificador del receptor');
+  });
+
+  it('la entrega y la anulación de una entrega siguen diciendo «Recibe»', () => {
+    expect(label({ recipient: 'Ana Inventada' }, 'consumable.deliver')).toBe('Recibe');
+    expect(
+      label({ originalKind: 'delivery', recipient: 'Ana Inventada' }, 'consumable.reverse'),
+    ).toBe('Recibe');
+  });
+});
+
+describe('consumibles: a qué entrega pertenece una devolución (D10)', () => {
+  it('la muestra como «Entrega del dd-mm-aaaa HH:mm a <receptor>», en la hora de la instalación', () => {
+    const rows = describeAuditDetail(
+      {
+        quantity: '1',
+        recipient: 'Ana Inventada',
+        delivery: { at: '2026-11-16T15:30:00.000Z', recipient: 'Ana Inventada' },
+        note: 'Sobró',
+      },
+      text,
+      { entity: 'consumable', action: 'consumable.return' },
+    );
+    const delivery = rows.find((r) => r.field === 'delivery')!;
+    expect(delivery.label).toBe('Entrega');
+    expect(delivery.value).toBe('Entrega del 16-11-2026 12:30 a Ana Inventada');
+    // Va junto a la persona, antes de la nota.
+    const order = rows.map((r) => r.field);
+    expect(order.indexOf('delivery')).toBe(order.indexOf('recipient') + 1);
+    expect(order.indexOf('delivery')).toBeLessThan(order.indexOf('note'));
+  });
+
+  it('el título de una anulación de traslado dice «Traslado» y su motivo va primero', () => {
+    const rows = describeAuditDetail(
+      { originalKind: 'transfer_in', quantity: '2', reversalReason: 'Error' },
+      text,
+      { entity: 'consumable', action: 'consumable.reverse' },
+    );
+    expect(rows.map((r) => [r.label, r.value])).toEqual([
+      ['Movimiento anulado', 'Traslado'],
+      ['Motivo de la anulación', 'Error'],
+      ['Cantidad', '2'],
+    ]);
+  });
+});
+
+describe('consumibles: mínimos por bodega, solo lo que cambió (D18)', () => {
+  const opts = { entity: 'consumable', action: 'consumable.update' };
+  const items = (diff: Record<string, unknown>) =>
+    describeAuditDetail(diff, text, opts).find((r) => r.field === 'warehouseMinimums')?.items;
+
+  it('una línea por bodega que cambió, con el nombre corto y la ruta completa como ayuda', () => {
+    expect(
+      items({
+        before: {
+          warehouseMinimums: ['Cliente Inventado > Bodega Anexo: 40', 'Bodega Central: 10'],
+        },
+        after: {
+          warehouseMinimums: [
+            'Bodega Central: 10',
+            'Cliente Inventado > Bodega Cristobal Gambi: 40',
+          ],
+        },
+      }),
+    ).toEqual([
+      { text: 'Bodega Anexo: 40 → —', title: 'Cliente Inventado > Bodega Anexo' },
+      {
+        text: 'Bodega Cristobal Gambi: — → 40',
+        title: 'Cliente Inventado > Bodega Cristobal Gambi',
+      },
+    ]);
+  });
+
+  it('no muestra las bodegas que no cambiaron y da formato a los decimales', () => {
+    expect(
+      items({
+        before: { warehouseMinimums: ['Bodega Central: 10', 'Bodega Norte: 2.5'] },
+        after: { warehouseMinimums: ['Bodega Central: 10', 'Bodega Norte: 3.5'] },
+      }),
+    ).toEqual([{ text: 'Bodega Norte: 2,5 → 3,5', title: 'Bodega Norte' }]);
+  });
+
+  it('no hay fila si los mínimos no cambiaron', () => {
+    expect(
+      items({
+        before: { warehouseMinimums: ['Bodega Central: 10'], name: 'A' },
+        after: { warehouseMinimums: ['Bodega Central: 10'], name: 'B' },
+      }),
+    ).toBeUndefined();
+  });
+
+  it('en un alta lista cada bodega con su mínimo', () => {
+    expect(
+      items({
+        after: { name: 'Guantes', warehouseMinimums: ['Zensi > Bodega Norte: 40'] },
+      }),
+    ).toEqual([{ text: 'Bodega Norte: 40', title: 'Zensi > Bodega Norte' }]);
+  });
+});

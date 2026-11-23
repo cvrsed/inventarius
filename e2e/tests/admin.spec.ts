@@ -137,6 +137,20 @@ test.describe('roles (RF: matriz de permisos)', () => {
     await page.getByRole('button', { name: 'Nuevo rol' }).click();
     const dialog = page.getByRole('dialog', { name: 'Nuevo rol' });
     await dialog.getByLabel('Nombre').fill(name);
+    // D5: los permisos de consumibles salen con su texto, no como claves crudas.
+    for (const label of [
+      'Ver consumibles',
+      'Gestionar catálogo de consumibles',
+      'Ingresar a bodega',
+      'Entregar y registrar devoluciones',
+      'Trasladar entre bodegas',
+      'Ajustar stock',
+      'Anular movimientos',
+    ]) {
+      await expect(dialog.getByRole('checkbox', { name: label })).toBeVisible();
+    }
+    await expect(dialog.getByText(/consumables:/)).toHaveCount(0);
+    await expect(dialog.getByText(/permissions\./)).toHaveCount(0);
     await dialog.getByRole('checkbox', { name: 'Ver auditoría' }).check();
     await expectNoA11yViolations(page);
     await dialog.getByRole('button', { name: 'Guardar' }).click();
@@ -249,4 +263,27 @@ test.describe('auditoría (RF-31)', () => {
     expect(await horizontalOverflow(page)).toBe(false);
     await eachTheme(page, () => expectNoA11yViolations(page));
   });
+});
+
+test('roles (R1): sin desborde horizontal en escritorio', async ({ page }, info) => {
+  test.skip(info.project.name === 'mobile', 'la tabla solo existe en escritorio');
+  for (const width of [1280, 1024, 768]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto('/roles');
+    await expect(page.getByRole('heading', { name: 'Roles' })).toBeVisible();
+    await expect(page.locator('tbody tr').first()).toBeVisible();
+    await expect
+      .poll(
+        () =>
+          page.evaluate(() => {
+            const wrapper = document.querySelector('table')?.parentElement;
+            return {
+              page: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+              table: wrapper ? wrapper.scrollWidth > wrapper.clientWidth : null,
+            };
+          }),
+        { message: `Roles desborda a ${width}px` },
+      )
+      .toEqual({ page: false, table: false });
+  }
 });

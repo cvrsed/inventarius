@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isSelectableStatus } from './status';
 import UAlert from '@nuxt/ui/components/Alert.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
 import UFormField from '@nuxt/ui/components/FormField.vue';
@@ -38,7 +39,7 @@ const serialCount = computed(() => parseSerials(form.value.serials).length);
 
 /** «Asignado» lo pone el sistema al asignar: no se ofrece como estado inicial. */
 const fetchStatuses = async (q: string) =>
-  (await fetchOptions('statuses', q)).filter((o) => o['isSystem'] !== true);
+  (await fetchOptions('statuses', q)).filter(isSelectableStatus);
 
 onMounted(async () => {
   // El estado de partida es la semilla «Pendiente de configuración», si sigue existiendo.

@@ -30,12 +30,20 @@ export const navigationItems: readonly NavigationItem[] = [
     permissions: ['asset:read'],
   },
   {
+    routeName: 'consumables',
+    placement: 'primary',
+    path: '/consumibles',
+    labelKey: 'nav.consumables',
+    icon: 'i-lucide-boxes',
+    permissions: ['consumables:read'],
+  },
+  {
     routeName: 'catalog',
     placement: 'primary',
     path: '/catalogo/categories',
     labelKey: 'nav.catalog',
     icon: 'i-lucide-library',
-    permissions: ['asset:read'],
+    permissions: ['asset:read', 'consumables:read'],
   },
   {
     routeName: 'users',

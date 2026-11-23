@@ -292,6 +292,43 @@ describe('edición, concurrencia e historial (RF-24)', () => {
     expect((await operator.post(url, { statusId: ids.repair })).statusCode).toBe(409);
   });
 
+  it('«Cambiar estado» no lleva a un estado de baja: solo «Dar de baja» (R5, 422)', async () => {
+    const a = await newAsset();
+    const res = await operator.post(`${base}/assets/${a.id}/status`, {
+      statusId: ids.retired,
+      note: 'sin motivo',
+    });
+    expect(res.statusCode).toBe(422);
+    expect(JSON.stringify(res.json())).toContain('Dar de baja');
+    const after = await operator.get(`${base}/assets/${a.id}`);
+    expect(after.json().status.id).not.toBe(ids.retired);
+    expect(after.json().deleted).toBe(false);
+  });
+
+  it('un estado de baja tampoco se alcanza por alta, alta en lote ni devolución (R5)', async () => {
+    const created = await operator.post(`${base}/assets`, {
+      name: 'Con baja',
+      modelId: ids.model,
+      statusId: ids.retired,
+      baseLocationId: ids.room,
+    });
+    expect(created.statusCode).toBe(422);
+    const batch = await operator.post(`${base}/assets/batch`, {
+      modelId: ids.model,
+      quantity: 2,
+      baseLocationId: ids.room,
+      statusId: ids.retired,
+    });
+    expect(batch.statusCode).toBe(422);
+    const a = await newAsset({ baseLocationId: ids.room });
+    await operator.post(`${base}/assets/${a.id}/checkout`, { locationId: ids.site });
+    const back = await operator.post(`${base}/assets/${a.id}/checkin`, {
+      statusId: ids.retired,
+      locationId: ids.other,
+    });
+    expect(back.statusCode).toBe(422);
+  });
+
   it('el historial lista creación y cambios con antes/después, el más reciente primero', async () => {
     const a = await newAsset({ name: 'Historial' });
     const first = await operator.patch(

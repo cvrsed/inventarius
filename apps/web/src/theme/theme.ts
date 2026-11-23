@@ -13,6 +13,15 @@ export const uiTheme = {
       // Objetivo táctil de 44 px (WCAG 2.2 AA en móvil, RNF-02).
       base: 'min-h-11 min-w-11 justify-center',
     },
+    // El hover por defecto del botón sólido (primario al 75 %) baja el contraste del texto a 3,35:1 (axe, WCAG AA 4,5:1).
+    // Se oscurece en claro y se aclara en oscuro en lugar de mezclar con el fondo.
+    compoundVariants: [
+      {
+        color: 'primary',
+        variant: 'solid',
+        class: 'hover:bg-(--ui-color-primary-800) dark:hover:bg-(--ui-color-primary-300)',
+      },
+    ],
   },
 } as const;
 
@@ -45,11 +54,19 @@ export const APP_ICONS = [
   'lucide:refresh-cw',
   'lucide:eye',
   'lucide:eye-off',
+  'lucide:power',
+  'lucide:power-off',
   'lucide:chevron-right',
   'lucide:chevron-down',
   'lucide:box',
   'lucide:triangle-alert',
   'lucide:package',
+  'lucide:boxes',
+  'lucide:package-plus',
+  'lucide:package-minus',
+  'lucide:hand-helping',
+  'lucide:ban',
+  'lucide:scale',
   'lucide:library',
   'lucide:download',
   'lucide:arrow-up',

@@ -8,7 +8,14 @@ import { useId } from 'vue';
  * y el tooltip explica el motivo. El motivo también se asocia con `aria-describedby` para lectores de pantalla y para
  * quien no puede pasar el cursor. Sin `reason` se comporta como un `UButton` normal (el resto de atributos pasa tal cual).
  */
-defineProps<{ label: string; icon?: string; reason?: string; loading?: boolean }>();
+defineProps<{
+  label: string;
+  icon?: string;
+  reason?: string;
+  loading?: boolean;
+  /** Ocupa todo el ancho de su celda (botones en grilla): el contenedor y el botón llenan el espacio y centran el contenido. */
+  block?: boolean;
+}>();
 defineOptions({ inheritAttrs: false });
 const emit = defineEmits<{ click: [] }>();
 const reasonId = useId();
@@ -16,9 +23,10 @@ const reasonId = useId();
 
 <template>
   <UTooltip :text="reason ?? ''" :disabled="!reason">
-    <span class="inline-flex">
+    <span :class="block ? 'flex w-full sm:inline-flex sm:w-auto' : 'inline-flex'">
       <UButton
         v-bind="reason ? { ...$attrs, color: 'neutral', variant: 'subtle' } : $attrs"
+        :class="block ? 'w-full justify-center sm:w-auto' : undefined"
         :label="label"
         :icon="icon"
         :loading="loading"

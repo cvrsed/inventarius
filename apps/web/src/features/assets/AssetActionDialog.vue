@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isSelectableStatus } from './status';
 import type { AssetDto } from '@inventarius/shared';
 import UAlert from '@nuxt/ui/components/Alert.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
@@ -52,10 +53,21 @@ watch(visible, (open) => {
   error.value = fieldError.value = returnError.value = '';
 });
 
+// Los errores de «obligatorio» se van en cuanto se elige o escribe un valor.
+watch(status, (v) => {
+  if (v) fieldError.value = '';
+});
+watch(returnTo, (v) => {
+  if (v) returnError.value = '';
+});
+watch(text, (v) => {
+  if (v.trim() && props.mode === 'delete') fieldError.value = '';
+});
+
 /** «Asignado» lo pone el sistema al asignar: no se ofrece como destino. */
 const fetchStatuses = async (q: string) =>
   (await fetchOptions('statuses', q)).filter(
-    (o) => o['isSystem'] !== true && !(props.mode === 'status' && o.id === props.asset.status.id),
+    (o) => isSelectableStatus(o) && !(props.mode === 'status' && o.id === props.asset.status.id),
   );
 
 async function run(): Promise<void> {
@@ -121,7 +133,7 @@ async function submit(): Promise<void> {
           :label="mode === 'checkin' ? t('assets.checkin.status') : t('assets.status.newStatus')"
           name="ac-status"
           required
-          :error="fieldError"
+          :error="fieldError || undefined"
         >
           <RemoteSelect
             id="ac-status"
@@ -136,7 +148,7 @@ async function submit(): Promise<void> {
           :label="t('assets.checkin.returnTo')"
           name="ac-location"
           required
-          :error="returnError"
+          :error="returnError || undefined"
         >
           <RemoteSelect
             id="ac-location"
@@ -150,7 +162,7 @@ async function submit(): Promise<void> {
           :label="mode === 'delete' ? t('assets.delete.reason') : t('assets.checkin.note')"
           name="ac-text"
           :required="mode === 'delete'"
-          :error="mode === 'delete' ? fieldError : undefined"
+          :error="(mode === 'delete' ? fieldError : '') || undefined"
         >
           <UTextarea id="ac-text" v-model="text" :rows="3" :maxlength="500" class="w-full" />
         </UFormField>

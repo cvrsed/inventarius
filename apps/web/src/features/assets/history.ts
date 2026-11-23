@@ -39,6 +39,10 @@ export function describeEntry(entry: AuditEntryDto, text: DetailText): HistoryIt
   if (key === 'create') return { key, action: entry.action, params, rows: [] };
   // En la asignación el destino ya va en el título.
   const skip = new Set(key === 'checkout' ? ['assignedTo', 'assignedToType'] : []);
-  const rows = describeAuditDetail(entry.diff, text, { entity: entry.entity, skip });
+  const rows = describeAuditDetail(entry.diff, text, {
+    entity: entry.entity,
+    action: entry.action,
+    skip,
+  });
   return { key, action: entry.action, params, rows };
 }

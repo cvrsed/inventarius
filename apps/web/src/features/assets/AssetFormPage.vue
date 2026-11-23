@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isSelectableStatus } from './status';
 import UAlert from '@nuxt/ui/components/Alert.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
 import UFormField from '@nuxt/ui/components/FormField.vue';
@@ -68,7 +69,7 @@ function validate(): boolean {
 
 /** «Asignado» lo pone el sistema al asignar: no se ofrece como estado. */
 const fetchStatuses = async (q: string) =>
-  (await fetchOptions('statuses', q)).filter((o) => o['isSystem'] !== true);
+  (await fetchOptions('statuses', q)).filter(isSelectableStatus);
 
 async function submit(): Promise<void> {
   error.value = '';

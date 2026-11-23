@@ -9,11 +9,52 @@ import {
   type AssetModelDto,
   type CategoryExtension,
   type LocationDto,
+  type MeasureUnitDto,
+  type Permission,
   type StatusLabelDto,
 } from '@inventarius/shared';
 
-export const SECTIONS = ['categories', 'manufacturers', 'models', 'locations', 'statuses'] as const;
+export const SECTIONS = [
+  'categories',
+  'manufacturers',
+  'models',
+  'locations',
+  'statuses',
+  'consumableCategories',
+  'units',
+] as const;
 export type Section = (typeof SECTIONS)[number];
+
+/** Permiso para ver cada sección: las de consumibles no exigen acceso a activos y viceversa. */
+export const SECTION_READ: Record<Section, Permission> = {
+  categories: 'asset:read',
+  manufacturers: 'asset:read',
+  models: 'asset:read',
+  locations: 'asset:read',
+  statuses: 'asset:read',
+  consumableCategories: 'consumables:read',
+  units: 'consumables:read',
+};
+
+/** Permiso para modificarlas: las categorías de consumibles y las unidades son de quien gestiona consumibles (P4). */
+export const SECTION_WRITE: Record<Section, Permission> = {
+  categories: 'catalog:write',
+  manufacturers: 'catalog:write',
+  models: 'catalog:write',
+  locations: 'catalog:write',
+  statuses: 'catalog:write',
+  consumableCategories: 'consumables:manage',
+  units: 'consumables:manage',
+};
+
+/**
+ * Cuántos consumibles usan una categoría de consumibles o una unidad de medida: renombrarla o desactivarla los afecta
+ * a todos (D13). En el resto de las secciones es 0.
+ */
+export function affectedConsumables(section: Section, item: CatalogItem | null): number {
+  if (!item || (section !== 'consumableCategories' && section !== 'units')) return 0;
+  return (item as { consumableCount?: number }).consumableCount ?? 0;
+}
 
 /** Valor de un campo del formulario: texto, interruptor o referencia elegida en un `RemoteSelect`. */
 export type FormValue = string | boolean | RemoteOption | null;
@@ -130,6 +171,24 @@ const FIELDS: Record<Section, FieldDef[]> = {
     { key: 'parent', label: 'catalog.fields.parent', kind: 'ref', source: 'locations' },
     text('address', { maxLength: 240 }),
   ],
+  consumableCategories: [text('name', { required: true, maxLength: 120 })],
+  units: [
+    text('name', { required: true, maxLength: 40, help: 'catalog.help.unitName' }),
+    text('plural', { required: true, maxLength: 40, help: 'catalog.help.unitPlural' }),
+    text('abbreviation', { required: true, maxLength: 12, help: 'catalog.help.unitAbbreviation' }),
+    {
+      key: 'decimals',
+      label: 'catalog.fields.decimals',
+      kind: 'select',
+      required: true,
+      help: 'catalog.help.unitDecimals',
+      translateOptions: true,
+      options: ['0', '1', '2', '3'].map((d) => ({
+        value: d,
+        label: `catalog.decimalsOptions.${d}`,
+      })),
+    },
+  ],
   statuses: [
     text('name', { required: true, maxLength: 120 }),
     {
@@ -169,6 +228,8 @@ const DEFAULTS: Record<Section, FormState> = {
   },
   locations: { name: '', type: 'other', parent: null, address: '', active: true },
   statuses: { name: '', kind: 'deployable', active: true },
+  consumableCategories: { name: '', active: true },
+  units: { name: '', plural: '', abbreviation: '', decimals: '0', active: true },
 };
 
 export const emptyForm = (section: Section): FormState => ({ ...DEFAULTS[section] });
@@ -206,6 +267,16 @@ export function formFromItem(section: Section, item: CatalogItem): FormState {
     case 'statuses': {
       const s = item as StatusLabelDto;
       return { name: s.name, kind: s.kind, active: s.active };
+    }
+    case 'units': {
+      const u = item as MeasureUnitDto;
+      return {
+        name: u.name,
+        plural: u.plural,
+        abbreviation: u.abbreviation,
+        decimals: String(u.decimals),
+        active: u.active,
+      };
     }
     case 'categories': {
       const c = item as CatalogItem & { extension: string };
@@ -257,5 +328,15 @@ export function toPayload(
       };
     case 'statuses':
       return { name: str(form['name']), kind: str(form['kind']), ...active };
+    case 'consumableCategories':
+      return { name: str(form['name']), ...active };
+    case 'units':
+      return {
+        name: str(form['name']),
+        plural: str(form['plural']),
+        abbreviation: str(form['abbreviation']),
+        decimals: Number(str(form['decimals']) || '0'),
+        ...active,
+      };
   }
 }

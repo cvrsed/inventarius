@@ -1,5 +1,6 @@
 import { auditFieldLabel, auditValueLabel } from '@/app/i18n/audit';
-import { formatDateOnly } from '@/shared/format/format';
+import { formatDecimal, type AuditEntity } from '@inventarius/shared';
+import { formatDateOnly, formatDateTime } from '@/shared/format/format';
 
 /** Una línea del detalle: un valor, o un antes/después cuando el campo cambió. */
 export interface DetailRow {
@@ -8,6 +9,8 @@ export interface DetailRow {
   value?: string;
   before?: string;
   after?: string;
+  /** Una línea por elemento (p. ej. cada bodega de los mínimos), con la ruta completa como ayuda. */
+  items?: { text: string; title?: string }[];
 }
 
 /** Textos que necesita el formateo; `t` y `te` vienen de vue-i18n (inyectados para poder probar sin él). */
@@ -23,6 +26,8 @@ const LIST_LIMIT = 10;
 /** Opciones del detalle: la entidad del evento (rótulos que dependen de ella) y campos que no se muestran. */
 export interface DetailOptions {
   entity?: string;
+  /** Acción auditada (`consumable.return`...): decide rótulos que dependen del evento, como «Devolvió». */
+  action?: string;
   skip?: ReadonlySet<string>;
 }
 
@@ -77,7 +82,143 @@ export const EVENT_FIELDS: ReadonlySet<string> = new Set([
   'returnedTo',
   'assignedTo',
   'assignedToType',
+  'quantity',
+  'unit',
+  'stockBefore',
+  'stockAfter',
+  'fromStockAfter',
+  'toStockAfter',
+  'recipient',
+  'recipientRef',
+  'direction',
+  'fromLocation',
+  'toLocation',
+  'originalKind',
+  'originalReason',
+  'originalNote',
+  'reversalReason',
+  'originalActor',
+  'movementDate',
+  'registeredAt',
+  'receivedOn',
+  'supplier',
+  'location',
 ]);
+
+/** Campos de cantidad: llegan como texto con punto decimal y se muestran en es-CL (coma decimal). */
+const QUANTITY_FIELDS: ReadonlySet<string> = new Set([
+  'quantity',
+  'minStock',
+  'stockBefore',
+  'stockAfter',
+  'fromStockAfter',
+  'toStockAfter',
+  'fromStockBefore',
+  'toStockBefore',
+]);
+
+/** Fechas sin hora de los eventos de consumibles. */
+const DATE_ONLY_FIELDS: ReadonlySet<string> = new Set(['receivedOn', 'movementDate']);
+
+/**
+ * Orden de lectura de los campos de un evento, por entidad (P11). La base guarda el detalle como jsonb, que no conserva
+ * el orden de las claves, así que lo fija la web. Lo que no figura va al final, en su orden original.
+ */
+const FIELD_ORDER: Partial<Record<AuditEntity, readonly string[]>> = {
+  // tipo, cantidad, unidad, bodega (o origen y destino), saldo antes, saldo después, receptor, motivo, nota y fechas.
+  consumable: [
+    'originalKind',
+    // En una anulación, su motivo va justo después del tipo anulado (D9).
+    'reversalReason',
+    'direction',
+    'quantity',
+    'unit',
+    'location',
+    'fromLocation',
+    'toLocation',
+    'stockBefore',
+    'stockAfter',
+    'fromStockBefore',
+    'fromStockAfter',
+    'toStockBefore',
+    'toStockAfter',
+    'recipient',
+    'recipientRef',
+    'delivery',
+    'reason',
+    'originalReason',
+    'supplier',
+    'note',
+    'originalNote',
+    'returned',
+    'originalActor',
+    'receivedOn',
+    'movementDate',
+    'registeredAt',
+  ],
+};
+
+const orderedEntries = (
+  entries: [string, unknown][],
+  entity: string | undefined,
+): [string, unknown][] => {
+  const order = entity
+    ? (FIELD_ORDER as Record<string, readonly string[] | undefined>)[entity]
+    : undefined;
+  if (!order) return entries;
+  const rank = (f: string) => {
+    const i = order.indexOf(f);
+    return i === -1 ? order.length : i;
+  };
+  return entries
+    .map((e, i) => ({ e, i }))
+    .sort((a, b) => rank(a.e[0]) - rank(b.e[0]) || a.i - b.i)
+    .map((x) => x.e);
+};
+
+const NO_MINIMUM = '—';
+
+/** «Ruta: cantidad» → { ruta, cantidad }; la cantidad es lo que sigue al último «: ». */
+function parseMinimums(value: unknown): Map<string, string> {
+  const map = new Map<string, string>();
+  if (!Array.isArray(value)) return map;
+  for (const entry of value) {
+    if (typeof entry !== 'string') continue;
+    const cut = entry.lastIndexOf(': ');
+    if (cut > 0) map.set(entry.slice(0, cut), entry.slice(cut + 2));
+  }
+  return map;
+}
+
+const shortPath = (path: string): string => path.split(' > ').pop() ?? path;
+const minimumText = (q: string | undefined): string =>
+  q === undefined ? NO_MINIMUM : /^\d+(\.\d+)?$/.test(q) ? formatDecimal(q) : q;
+
+/**
+ * Mínimos por bodega (D18): con antes y después, solo las bodegas que cambiaron, una línea cada una con su nombre
+ * corto («Bodega Norte: — → 40»); en un alta o baja, todas («Bodega Norte: 40»). La ruta completa va como ayuda.
+ */
+function minimumItems(before: unknown, after: unknown, changes: boolean): DetailRow['items'] {
+  const b = parseMinimums(before);
+  const a = parseMinimums(after);
+  const paths = [...new Set([...b.keys(), ...a.keys()])].sort((x, y) =>
+    shortPath(x).localeCompare(shortPath(y), 'es'),
+  );
+  return paths.flatMap((path) => {
+    if (changes) {
+      if (b.get(path) === a.get(path)) return [];
+      return [
+        {
+          text: `${shortPath(path)}: ${minimumText(b.get(path))} → ${minimumText(a.get(path))}`,
+          title: path,
+        },
+      ];
+    }
+    return [
+      { text: `${shortPath(path)}: ${minimumText((a.size ? a : b).get(path))}`, title: path },
+    ];
+  });
+}
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -103,6 +244,13 @@ export function formatDetailValue(
       ? `${shown.join(', ')} … ${text.t('audit.andMore').replace('{n}', String(more))}`
       : shown.join(', ');
   }
+  if (isRecord(value) && field === 'delivery') {
+    // A qué entrega pertenece una devolución: «Entrega del 16-11-2026 12:00 a Ana».
+    const at = typeof value['at'] === 'string' ? formatDateTime(value['at']) : EMPTY;
+    const to =
+      typeof value['recipient'] === 'string' && value['recipient'] ? value['recipient'] : '';
+    return `Entrega del ${at}${to ? ` a ${to}` : ''}`;
+  }
   if (isRecord(value)) {
     // Objeto plano (p. ej. el destino de un perfil LNS): «Tenant: …; Aplicación: …».
     const parts = Object.entries(value).map(
@@ -113,6 +261,10 @@ export function formatDetailValue(
   if (typeof value === 'string') {
     const enumerated = auditValueLabel(field, value, entity);
     if (enumerated !== undefined) return enumerated;
+    if (QUANTITY_FIELDS.has(field) && /^\d+(\.\d+)?$/.test(value)) return formatDecimal(value);
+    if (DATE_ONLY_FIELDS.has(field) && /^\d{4}-\d{2}-\d{2}$/.test(value))
+      return formatDateOnly(value);
+    if (field === 'registeredAt' && /^\d{4}-\d{2}-\d{2}T/.test(value)) return formatDateTime(value);
     if (
       (field === 'purchaseDate' || field === 'expectedReturnOn') &&
       /^\d{4}-\d{2}-\d{2}$/.test(value)
@@ -140,7 +292,19 @@ export function describeAuditDetail(
   const after = isRecord(diff['after']) ? diff['after'] : null;
   const keys = keyRows(before, after ?? (before ? null : diff), entity, text);
   const hide = (f: string) => keys.hidden.has(f) || (options.skip?.has(f) ?? false);
-  const row = (field: string) => ({ field, label: auditFieldLabel(field, entity) });
+  // En una devolución (o en la anulación de una), la persona es quien devuelve, no quien recibe (D1).
+  const isReturn =
+    options.action === 'consumable.return' ||
+    (options.action === 'consumable.reverse' &&
+      (after ?? before ?? diff)['originalKind'] === 'return');
+  const returnLabels: Record<string, string> = {
+    recipient: 'Devolvió',
+    recipientRef: 'Identificador de quien devolvió',
+  };
+  const row = (field: string) => ({
+    field,
+    label: (isReturn && returnLabels[field]) || auditFieldLabel(field, entity),
+  });
   const fmt = (f: string, v: unknown) => formatDetailValue(f, v, text, entity);
   // `context`: datos que no cambiaron pero ayudan a entender el evento (p. ej. el estado de un activo dado de baja).
   const context = isRecord(diff['context'])
@@ -154,7 +318,10 @@ export function describeAuditDetail(
     const fields = [...new Set([...Object.keys(before), ...Object.keys(after)])];
     const changes: DetailRow[] = [];
     for (const f of fields.filter((x) => !hide(x))) {
-      if (EVENT_FIELDS.has(f)) {
+      if (entity === 'consumable' && f === 'warehouseMinimums') {
+        const items = minimumItems(before[f], after[f], true);
+        if (items?.length) changes.push({ ...row(f), items });
+      } else if (EVENT_FIELDS.has(f)) {
         // Dato del evento: valor simple (el de después; en una restauración, el que traía la baja).
         const v = after[f] ?? before[f];
         if (v !== null && v !== undefined && v !== '') {
@@ -172,9 +339,15 @@ export function describeAuditDetail(
   }
   const single = after ?? before ?? diff;
   return [
-    ...Object.entries(single)
+    ...orderedEntries(Object.entries(single), entity)
       .filter(([f]) => (single !== diff || f !== 'context') && !hide(f))
-      .map(([f, v]) => ({ ...row(f), value: fmt(f, v) })),
+      .flatMap(([f, v]): DetailRow[] => {
+        if (entity === 'consumable' && f === 'warehouseMinimums') {
+          const items = minimumItems(undefined, v, false);
+          return items?.length ? [{ ...row(f), items }] : [];
+        }
+        return [{ ...row(f), value: fmt(f, v) }];
+      }),
     ...keys.rows,
     ...context,
   ];
