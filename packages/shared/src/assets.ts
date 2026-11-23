@@ -53,9 +53,10 @@ export const assetFiltersSchema = z.object({
   categoryId: z.uuid().optional(),
   modelId: z.uuid().optional(),
   statusId: z.uuid().optional(),
+  /** Ubicación actual (donde está hoy): la elegida y todas sus sububicaciones. Los asignados a una persona no la tienen. */
   locationId: z.uuid().optional(),
   assignedUserId: z.uuid().optional(),
-  /** Bodega base del activo (stock por bodega del Inicio, RF-28). */
+  /** Bodega base del activo (stock por bodega del Inicio, RF-28): la elegida y todas sus sububicaciones. */
   baseLocationId: z.uuid().optional(),
   /** Tipo del estado (no su nombre): renombrar un estado no rompe los enlaces del Inicio. */
   statusKind: statusKindSchema.optional(),

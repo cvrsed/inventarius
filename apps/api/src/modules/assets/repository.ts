@@ -13,8 +13,9 @@ import {
   sql,
   type SQL,
 } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
+import { alias, type AnyPgColumn as AnyColumn } from 'drizzle-orm/pg-core';
 import type { Executor } from '../../core/db/executor.js';
+import { subtreeIdsSql } from '../../core/db/location-tree.js';
 import {
   assetAssignments,
   assetLorawan,
@@ -103,6 +104,10 @@ const SORT_COLUMNS = {
   createdAt: assets.createdAt,
 } as const;
 
+/** La ubicación (columna) es la elegida o está debajo de ella, a cualquier profundidad. */
+const inSubtree = (column: AnyColumn, rootId: string): SQL =>
+  sql`${column} IN ${subtreeIdsSql(rootId)}`;
+
 function escapeLike(term: string): string {
   return term.replace(/[\\%_]/g, (c) => `\\${c}`);
 }
@@ -185,9 +190,9 @@ export class AssetsRepository {
       f.categoryId ? eq(models.categoryId, f.categoryId) : undefined,
       f.modelId ? eq(assets.modelId, f.modelId) : undefined,
       f.statusId ? eq(assets.statusId, f.statusId) : undefined,
-      f.locationId ? eq(assets.locationId, f.locationId) : undefined,
+      f.locationId ? inSubtree(assets.locationId, f.locationId) : undefined,
       f.assignedUserId ? eq(assets.assignedUserId, f.assignedUserId) : undefined,
-      f.baseLocationId ? eq(assets.baseLocationId, f.baseLocationId) : undefined,
+      f.baseLocationId ? inSubtree(assets.baseLocationId, f.baseLocationId) : undefined,
       f.statusKind ? eq(statusLabels.kind, f.statusKind) : undefined,
       f.assigned === 'yes'
         ? or(isNotNull(assets.assignedUserId), isNotNull(assets.assignedLocationId))
