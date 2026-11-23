@@ -297,9 +297,13 @@ export function describeAuditDetail(
     options.action === 'consumable.return' ||
     (options.action === 'consumable.reverse' &&
       (after ?? before ?? diff)['originalKind'] === 'return');
+  const returnLabels: Record<string, string> = {
+    recipient: 'Devolvió',
+    recipientRef: 'Identificador de quien devolvió',
+  };
   const row = (field: string) => ({
     field,
-    label: isReturn && field === 'recipient' ? 'Devolvió' : auditFieldLabel(field, entity),
+    label: (isReturn && returnLabels[field]) || auditFieldLabel(field, entity),
   });
   const fmt = (f: string, v: unknown) => formatDetailValue(f, v, text, entity);
   // `context`: datos que no cambiaron pero ayudan a entender el evento (p. ej. el estado de un activo dado de baja).

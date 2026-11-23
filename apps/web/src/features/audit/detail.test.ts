@@ -410,6 +410,20 @@ describe('consumibles: la persona de una devolución «Devolvió» (D1)', () => 
     ).toBe('Devolvió');
   });
 
+  it('el identificador dice «Identificador de quien devolvió» (R6) y en la entrega sigue «del receptor»', () => {
+    const ref = (diff: Record<string, unknown>, action: string) =>
+      describeAuditDetail(diff, text, { entity: 'consumable', action }).find(
+        (r) => r.field === 'recipientRef',
+      )?.label;
+    expect(ref({ recipientRef: 'ID-1' }, 'consumable.return')).toBe(
+      'Identificador de quien devolvió',
+    );
+    expect(ref({ originalKind: 'return', recipientRef: 'ID-1' }, 'consumable.reverse')).toBe(
+      'Identificador de quien devolvió',
+    );
+    expect(ref({ recipientRef: 'ID-1' }, 'consumable.deliver')).toBe('Identificador del receptor');
+  });
+
   it('la entrega y la anulación de una entrega siguen diciendo «Recibe»', () => {
     expect(label({ recipient: 'Ana Inventada' }, 'consumable.deliver')).toBe('Recibe');
     expect(
