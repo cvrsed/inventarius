@@ -107,8 +107,10 @@ function optionOf(section: Section, item: CatalogItem): RemoteOption {
       const u = item as MeasureUnitDto;
       return { id: u.id, name: u.name, description: u.abbreviation, decimals: u.decimals };
     }
-    case 'statuses':
-      return { id: item.id, name: item.name, isSystem: (item as StatusLabelDto).isSystem };
+    case 'statuses': {
+      const st = item as StatusLabelDto;
+      return { id: item.id, name: item.name, isSystem: st.isSystem, kind: st.kind };
+    }
     default:
       return { id: item.id, name: item.name };
   }

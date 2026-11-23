@@ -593,6 +593,39 @@ test.describe('consumables (RF-70 a RF-74)', () => {
     }
   });
 
+  test('R4: la bodega del historial y de Inicio va con nombre corto y la ruta en tooltip', async ({
+    page,
+  }) => {
+    const f = await createFixture(page);
+    const parent = uniqueName('Zona norte');
+    const parentId = (
+      await apiPost<{ id: string }>(page.request, '/api/v1/locations', {
+        name: parent,
+        type: 'other',
+      })
+    ).id;
+    const short = uniqueName('Bodega profunda');
+    const deep = await apiPost<{ id: string }>(page.request, '/api/v1/locations', {
+      name: short,
+      type: 'warehouse',
+      parentId,
+    });
+    await apiPost(page.request, `/api/v1/consumables/${f.id}/receipts`, {
+      locationId: deep.id,
+      quantity: '7',
+    });
+    for (const url of [`/consumibles/${f.id}`, '/']) {
+      await page.goto(url);
+      const place = page
+        .locator('[title]')
+        .filter({ hasText: new RegExp(`^${escapeRegExp(short)}$`) })
+        .locator('visible=true')
+        .first();
+      await expect(place).toBeVisible();
+      await expect(place).toHaveAttribute('title', `${parent} > ${short}`);
+    }
+  });
+
   test('Inicio: «Últimos movimientos» incluye los de consumibles (P10)', async ({ page }) => {
     const f = await createFixture(page);
     await apiPost(page.request, `/api/v1/consumables/${f.id}/receipts`, {

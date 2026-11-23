@@ -385,6 +385,12 @@ test.describe('activos: CRUD completo (RF-20 a RF-25)', () => {
     await page.getByRole('button', { name: 'Cambiar estado' }).click();
     const dialog = page.getByRole('dialog', { name: 'Cambiar estado' });
     await expectNoA11yViolations(page); // diálogo abierto
+    // R5: la baja no es un estado más; el selector no la ofrece (solo «Dar de baja»).
+    await dialog.getByRole('button', { name: /^Nuevo estado/ }).click();
+    await expect(page.getByRole('option', { name: 'En reparación' })).toBeVisible();
+    await expect(page.getByRole('option', { name: 'Dado de baja' })).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('listbox')).toBeHidden();
     await pick(page, dialog, /^Nuevo estado/, 'En reparación');
     await dialog.getByLabel('Nota').fill('Pantalla rota');
     await dialog.getByRole('button', { name: 'Guardar' }).click();

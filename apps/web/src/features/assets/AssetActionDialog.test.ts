@@ -92,6 +92,37 @@ describe('AssetActionDialog', () => {
     expect(fetchMock.mock.calls.some((c) => c[1]?.method === 'POST')).toBe(false);
   });
 
+  it.each(['status', 'checkin'] as const)(
+    '«%s»: no ofrece «Asignado» ni estados de baja; la baja es solo «Dar de baja» (R5)',
+    async (mode) => {
+      const row = (n: number, name: string, kind: string, isSystem = false) => ({
+        id: uuid(n),
+        name,
+        kind,
+        isSystem,
+        active: true,
+        updatedAt: '2026-11-16T12:00:00.000Z',
+      });
+      mockApi({
+        'GET /api/v1/status-labels': () => ({
+          data: [
+            row(11, 'En reparación', 'undeployable'),
+            row(12, 'Asignado', 'deployable', true),
+            row(13, 'Retirado', 'archived'),
+          ],
+          meta: { page: 1, pageSize: 25, total: 3 },
+        }),
+      });
+      await open(mode);
+      (body().querySelector('#ac-status') as HTMLElement).click();
+      await flushPromises();
+      const text = body().textContent ?? '';
+      expect(text).toContain('En reparación');
+      expect(text).not.toContain('Asignado');
+      expect(text).not.toContain('Retirado');
+    },
+  );
+
   it('devolver pide el estado de vuelta antes de enviar', async () => {
     const fetchMock = mockApi({});
     await open('checkin');

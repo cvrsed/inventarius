@@ -226,7 +226,7 @@ export class AssetsService {
       });
     }
     const status = await this.catalog.requireStatus(tx, input.statusId);
-    if (status.systemKey) throw reservedStatus();
+    assertSelectableStatus(status);
     if (input.baseLocationId)
       await this.requireWarehouse(tx, input.baseLocationId, 'baseLocationId');
     const assetTag =
@@ -309,7 +309,7 @@ export class AssetsService {
         throw new ConflictError('El activo está asignado; devuélvelo para cambiar su estado');
       }
       const status = await this.catalog.requireStatus(tx, input.statusId);
-      if (status.systemKey) throw reservedStatus();
+      assertSelectableStatus(status);
       if (status.id === current.statusId) {
         throw new ValidationError('El activo ya tiene ese estado', {
           statusId: ['Elige un estado distinto del actual'],
@@ -337,7 +337,7 @@ export class AssetsService {
     return this.db.transaction(async (tx) => {
       const model = await this.catalog.requireModel(tx, input.modelId);
       const status = await this.catalog.requireStatus(tx, input.statusId);
-      if (status.systemKey) throw reservedStatus();
+      assertSelectableStatus(status);
       const base = await this.requireWarehouse(tx, input.baseLocationId, 'baseLocationId');
       if (serials) {
         const existing = await this.repo.existingSerials(tx, input.modelId, serials);
@@ -486,7 +486,7 @@ export class AssetsService {
       const current = await this.lockAndRead(tx, id);
       assertCanCheckin({ deleted: current.deletedAt !== null, assigned: isAssigned(current) });
       const status = await this.catalog.requireStatus(tx, input.statusId);
-      if (status.systemKey) throw reservedStatus();
+      assertSelectableStatus(status);
       await this.repo.closeAssignment(tx, id, { by: actor.actorId, note: input.note ?? null });
       const warehouse = await this.catalog.requireActiveLocation(tx, input.locationId);
       assertReturnLocation(warehouse.type as LocationType);
@@ -663,6 +663,22 @@ function serialTaken(): ValidationError {
 function serialsError(message: string, serials: string[]): ValidationError {
   const shown = serials.slice(0, 5).join(', ') + (serials.length > 5 ? '…' : '');
   return new ValidationError(message, { serials: [`${message}: ${shown}`] });
+}
+
+/**
+ * Estados que se pueden elegir al crear, cambiar o devolver un activo. Quedan fuera «Asignado» (lo pone el
+ * sistema) y los de tipo `archived` (baja): ese camino es solo «Dar de baja», que exige motivo, revisa el LNS
+ * y es el punto donde irá la aprobación (R5).
+ */
+function assertSelectableStatus(status: { systemKey: string | null; kind: string }): void {
+  if (status.systemKey) throw reservedStatus();
+  if (status.kind === 'archived') throw retirementStatus();
+}
+
+function retirementStatus(): ValidationError {
+  return new ValidationError('Para dar de baja un activo usa «Dar de baja»', {
+    statusId: ['Ese estado es de baja: usa «Dar de baja», que pide un motivo'],
+  });
 }
 
 function reservedStatus(): ValidationError {

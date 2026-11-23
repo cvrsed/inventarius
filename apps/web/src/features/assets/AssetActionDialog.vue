@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isSelectableStatus } from './status';
 import type { AssetDto } from '@inventarius/shared';
 import UAlert from '@nuxt/ui/components/Alert.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
@@ -66,7 +67,7 @@ watch(text, (v) => {
 /** «Asignado» lo pone el sistema al asignar: no se ofrece como destino. */
 const fetchStatuses = async (q: string) =>
   (await fetchOptions('statuses', q)).filter(
-    (o) => o['isSystem'] !== true && !(props.mode === 'status' && o.id === props.asset.status.id),
+    (o) => isSelectableStatus(o) && !(props.mode === 'status' && o.id === props.asset.status.id),
   );
 
 async function run(): Promise<void> {
