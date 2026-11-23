@@ -73,14 +73,16 @@ export function assetFilterDefs(t: Translate): FilterDef[] {
       undefined,
       t('filters.search.models'),
     ),
-    catalog(
-      'baseLocationId',
-      'locations',
-      t('assets.filterBaseLocation'),
-      'more',
-      undefined,
-      t('filters.search.locations'),
-      { source: 'warehouses', extra: { type: 'warehouse' } },
+    withSubs(
+      catalog(
+        'baseLocationId',
+        'locations',
+        t('assets.filterBaseLocation'),
+        'more',
+        undefined,
+        t('filters.search.locations'),
+        { source: 'warehouses', extra: { type: 'warehouse' } },
+      ),
     ),
     {
       kind: 'remote',

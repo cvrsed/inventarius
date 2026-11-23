@@ -914,7 +914,7 @@ su selector ofrecía todas las ubicaciones, y no incluía sububicaciones. Un com
 ### Decisiones provisionales del arreglo
 
 Q85 a Q89 en `open-questions.md`: parámetros de la API sin renombrar (solo más alcance), conteo del Inicio por bodega exacta,
-aviso del chip solo en «Ubicación actual», quién entra en «Ubicación actual», y casos límite (ciclos ya presentes, tipos).
+aviso «incluye sububicaciones» en ambos chips (corregido en la revisión del PR #8), quién entra en «Ubicación actual», y casos límite (ciclos ya presentes, tipos).
 
 ### Cómo probar el arreglo
 
@@ -924,3 +924,10 @@ aviso del chip solo en «Ubicación actual», quién entra en «Ubicación actua
   actual» = Sala y luego = Chile: aparece en ambos, con el chip «(incluye sububicaciones)» y la ruta en el tooltip de la
   columna. Un activo asignado a una persona no aparece. «Filtros» → «Bodega base» solo lista bodegas.
 - **e2e:** `e2e/tests/location-filter.spec.ts` (escritorio y 360 px) y los ajustes en `filters-menu.spec.ts` e `inventory.spec.ts`.
+
+### Revisión del PR #8
+
+- F1: «Ubicación superior» al editar una ubicación no ofrece la propia ni su subárbol (a cualquier profundidad): la API acepta
+  `excludeSubtreeOf` en `GET /locations` y el formulario lo usa. La validación al guardar y el 422 siguen como defensa.
+  Pruebas: `catalog.int.test.ts` y `CatalogFormDialog.test.ts` (editar «Chile» no ofrece Chile, Lafquen, Parcela h22 ni Santiago).
+- F2: el chip de «Bodega base» también dice «(incluye sububicaciones)» (`assetFilters.test.ts`).
