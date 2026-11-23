@@ -12,6 +12,8 @@ const catalog = (
   placement: 'bar' | 'more',
   barLabel?: string,
   searchPlaceholder?: string,
+  /** Filtros extra de la búsqueda (p. ej. solo bodegas) y nombre propio de la fuente en la caché. */
+  restrict?: { source: string; extra: Record<string, string> },
 ): FilterDef => ({
   kind: 'remote',
   key,
@@ -19,8 +21,9 @@ const catalog = (
   placement,
   ...(barLabel ? { barLabel } : {}),
   ...(searchPlaceholder ? { searchPlaceholder } : {}),
-  source: section,
-  fetcher: (q) => fetchOptions(section, q, { all: true }),
+  source: restrict?.source ?? section,
+  fetcher: (q) =>
+    fetchOptions(section, q, { all: true, ...(restrict ? { extra: restrict.extra } : {}) }),
   resolve: (id) => fetchOptionById(section, id),
 });
 
@@ -71,6 +74,7 @@ export function assetFilterDefs(t: Translate): FilterDef[] {
       'more',
       undefined,
       t('filters.search.locations'),
+      { source: 'warehouses', extra: { type: 'warehouse' } },
     ),
     {
       kind: 'remote',

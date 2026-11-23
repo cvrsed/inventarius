@@ -616,7 +616,7 @@ export const messages = {
     filterLocation: 'Ubicación actual',
     filterAssignee: 'Asignado a',
     filterDeleted: 'Dados de baja',
-    filterBaseLocation: 'Ubicación base',
+    filterBaseLocation: 'Bodega base',
     filterStatusKind: 'Grupo de estados',
     statusKindOptions: {
       deployable: 'Estados asignables',

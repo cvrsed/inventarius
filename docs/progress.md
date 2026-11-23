@@ -886,7 +886,7 @@ su selector ofrecía todas las ubicaciones, y no incluía sububicaciones. Un com
 - [x] Un U4 Consulta recursiva a prueba de ciclos (CYCLE) y 422 claro al crear un ciclo, con tests de ambos
 - [x] Un U3 Filtro `locationId` (ubicación actual) incluye todas las sububicaciones, sin límite de profundidad
 - [x] Un U1 Filtro principal «Ubicación actual» en la barra; los asignados a una persona no entran
-- [ ] Un U2 «Bodega base» pasa a «Más filtros», solo bodegas, y su filtro `baseLocationId` incluye sububicaciones
+- [x] Un U2 «Bodega base» pasa a «Más filtros», solo bodegas, y su filtro `baseLocationId` incluye sububicaciones
 - [ ] Un U5 Chips explícitos: «Ubicación actual: Chile (incluye sububicaciones)» y «Bodega base: …»
 - [ ] Un U6 Columna «Ubicación» (listado y ficha): nombre corto, ruta completa en tooltip, «Con <persona>»
 - [ ] Un U7 Selectores de ubicación con buscador «Buscar ubicación…» y dos líneas (patrón de WarehouseSelect)
