@@ -32,6 +32,10 @@ const catalog = (
  * tras «+ Filtros». En móvil todos van al panel inferior.
  */
 export function assetFilterDefs(t: Translate): FilterDef[] {
+  const withSubs = (def: FilterDef): FilterDef => ({
+    ...def,
+    valueNote: t('assets.includesSublocations'),
+  });
   const options = (keys: string[], prefix: string): FilterOption[] =>
     keys.map((value) => ({ value, label: t(`${prefix}.${value}`) }));
   return [
@@ -51,13 +55,15 @@ export function assetFilterDefs(t: Translate): FilterDef[] {
       undefined,
       t('filters.search.categories'),
     ),
-    catalog(
-      'locationId',
-      'locations',
-      t('assets.filterLocation'),
-      'bar',
-      undefined,
-      t('filters.search.locations'),
+    withSubs(
+      catalog(
+        'locationId',
+        'locations',
+        t('assets.filterLocation'),
+        'bar',
+        undefined,
+        t('filters.search.locations'),
+      ),
     ),
     catalog(
       'modelId',

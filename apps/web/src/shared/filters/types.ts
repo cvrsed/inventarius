@@ -16,6 +16,8 @@ interface FilterBase {
   placement: 'bar' | 'more';
   /** Valor que equivale a «sin filtro» (por defecto `''`). Un filtro con otro valor está activo. */
   defaultValue?: string;
+  /** Aclaración que el chip agrega tras el valor: «Ubicación actual: Chile (incluye sububicaciones)». */
+  valueNote?: string;
   /** Placeholder del buscador del menú (p. ej. «Buscar ubicación…»). */
   searchPlaceholder?: string;
 }

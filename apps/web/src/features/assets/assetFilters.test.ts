@@ -50,3 +50,10 @@ describe('«Bodega base» (U2)', () => {
     expect(new Set(sources).size).toBe(2);
   });
 });
+
+describe('chips de ubicación (U5)', () => {
+  it('«Ubicación actual» avisa que incluye sububicaciones; «Bodega base» no lleva aviso', () => {
+    expect(byKey('locationId').valueNote).toBe('assets.includesSublocations');
+    expect(byKey('baseLocationId').valueNote).toBeUndefined();
+  });
+});
