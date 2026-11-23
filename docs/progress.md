@@ -877,3 +877,18 @@ Tercera revisión manual del PR #7. Un commit por punto; cada punto se marca aqu
 Fuera de alcance; **no se implementa**.
 
 - El filtro «Bodega» del historial (D20) es un menú simple sin búsqueda; con muchas bodegas convendrá el selector con búsqueda.
+
+## Fix ubicación
+
+Arreglo previo a F4, rama `fix/filtro-ubicacion-jerarquico`. El filtro «Ubicación» de la barra filtraba por la bodega base, pero
+su selector ofrecía todas las ubicaciones, y no incluía sububicaciones. Un commit por punto; cada punto se marca junto con su commit.
+
+- [x] Un U4 Consulta recursiva a prueba de ciclos (CYCLE) y 422 claro al crear un ciclo, con tests de ambos
+- [ ] Un U3 Filtro `locationId` (ubicación actual) incluye todas las sububicaciones, sin límite de profundidad
+- [ ] Un U1 Filtro principal «Ubicación actual» en la barra; los asignados a una persona no entran
+- [ ] Un U2 «Bodega base» pasa a «Más filtros», solo bodegas, y su filtro `baseLocationId` incluye sububicaciones
+- [ ] Un U5 Chips explícitos: «Ubicación actual: Chile (incluye sububicaciones)» y «Bodega base: …»
+- [ ] Un U6 Columna «Ubicación» (listado y ficha): nombre corto, ruta completa en tooltip, «Con <persona>»
+- [ ] Un U7 Selectores de ubicación con buscador «Buscar ubicación…» y dos líneas (patrón de WarehouseSelect)
+- [ ] Un U8 Exportación CSV y API respetan los filtros nuevos; compatibilidad de parámetros registrada
+- [ ] Un U9 Tests: árbol de 5+ niveles con rama hermana, rendimiento (500 ubicaciones, 2.000 activos) y e2e

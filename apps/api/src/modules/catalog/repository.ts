@@ -1,6 +1,7 @@
 import { and, asc, count, desc, eq, ilike, or, sql, type SQL } from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 import type { Executor } from '../../core/db/executor.js';
+import { subtreeIdsSql } from '../../core/db/location-tree.js';
 import {
   assetAssignments,
   assets,
@@ -386,12 +387,7 @@ export class CatalogRepository {
   }
   /** Ids de la ubicación y de todas sus descendientes: sirve para impedir ciclos al cambiar el padre. */
   async subtreeIds(exec: Executor, id: string): Promise<string[]> {
-    const res = await exec.execute<{ id: string }>(sql`
-      WITH RECURSIVE sub AS (
-        SELECT id FROM locations WHERE id = ${id}
-        UNION ALL
-        SELECT l.id FROM locations l JOIN sub s ON l.parent_id = s.id
-      ) SELECT id FROM sub`);
+    const res = await exec.execute<{ id: string }>(sql`SELECT id FROM ${subtreeIdsSql(id)} AS t`);
     return res.rows.map((r) => r.id);
   }
   async locationInUse(exec: Executor, id: string): Promise<boolean> {
