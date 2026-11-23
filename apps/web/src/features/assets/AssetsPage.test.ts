@@ -20,7 +20,10 @@ const asset = (n: number, over: Record<string, unknown> = {}) => ({
   category: { id: '018f0000-0000-7000-8000-0000000000b1', name: 'Sensores', extension: 'none' },
   status: { id: '018f0000-0000-7000-8000-0000000000c1', name: 'Disponible', kind: 'deployable' },
   baseLocation: null,
-  location: n === 1 ? { id: '018f0000-0000-7000-8000-0000000000d1', name: 'Sala 1' } : null,
+  location:
+    n === 1
+      ? { id: '018f0000-0000-7000-8000-0000000000d1', name: 'Sala 1', path: 'Edificio A > Sala 1' }
+      : null,
   assignedUser: n === 2 ? { id: '018f0000-0000-7000-8000-0000000000e1', name: 'Olga' } : null,
   assignedLocation: null,
   deleted: false,
@@ -58,6 +61,13 @@ describe('AssetsPage (RF-22, RF-40)', () => {
     const cards = wrapper.findAll('ul a[href^="/activos/"]');
     expect(cards).toHaveLength(2);
     expect(cards[0]!.attributes('href')).toBe('/activos/018f0000-0000-7000-8000-000000000001');
+  });
+
+  it('la columna «Ubicación» muestra el nombre corto y la ruta completa en el tooltip (U6)', async () => {
+    const { wrapper } = await mountAt('/activos', [asset(1)]);
+    const place = wrapper.findAll('[title="Edificio A > Sala 1"]');
+    expect(place.length).toBeGreaterThan(0);
+    expect(place[0]!.text()).toBe('Sala 1');
   });
 
   it('los filtros de la URL viajan a la API y la página los refleja', async () => {

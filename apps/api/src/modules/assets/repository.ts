@@ -13,8 +13,9 @@ import {
   sql,
   type SQL,
 } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
+import { alias, type AnyPgColumn as AnyColumn } from 'drizzle-orm/pg-core';
 import type { Executor } from '../../core/db/executor.js';
+import { subtreeIdsSql } from '../../core/db/location-tree.js';
 import {
   assetAssignments,
   assetLorawan,
@@ -50,6 +51,8 @@ export interface AssetRow {
   statusKind: string;
   locationId: string | null;
   locationName: string | null;
+  /** Ruta completa de la ubicación actual («Chile > Cliente > Sala»). */
+  locationPath: string | null;
   baseLocationId: string | null;
   baseLocationName: string | null;
   assignedUserId: string | null;
@@ -102,6 +105,10 @@ const SORT_COLUMNS = {
   purchaseDate: assets.purchaseDate,
   createdAt: assets.createdAt,
 } as const;
+
+/** La ubicación (columna) es la elegida o está debajo de ella, a cualquier profundidad. */
+const inSubtree = (column: AnyColumn, rootId: string): SQL =>
+  sql`${column} IN ${subtreeIdsSql(rootId)}`;
 
 function escapeLike(term: string): string {
   return term.replace(/[\\%_]/g, (c) => `\\${c}`);
@@ -185,9 +192,9 @@ export class AssetsRepository {
       f.categoryId ? eq(models.categoryId, f.categoryId) : undefined,
       f.modelId ? eq(assets.modelId, f.modelId) : undefined,
       f.statusId ? eq(assets.statusId, f.statusId) : undefined,
-      f.locationId ? eq(assets.locationId, f.locationId) : undefined,
+      f.locationId ? inSubtree(assets.locationId, f.locationId) : undefined,
       f.assignedUserId ? eq(assets.assignedUserId, f.assignedUserId) : undefined,
-      f.baseLocationId ? eq(assets.baseLocationId, f.baseLocationId) : undefined,
+      f.baseLocationId ? inSubtree(assets.baseLocationId, f.baseLocationId) : undefined,
       f.statusKind ? eq(statusLabels.kind, f.statusKind) : undefined,
       f.assigned === 'yes'
         ? or(isNotNull(assets.assignedUserId), isNotNull(assets.assignedLocationId))
@@ -231,11 +238,38 @@ export class AssetsRepository {
         .leftJoin(lnsRegistrations, eq(lnsRegistrations.assetId, assets.id))
         .where(where),
     ]);
-    return { rows, total: totals[0]?.n ?? 0 };
+    return { rows: await this.withPaths(exec, rows), total: totals[0]?.n ?? 0 };
   }
 
   async getById(exec: Executor, id: string): Promise<AssetRow | undefined> {
-    return (await this.select(exec).where(eq(assets.id, id)).limit(1))[0];
+    const rows = await this.select(exec).where(eq(assets.id, id)).limit(1);
+    return (await this.withPaths(exec, rows))[0];
+  }
+
+  /**
+   * Agrega la ruta completa de la ubicación actual. Se resuelve aparte y solo para las filas de la página: como
+   * subconsulta dentro del SELECT se evaluaba para todas las filas antes del OFFSET (RNF-06).
+   */
+  private async withPaths(
+    exec: Executor,
+    rows: Omit<AssetRow, 'locationPath'>[],
+  ): Promise<AssetRow[]> {
+    const ids = [...new Set(rows.flatMap((r) => (r.locationId ? [r.locationId] : [])))];
+    if (ids.length === 0) return rows.map((r) => ({ ...r, locationPath: null }));
+    const res = await exec.execute<{ id: string; path: string }>(sql`
+      WITH RECURSIVE up(start_id, id, parent_id, path, depth) AS (
+        SELECT l.id, l.id, l.parent_id, l.name::text, 1
+        FROM locations l WHERE l.id IN (${sql.join(
+          ids.map((i) => sql`${i}::uuid`),
+          sql`, `,
+        )})
+        UNION ALL
+        SELECT up.start_id, p.id, p.parent_id, p.name || ' > ' || up.path, up.depth + 1
+        FROM locations p JOIN up ON p.id = up.parent_id
+      ) CYCLE id SET is_cycle USING visited
+      SELECT DISTINCT ON (start_id) start_id AS id, path FROM up ORDER BY start_id, depth DESC`);
+    const paths = new Map(res.rows.map((r) => [r.id, r.path]));
+    return rows.map((r) => ({ ...r, locationPath: paths.get(r.locationId ?? '') ?? null }));
   }
 
   /** Activos con alguno de esos números de serie (sin distinguir mayúsculas), para la importación CSV (RF-66). */

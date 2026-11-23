@@ -12,6 +12,7 @@ import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { errorMessage } from '@/features/auth/errors';
 import { fetchOptions } from '@/features/catalog/api';
+import LocationSelect from '@/features/catalog/LocationSelect.vue';
 import { ApiError } from '@/shared/api/http';
 import SearchSelect from '@/shared/ui/SearchSelect.vue';
 import RemoteSelect, { type RemoteOption } from '@/shared/ui/RemoteSelect.vue';
@@ -229,11 +230,10 @@ async function submit(): Promise<void> {
           :help="t('assets.baseLocationHelp')"
           :error="fieldErrors['baseLocation']"
         >
-          <RemoteSelect
+          <LocationSelect
             id="a-location"
             :model-value="form.baseLocation"
-            source="warehouses-form"
-            :fetcher="(q: string) => fetchOptions('locations', q, { extra: { type: 'warehouse' } })"
+            scope="warehouse"
             :placeholder="t('assets.locationPlaceholder')"
             clearable
             @update:model-value="(v: RemoteOption | null) => set('baseLocation', v)"

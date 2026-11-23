@@ -1,6 +1,7 @@
 import { and, asc, count, desc, eq, ilike, or, sql, type SQL } from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 import type { Executor } from '../../core/db/executor.js';
+import { subtreeIdsSql } from '../../core/db/location-tree.js';
 import {
   assetAssignments,
   assets,
@@ -19,6 +20,8 @@ export interface ListOptions {
   /** Solo ubicaciones: deja solo ese tipo, o saca ese tipo. */
   type?: string | undefined;
   excludeType?: string | undefined;
+  /** Solo ubicaciones: saca a esa ubicación y a todo su subárbol (elegir el padre de otra). */
+  excludeSubtreeOf?: string | undefined;
   /** Solo categorías: `asset` o `consumable`. */
   scope?: string | undefined;
   q?: string | undefined;
@@ -337,6 +340,7 @@ export class CatalogRepository {
     if (o.active !== undefined) conds.push(sql`l.active = ${o.active}`);
     if (o.type) conds.push(sql`l.type = ${o.type}`);
     if (o.excludeType) conds.push(sql`l.type <> ${o.excludeType}`);
+    if (o.excludeSubtreeOf) conds.push(sql`l.id NOT IN ${subtreeIdsSql(o.excludeSubtreeOf)}`);
     const where = conds.length ? sql`WHERE ${sql.join(conds, sql` AND `)}` : sql``;
     const descending = o.sort?.startsWith('-') ?? false;
     const key = (descending ? o.sort!.slice(1) : o.sort) ?? '';
@@ -386,12 +390,7 @@ export class CatalogRepository {
   }
   /** Ids de la ubicación y de todas sus descendientes: sirve para impedir ciclos al cambiar el padre. */
   async subtreeIds(exec: Executor, id: string): Promise<string[]> {
-    const res = await exec.execute<{ id: string }>(sql`
-      WITH RECURSIVE sub AS (
-        SELECT id FROM locations WHERE id = ${id}
-        UNION ALL
-        SELECT l.id FROM locations l JOIN sub s ON l.parent_id = s.id
-      ) SELECT id FROM sub`);
+    const res = await exec.execute<{ id: string }>(sql`SELECT id FROM ${subtreeIdsSql(id)} AS t`);
     return res.rows.map((r) => r.id);
   }
   async locationInUse(exec: Executor, id: string): Promise<boolean> {

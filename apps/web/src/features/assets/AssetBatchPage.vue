@@ -11,6 +11,7 @@ import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { errorMessage } from '@/features/auth/errors';
 import { fetchOptions } from '@/features/catalog/api';
+import LocationSelect from '@/features/catalog/LocationSelect.vue';
 import { ApiError } from '@/shared/api/http';
 import RemoteSelect from '@/shared/ui/RemoteSelect.vue';
 import { useUnsavedChanges } from '@/shared/ui/useUnsavedChanges';
@@ -150,11 +151,10 @@ const set = <K extends keyof BatchForm>(key: K, value: BatchForm[K]) => (form.va
         :help="t('assets.baseLocationHelp')"
         :error="fieldErrors['baseLocation']"
       >
-        <RemoteSelect
+        <LocationSelect
           id="b-location"
           :model-value="form.baseLocation"
-          source="warehouses-batch"
-          :fetcher="(q: string) => fetchOptions('locations', q, { extra: { type: 'warehouse' } })"
+          scope="warehouse"
           :placeholder="t('assets.checkin.returnToPlaceholder')"
           @update:model-value="(v) => set('baseLocation', v)"
         />

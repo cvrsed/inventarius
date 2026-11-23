@@ -49,6 +49,7 @@ type ModelPatch = { [K in keyof ModelInput]?: ModelInput[K] | undefined } & {
 interface LocationListQuery extends ListQuery {
   type?: LocationType | undefined;
   excludeType?: LocationType | undefined;
+  excludeSubtreeOf?: string | undefined;
 }
 interface ModelListQuery extends ListQuery {
   manufacturerId?: string | undefined;
@@ -244,7 +245,12 @@ export class CatalogService {
         }),
         snapshot: (r) => ({ path: r.path, type: r.type, address: r.address, active: r.active }),
         list: (e, q) =>
-          repo.listLocations(e, { ...listOpts(q), type: q.type, excludeType: q.excludeType }),
+          repo.listLocations(e, {
+            ...listOpts(q),
+            type: q.type,
+            excludeType: q.excludeType,
+            excludeSubtreeOf: q.excludeSubtreeOf,
+          }),
         get: (e, id) => repo.getLocation(e, id),
         insert: async (e, v) => repo.insertLocation(e, v),
         update: (e, id, v) => repo.updateLocation(e, id, compact(v)),

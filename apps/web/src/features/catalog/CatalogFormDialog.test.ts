@@ -261,4 +261,71 @@ describe('renombrar o desactivar lo que usan consumibles (D13)', () => {
     // La abreviatura también se ve en todos los consumibles: sí pregunta solo por nombre; aquí no es el nombre.
     expect(useConfirm().state.open).toBe(false);
   });
+
+  describe('«Ubicación superior» al editar (F1)', () => {
+    const id = (n: number) => `018f0000-0000-7000-8000-0000000000${String(n).padStart(2, '0')}`;
+    // Chile > Lafquen > Parcela h22 > Santiago; Perú queda aparte.
+    const tree = [
+      { id: id(1), name: 'Chile', parent: null },
+      { id: id(2), name: 'Lafquen', parent: id(1) },
+      { id: id(3), name: 'Parcela h22', parent: id(2) },
+      { id: id(4), name: 'Santiago', parent: id(3) },
+      { id: id(5), name: 'Perú', parent: null },
+    ];
+    const dto = (l: (typeof tree)[number]) => ({
+      id: l.id,
+      name: l.name,
+      parent: null,
+      path: l.name,
+      type: 'other',
+      address: null,
+      active: true,
+      updatedAt: '2026-11-16T12:00:00.000Z',
+    });
+    /** Hace lo que la API: con `excludeSubtreeOf` saca a esa ubicación y a todo su subárbol. */
+    const locationsApi = (_: RequestInit | undefined, url: string) => {
+      const out = new URL(url, 'http://x').searchParams.get('excludeSubtreeOf');
+      const gone = new Set<string>();
+      if (out) {
+        gone.add(out);
+        for (let grew = true; grew;) {
+          grew = false;
+          for (const l of tree) {
+            if (l.parent && gone.has(l.parent) && !gone.has(l.id)) {
+              gone.add(l.id);
+              grew = true;
+            }
+          }
+        }
+      }
+      const data = tree.filter((l) => !gone.has(l.id)).map(dto);
+      return { data, meta: { page: 1, pageSize: 30, total: data.length } };
+    };
+
+    it('al editar «Chile» no ofrece Chile, Lafquen, Parcela h22 ni Santiago', async () => {
+      mockApi({ 'GET /api/v1/locations': locationsApi });
+      await open('locations', dto(tree[0]!));
+      q<HTMLButtonElement>('#cf-parent').click();
+      await flushPromises();
+      const options = [...document.body.querySelectorAll('[role="option"]')].map(
+        (o) => o.textContent ?? '',
+      );
+      expect(options.join('|')).toContain('Perú');
+      for (const name of ['Chile', 'Lafquen', 'Parcela h22', 'Santiago'])
+        expect(
+          options.some((o) => o.includes(name)),
+          name,
+        ).toBe(false);
+    });
+
+    it('al crear ofrece todas las ubicaciones', async () => {
+      const fetchMock = mockApi({ 'GET /api/v1/locations': locationsApi });
+      await open('locations');
+      q<HTMLButtonElement>('#cf-parent').click();
+      await flushPromises();
+      const urls = fetchMock.mock.calls.map((c) => String(c[0]));
+      expect(urls.some((u) => u.includes('excludeSubtreeOf'))).toBe(false);
+      expect(document.body.querySelectorAll('[role="option"]')).toHaveLength(5);
+    });
+  });
 });

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import UButton from '@nuxt/ui/components/Button.vue';
-import { toRef } from 'vue';
+import { computed, toRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { FilterDef } from './types';
 import { useFilterValueLabel } from './useFilters';
@@ -10,6 +10,9 @@ const props = defineProps<{ def: FilterDef; value: string }>();
 const emit = defineEmits<{ remove: [] }>();
 const { t } = useI18n();
 const valueLabel = useFilterValueLabel(props.def, toRef(props, 'value'));
+const shown = computed(() =>
+  props.def.valueNote ? `${valueLabel.value} (${props.def.valueNote})` : valueLabel.value,
+);
 </script>
 
 <template>
@@ -18,7 +21,7 @@ const valueLabel = useFilterValueLabel(props.def, toRef(props, 'value'));
     data-filter-chip
   >
     <span class="text-default">
-      <span class="text-muted">{{ def.label }}:</span> {{ valueLabel }}
+      <span class="text-muted">{{ def.label }}:</span> {{ shown }}
     </span>
     <UButton
       icon="i-lucide-x"
@@ -26,7 +29,7 @@ const valueLabel = useFilterValueLabel(props.def, toRef(props, 'value'));
       variant="ghost"
       size="xs"
       class="rounded-full"
-      :aria-label="t('filters.remove', { name: `${def.label}: ${valueLabel}` })"
+      :aria-label="t('filters.remove', { name: `${def.label}: ${shown}` })"
       @click="emit('remove')"
     />
   </span>

@@ -9,7 +9,7 @@ import UTextarea from '@nuxt/ui/components/Textarea.vue';
 import { useToast } from '@nuxt/ui/composables/useToast';
 import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { fetchOptions } from '@/features/catalog/api';
+import LocationSelect from '@/features/catalog/LocationSelect.vue';
 import { errorMessage } from '@/features/auth/errors';
 import { ApiError } from '@/shared/api/http';
 import AppSelect from '@/shared/ui/AppSelect.vue';
@@ -103,14 +103,11 @@ const kinds = [
             :fetcher="fetchAssignees"
             :placeholder="t('assets.checkout.userPlaceholder')"
           />
-          <RemoteSelect
+          <LocationSelect
             v-else
             id="co-target"
             v-model="target"
-            source="sites-checkout"
-            :fetcher="
-              (q: string) => fetchOptions('locations', q, { extra: { excludeType: 'warehouse' } })
-            "
+            scope="site"
             :placeholder="t('assets.locationPlaceholder')"
           />
         </UFormField>

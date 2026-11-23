@@ -1,4 +1,7 @@
+import { sql } from 'drizzle-orm';
+import { PgDialect } from 'drizzle-orm/pg-core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { subtreeIdsSql } from '../../core/db/location-tree.js';
 import { createTestEnv, type TestClient, type TestEnv } from '../../../test/app.js';
 
 let env: TestEnv;
@@ -359,12 +362,49 @@ describe('ubicaciones jerárquicas (RF-12)', () => {
       { 'if-match': `"${a.updatedAt}"` },
     );
     expect(self.statusCode).toBe(422);
+    expect(self.json().detail).toBe('Una ubicación no puede quedar dentro de sí misma');
+    expect(JSON.stringify(self.json())).toContain('que no sea ella ni una de sus hijas');
     const loop = await operator.patch(
       `${base}/locations/${a.id}`,
       { parentId: b.id },
       { 'if-match': `"${a.updatedAt}"` },
     );
     expect(loop.statusCode).toBe(422);
+    expect(loop.json().detail).toBe('Una ubicación no puede quedar dentro de sí misma');
+  });
+
+  it('con datos que ya tienen un ciclo, las consultas del árbol terminan', async () => {
+    const a = await create(operator, 'locations', { name: 'Dato cíclico A' });
+    const b = await create(operator, 'locations', { name: 'Dato cíclico B', parentId: a.id });
+    // Un ciclo que la API no deja crear: solo se logra tocando la base a mano (datos dañados).
+    await env.db.migratorPool.query('UPDATE locations SET parent_id = $1 WHERE id = $2', [
+      b.id,
+      a.id,
+    ]);
+    const q = new PgDialect().sqlToQuery(sql`SELECT id FROM ${subtreeIdsSql(a.id)} AS t`);
+    const sub = await env.db.migratorPool.query<{ id: string }>(q.sql, q.params);
+    expect(sub.rows.map((r) => r.id).sort()).toEqual([a.id, b.id].sort());
+    expect((await reader.get(`${base}/locations?q=cíclico`)).statusCode).toBe(200);
+  }, 15_000);
+
+  it('excludeSubtreeOf deja fuera a la ubicación y a todos sus descendientes, a cualquier profundidad', async () => {
+    const chile = await create(operator, 'locations', { name: 'Excl Chile' });
+    const lafquen = await create(operator, 'locations', {
+      name: 'Excl Lafquen',
+      parentId: chile.id,
+    });
+    const parcela = await create(operator, 'locations', {
+      name: 'Excl Parcela',
+      parentId: lafquen.id,
+    });
+    await create(operator, 'locations', { name: 'Excl Santiago', parentId: parcela.id });
+    await create(operator, 'locations', { name: 'Excl Peru' });
+    const res = await reader.get(
+      `${base}/locations?q=Excl&pageSize=100&excludeSubtreeOf=${chile.id}`,
+    );
+    expect(res.statusCode, res.body).toBe(200);
+    expect(res.json().data.map((l: { name: string }) => l.name)).toEqual(['Excl Peru']);
+    expect(res.json().meta.total).toBe(1);
   });
 
   it('no se borra una ubicación con hijos (409) y el padre inexistente es 422', async () => {

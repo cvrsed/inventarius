@@ -877,3 +877,57 @@ Tercera revisión manual del PR #7. Un commit por punto; cada punto se marca aqu
 Fuera de alcance; **no se implementa**.
 
 - El filtro «Bodega» del historial (D20) es un menú simple sin búsqueda; con muchas bodegas convendrá el selector con búsqueda.
+
+## Fix ubicación
+
+Arreglo previo a F4, rama `fix/filtro-ubicacion-jerarquico`. El filtro «Ubicación» de la barra filtraba por la bodega base, pero
+su selector ofrecía todas las ubicaciones, y no incluía sububicaciones. Un commit por punto; cada punto se marca junto con su commit.
+
+- [x] Un U4 Consulta recursiva a prueba de ciclos (CYCLE) y 422 claro al crear un ciclo, con tests de ambos
+- [x] Un U3 Filtro `locationId` (ubicación actual) incluye todas las sububicaciones, sin límite de profundidad
+- [x] Un U1 Filtro principal «Ubicación actual» en la barra; los asignados a una persona no entran
+- [x] Un U2 «Bodega base» pasa a «Más filtros», solo bodegas, y su filtro `baseLocationId` incluye sububicaciones
+- [x] Un U5 Chips explícitos: «Ubicación actual: Chile (incluye sububicaciones)» y «Bodega base: …»
+- [x] Un U6 Columna «Ubicación» (listado y ficha): nombre corto, ruta completa en tooltip, «Con <persona>»
+- [x] Un U7 Selectores de ubicación con buscador «Buscar ubicación…» y dos líneas (patrón de WarehouseSelect)
+- [x] Un U8 Exportación CSV y API respetan los filtros nuevos; compatibilidad de parámetros registrada
+- [x] Un U9 Tests: árbol de 5+ niveles con rama hermana, rendimiento (500 ubicaciones, 2.000 activos) y e2e
+
+### Resumen del arreglo
+
+- **Causa:** el filtro «Ubicación» de la barra era `baseLocationId` (siempre una bodega, RF-20) con un selector de todas las
+  ubicaciones, y los dos filtros comparaban por igualdad exacta: filtrar por un sitio de cliente o por un padre daba 0.
+- **Ahora:** «Ubicación actual» (`locationId`, dónde está hoy: sitio o su bodega) es el filtro de la barra; «Bodega base»
+  (`baseLocationId`) está en «Filtros» y solo ofrece bodegas. Ambos incluyen todas las sububicaciones con una subconsulta
+  `WITH RECURSIVE … CYCLE` (`core/db/location-tree.ts`), sin joins de N niveles y sin riesgo de bucle.
+- **Ciclos:** la «Ubicación superior» que cree un ciclo (incluida ella misma) responde 422 (ya existía, ahora con test del
+  mensaje); `subtreeIds` usaba `UNION ALL` y habría girado sin fin con datos cíclicos.
+- **Ruta:** el listado y la ficha traen `location.path`. Se resuelve en una consulta aparte solo para las filas de la página:
+  como subconsulta del `SELECT` se evaluaba antes del `OFFSET` y la «página profunda» pasó de ~85 ms a >30 s (lo detectó el
+  test de rendimiento de RNF-06).
+- **Rendimiento** (500 ubicaciones en 6 niveles, 2.000 activos, 60 muestras, `inject`): p95 de 77 a 106 ms en los seis casos
+  (raíz, nivel 2, hoja, bodega base y combinados), dentro de los 300 ms. Los 10.000 activos de RNF-06 siguen dentro del
+  presupuesto (p95 ≤ 116 ms).
+- **UI:** chips explícitos, columna «Ubicación» con nombre corto y ruta en tooltip, `LocationSelect` con «Buscar ubicación…»
+  y dos líneas (nombre y ruta) en alta, lote, asignar y devolver; los filtros usan el mismo patrón.
+
+### Decisiones provisionales del arreglo
+
+Q85 a Q89 en `open-questions.md`: parámetros de la API sin renombrar (solo más alcance), conteo del Inicio por bodega exacta,
+aviso «incluye sububicaciones» en ambos chips (corregido en la revisión del PR #8), quién entra en «Ubicación actual», y casos límite (ciclos ya presentes, tipos).
+
+### Cómo probar el arreglo
+
+- **API:** `pnpm --filter @inventarius/api test:int -- assets.location` (árbol de 6 niveles con rama hermana, ciclo en los
+  datos, CSV, ruta) y `catalog.int` (ciclos al cambiar el padre).
+- **Manual:** crea Chile › Cliente › Edificio › Piso › Sala; asigna un activo a «Sala». En Activos filtra por «Ubicación
+  actual» = Sala y luego = Chile: aparece en ambos, con el chip «(incluye sububicaciones)» y la ruta en el tooltip de la
+  columna. Un activo asignado a una persona no aparece. «Filtros» → «Bodega base» solo lista bodegas.
+- **e2e:** `e2e/tests/location-filter.spec.ts` (escritorio y 360 px) y los ajustes en `filters-menu.spec.ts` e `inventory.spec.ts`.
+
+### Revisión del PR #8
+
+- F1: «Ubicación superior» al editar una ubicación no ofrece la propia ni su subárbol (a cualquier profundidad): la API acepta
+  `excludeSubtreeOf` en `GET /locations` y el formulario lo usa. La validación al guardar y el 422 siguen como defensa.
+  Pruebas: `catalog.int.test.ts` y `CatalogFormDialog.test.ts` (editar «Chile» no ofrece Chile, Lafquen, Parcela h22 ni Santiago).
+- F2: el chip de «Bodega base» también dice «(incluye sububicaciones)» (`assetFilters.test.ts`).

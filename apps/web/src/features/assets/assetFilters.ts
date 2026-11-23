@@ -12,6 +12,8 @@ const catalog = (
   placement: 'bar' | 'more',
   barLabel?: string,
   searchPlaceholder?: string,
+  /** Filtros extra de la búsqueda (p. ej. solo bodegas) y nombre propio de la fuente en la caché. */
+  restrict?: { source: string; extra: Record<string, string> },
 ): FilterDef => ({
   kind: 'remote',
   key,
@@ -19,16 +21,21 @@ const catalog = (
   placement,
   ...(barLabel ? { barLabel } : {}),
   ...(searchPlaceholder ? { searchPlaceholder } : {}),
-  source: section,
-  fetcher: (q) => fetchOptions(section, q, { all: true }),
+  source: restrict?.source ?? section,
+  fetcher: (q) =>
+    fetchOptions(section, q, { all: true, ...(restrict ? { extra: restrict.extra } : {}) }),
   resolve: (id) => fetchOptionById(section, id),
 });
 
 /**
- * Filtros del listado de activos (RF-22). En la barra de escritorio van Estado, Categoría y Ubicación base; el resto,
+ * Filtros del listado de activos (RF-22). En la barra de escritorio van Estado, Categoría y Ubicación actual; el resto,
  * tras «+ Filtros». En móvil todos van al panel inferior.
  */
 export function assetFilterDefs(t: Translate): FilterDef[] {
+  const withSubs = (def: FilterDef): FilterDef => ({
+    ...def,
+    valueNote: t('assets.includesSublocations'),
+  });
   const options = (keys: string[], prefix: string): FilterOption[] =>
     keys.map((value) => ({ value, label: t(`${prefix}.${value}`) }));
   return [
@@ -48,13 +55,15 @@ export function assetFilterDefs(t: Translate): FilterDef[] {
       undefined,
       t('filters.search.categories'),
     ),
-    catalog(
-      'baseLocationId',
-      'locations',
-      t('assets.filterBaseLocation'),
-      'bar',
-      t('assets.filterLocationShort'),
-      t('filters.search.locations'),
+    withSubs(
+      catalog(
+        'locationId',
+        'locations',
+        t('assets.filterLocation'),
+        'bar',
+        undefined,
+        t('filters.search.locations'),
+      ),
     ),
     catalog(
       'modelId',
@@ -64,13 +73,16 @@ export function assetFilterDefs(t: Translate): FilterDef[] {
       undefined,
       t('filters.search.models'),
     ),
-    catalog(
-      'locationId',
-      'locations',
-      t('assets.filterLocation'),
-      'more',
-      undefined,
-      t('filters.search.locations'),
+    withSubs(
+      catalog(
+        'baseLocationId',
+        'locations',
+        t('assets.filterBaseLocation'),
+        'more',
+        undefined,
+        t('filters.search.locations'),
+        { source: 'warehouses', extra: { type: 'warehouse' } },
+      ),
     ),
     {
       kind: 'remote',

@@ -53,9 +53,10 @@ export const assetFiltersSchema = z.object({
   categoryId: z.uuid().optional(),
   modelId: z.uuid().optional(),
   statusId: z.uuid().optional(),
+  /** Ubicación actual (donde está hoy): la elegida y todas sus sububicaciones. Los asignados a una persona no la tienen. */
   locationId: z.uuid().optional(),
   assignedUserId: z.uuid().optional(),
-  /** Bodega base del activo (stock por bodega del Inicio, RF-28). */
+  /** Bodega base del activo (stock por bodega del Inicio, RF-28): la elegida y todas sus sububicaciones. */
   baseLocationId: z.uuid().optional(),
   /** Tipo del estado (no su nombre): renombrar un estado no rompe los enlaces del Inicio. */
   statusKind: statusKindSchema.optional(),
@@ -92,7 +93,7 @@ export const assetListItemSchema = z.object({
   category: refSchema.extend({ extension: categoryExtensionSchema }),
   status: refSchema.extend({ kind: statusKindSchema }),
   /** Dónde está ahora; vacío si lo tiene una persona (ver `assignedUser`). */
-  location: refSchema.nullable(),
+  location: refSchema.extend({ path: z.string() }).nullable(),
   /** Bodega donde vive el activo cuando no está asignado. */
   baseLocation: refSchema.nullable(),
   assignedUser: refSchema.nullable(),
