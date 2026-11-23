@@ -58,9 +58,9 @@ test('el menú de ubicación: dos líneas, ancho acotado, sin recortes y búsque
   await page.goto('/activos');
   const mobile = info.project.name === 'mobile';
   if (mobile) await page.locator('#filters-panel-button').click();
-  else expect(await page.locator('#filter-baseLocationId').boundingBox()).toBeTruthy();
+  else expect(await page.locator('#filter-locationId').boundingBox()).toBeTruthy();
 
-  await page.locator('#filter-baseLocationId').click();
+  await page.locator('#filter-locationId').click();
   const listbox = page.getByRole('listbox');
   await expect(listbox).toBeVisible();
 
@@ -102,12 +102,12 @@ test('el menú de ubicación: dos líneas, ancho acotado, sin recortes y búsque
   await expectNoA11yViolations(page); // menú ABIERTO
 
   await option.click();
-  await expect(page).toHaveURL(new RegExp(`baseLocationId=${leaf.id}`));
+  await expect(page).toHaveURL(new RegExp(`locationId=${leaf.id}`));
   if (mobile) await page.getByRole('button', { name: /^Ver \d+ resultado/ }).click();
   else await page.keyboard.press('Escape');
 
   // El chip muestra solo el nombre del lugar, entero (envuelve, no recorta).
-  const chip = page.locator('[data-filter-chip]').filter({ hasText: 'Ubicación base:' });
+  const chip = page.locator('[data-filter-chip]').filter({ hasText: 'Ubicación actual:' });
   await expect(chip).toContainText(leafName);
   await expect(chip).not.toContainText('Empresa Ejemplo');
   await expectNothingTruncated(chip);

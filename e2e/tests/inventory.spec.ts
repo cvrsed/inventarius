@@ -577,10 +577,10 @@ test.describe('listado de activos (RF-22, RF-26, RF-40)', () => {
       await expect(page.getByRole('dialog', { name: 'Filtros' })).toBeVisible();
       await expectNoA11yViolations(page); // panel inferior ABIERTO
     } else {
-      for (const id of ['statusId', 'categoryId', 'baseLocationId']) {
+      for (const id of ['statusId', 'categoryId', 'locationId']) {
         await expect(page.locator(`#filter-${id}`)).toBeVisible();
       }
-      await expect(page.locator('#filter-baseLocationId')).toHaveText('Ubicación');
+      await expect(page.locator('#filter-locationId')).toHaveText('Ubicación actual');
       await expect(modelField).toHaveCount(0); // Modelo está tras «+ Filtros»
       await page.locator('#filters-more').click();
       await expectNoA11yViolations(page); // «+ Filtros» ABIERTO

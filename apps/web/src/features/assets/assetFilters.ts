@@ -25,7 +25,7 @@ const catalog = (
 });
 
 /**
- * Filtros del listado de activos (RF-22). En la barra de escritorio van Estado, Categoría y Ubicación base; el resto,
+ * Filtros del listado de activos (RF-22). En la barra de escritorio van Estado, Categoría y Ubicación actual; el resto,
  * tras «+ Filtros». En móvil todos van al panel inferior.
  */
 export function assetFilterDefs(t: Translate): FilterDef[] {
@@ -49,11 +49,11 @@ export function assetFilterDefs(t: Translate): FilterDef[] {
       t('filters.search.categories'),
     ),
     catalog(
-      'baseLocationId',
+      'locationId',
       'locations',
-      t('assets.filterBaseLocation'),
+      t('assets.filterLocation'),
       'bar',
-      t('assets.filterLocationShort'),
+      undefined,
       t('filters.search.locations'),
     ),
     catalog(
@@ -65,9 +65,9 @@ export function assetFilterDefs(t: Translate): FilterDef[] {
       t('filters.search.models'),
     ),
     catalog(
-      'locationId',
+      'baseLocationId',
       'locations',
-      t('assets.filterLocation'),
+      t('assets.filterBaseLocation'),
       'more',
       undefined,
       t('filters.search.locations'),

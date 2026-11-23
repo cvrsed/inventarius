@@ -613,11 +613,10 @@ export const messages = {
     filterStatus: 'Estado',
     filterCategory: 'Categoría',
     filterModel: 'Modelo',
-    filterLocation: 'Ubicación',
+    filterLocation: 'Ubicación actual',
     filterAssignee: 'Asignado a',
     filterDeleted: 'Dados de baja',
     filterBaseLocation: 'Ubicación base',
-    filterLocationShort: 'Ubicación',
     filterStatusKind: 'Grupo de estados',
     statusKindOptions: {
       deployable: 'Estados asignables',
