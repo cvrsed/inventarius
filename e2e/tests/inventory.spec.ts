@@ -21,7 +21,7 @@ test.beforeEach(async ({ page }) => {
 /** Abre un selector con búsqueda, escribe y elige una opción. */
 async function pick(page: Page, scope: ReturnType<Page['locator']>, label: RegExp, option: string) {
   await scope.getByRole('button', { name: label }).click();
-  await page.getByPlaceholder(/Buscar…/).fill(option.slice(0, 12));
+  await page.getByPlaceholder(/Buscar[^…]*…/).fill(option.slice(0, 12));
   await page.getByRole('option', { name: option }).click();
   // Hasta que el panel anterior se cierre sigue en el DOM con su propio buscador: se espera antes de seguir.
   await expect(page.getByRole('listbox')).toBeHidden();
