@@ -525,7 +525,7 @@ Segunda revisión manual del PR #6 (2026-11-19). Cada punto va en su propio comm
 
 - [x] P18b Serie única por (modelo, serie) sin distinguir mayúsculas; el CSV empareja por serie y desempata con la columna «modelo»
 - [x] R1 Versión LoRaWAN y región faltantes en el activo se toman del device profile al registrar
-- [ ] R2 AppKey enmascarada de la confirmación sin partirse en dos líneas
+- [x] R2 AppKey enmascarada de la confirmación sin partirse en dos líneas
 - [x] R3 Las pruebas contra ChirpStack real borran lo que crean, usan prefijo por corrida y exigen endpoint marcado como de prueba
 - [x] R4 Vincular: un JoinEUI en ceros no pisa el local; el usuario elige por campo qué adoptar
 - [x] R5 Vincular muestra el device profile con nombre, versión y región
@@ -848,7 +848,7 @@ Fuera de alcance de F3.5; **no se implementa**.
 Tercera revisión manual del PR #7. Un commit por punto; cada punto se marca aquí junto con su commit.
 
 - [x] R1 Roles: la descripción se ajusta a 2 líneas (texto completo en tooltip) y la tabla no desborda en escritorio
-- [ ] R2 Confirmación del ajuste: «solo quien tenga permiso para anular movimientos puede anularlo»
+- [x] R2 Confirmación del ajuste: «solo quien tenga permiso para anular movimientos puede anularlo»
 - [ ] R3 Diálogo «Anular movimiento»: líneas de saldo con nombre corto de bodega y ruta en tooltip
 - [ ] R4 Historial e Inicio: línea de bodega con nombre corto y ruta en tooltip en todos los tipos
 - [ ] R5 «Cambiar estado» no ofrece ni acepta estados de baja; la única vía es «Dar de baja»

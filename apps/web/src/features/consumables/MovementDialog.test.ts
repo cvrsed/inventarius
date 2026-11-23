@@ -138,7 +138,7 @@ describe('ajuste (D6)', () => {
       { label: 'Motivo', value: 'Merma o daño' },
     ]);
     expect(confirm.state.options?.footnote).toBe(
-      'Queda en el libro y no se puede editar; solo un administrador puede anularlo.',
+      'Queda en el libro y no se puede editar; solo quien tenga permiso para anular movimientos puede anularlo.',
     );
     expect(confirm.state.options?.danger).not.toBe(true);
     expect(posted(fetchMock, 'adjustments')).toHaveLength(0);

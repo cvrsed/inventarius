@@ -584,7 +584,7 @@ export const messages = {
         note: 'Nota',
       },
       confirmAdjustFootnote:
-        'Queda en el libro y no se puede editar; solo un administrador puede anularlo.',
+        'Queda en el libro y no se puede editar; solo quien tenga permiso para anular movimientos puede anularlo.',
       availableHelp: 'Disponible en {name}: {qty}',
       maxSubtractHelp: 'Máximo a restar en {name}: {max}',
       confirmAdjustAction: 'Confirmar ajuste',
