@@ -854,6 +854,24 @@ Tercera revisión manual del PR #7. Un commit por punto; cada punto se marca aqu
 - [x] R5 «Cambiar estado» no ofrece ni acepta estados de baja; la única vía es «Dar de baja»
 - [x] R6 Auditoría de una devolución: «Identificador de quien devolvió»
 
+### Cómo probar la revisión 3
+
+- **R1:** Roles en escritorio (1280, 1024 y 768 px): la descripción ocupa hasta 2 líneas (el texto completo sale al pasar el
+  cursor) y la columna «Usuarios» y las acciones se ven sin scroll horizontal. e2e: `admin.spec.ts` («roles (R1)»).
+- **R2:** registra un ajuste y mira la confirmación: «Queda en el libro y no se puede editar; solo quien tenga permiso para
+  anular movimientos puede anularlo.»
+- **R3:** anula un movimiento de una bodega anidada: las líneas dicen «En Bodega X el stock pasará de…» con el nombre corto;
+  la ruta completa sale al pasar el cursor.
+- **R4:** historial de un consumible e Inicio → «Últimos movimientos», con ingreso, entrega, devolución, ajuste y anulaciones:
+  la línea de bodega es el nombre corto (una sola línea a 360 px) y la ruta completa va en el tooltip. Auditoría sigue con la
+  ruta. e2e: `consumables.spec.ts` («R4»).
+- **R5:** ficha de un activo → «Cambiar estado»: el selector no ofrece «Dado de baja» (tampoco en Editar/alta, alta en lote
+  ni «Devolver»). Por API, `POST /assets/:id/status` con un estado de tipo archivado responde 422 («Para dar de baja un activo
+  usa «Dar de baja»»). La baja sigue por «Dar de baja» con motivo. Pruebas: `assets.int.test.ts`, `AssetActionDialog.test.ts` y
+  e2e `inventory.spec.ts` (decisión Q83 en `open-questions.md`).
+- **R6:** Auditoría de una devolución (y de la anulación de una devolución): «Identificador de quien devolvió»; en la entrega
+  sigue «Identificador del receptor».
+
 ### Backlog de la revisión 3
 
 Fuera de alcance; **no se implementa**.

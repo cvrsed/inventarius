@@ -79,14 +79,16 @@ function askDelete(role: RoleDto): void {
       :columns="columns"
       :loading="isPending"
       :get-row-id="(r: RoleDto) => r.id"
-      :ui="{ td: 'whitespace-normal align-top', th: 'whitespace-nowrap' }"
+      :ui="{ td: 'whitespace-normal align-top px-2 xl:px-4', th: 'whitespace-nowrap px-2 xl:px-4' }"
       class="rounded-lg border border-default"
     >
       <template #empty>{{ t('roles.empty') }}</template>
       <template #description-cell="{ row }">
-        <span class="line-clamp-2 max-w-md break-words" :title="row.original.description ?? ''">{{
-          row.original.description
-        }}</span>
+        <span
+          class="line-clamp-2 max-w-xs xl:max-w-md break-words"
+          :title="row.original.description ?? ''"
+          >{{ row.original.description }}</span
+        >
       </template>
       <template #name-cell="{ row }">
         <span class="flex flex-wrap items-center gap-2">
