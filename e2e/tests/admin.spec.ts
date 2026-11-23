@@ -264,3 +264,26 @@ test.describe('auditoría (RF-31)', () => {
     await eachTheme(page, () => expectNoA11yViolations(page));
   });
 });
+
+test('roles (R1): sin desborde horizontal en escritorio', async ({ page }, info) => {
+  test.skip(info.project.name === 'mobile', 'la tabla solo existe en escritorio');
+  for (const width of [1280, 1024, 768]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto('/roles');
+    await expect(page.getByRole('heading', { name: 'Roles' })).toBeVisible();
+    await expect(page.locator('tbody tr').first()).toBeVisible();
+    await expect
+      .poll(
+        () =>
+          page.evaluate(() => {
+            const wrapper = document.querySelector('table')?.parentElement;
+            return {
+              page: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+              table: wrapper ? wrapper.scrollWidth > wrapper.clientWidth : null,
+            };
+          }),
+        { message: `Roles desborda a ${width}px` },
+      )
+      .toEqual({ page: false, table: false });
+  }
+});
