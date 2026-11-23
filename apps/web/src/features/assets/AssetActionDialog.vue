@@ -11,6 +11,7 @@ import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { errorMessage } from '@/features/auth/errors';
 import { fetchOptions } from '@/features/catalog/api';
+import LocationSelect from '@/features/catalog/LocationSelect.vue';
 import { ApiError } from '@/shared/api/http';
 import RemoteSelect, { type RemoteOption } from '@/shared/ui/RemoteSelect.vue';
 import { useAssetMutations } from './api';
@@ -150,11 +151,10 @@ async function submit(): Promise<void> {
           required
           :error="returnError || undefined"
         >
-          <RemoteSelect
+          <LocationSelect
             id="ac-location"
             v-model="returnTo"
-            source="warehouses-checkin"
-            :fetcher="(q: string) => fetchOptions('locations', q, { extra: { type: 'warehouse' } })"
+            scope="warehouse"
             :placeholder="t('assets.checkin.returnToPlaceholder')"
           />
         </UFormField>
