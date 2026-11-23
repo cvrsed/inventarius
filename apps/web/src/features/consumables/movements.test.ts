@@ -124,6 +124,20 @@ describe('historial de movimientos', () => {
     expect(v.place).toBe('Bodega central');
   });
 
+  it('con la ruta completa en la bodega, muestra el nombre corto y la ruta va al tooltip (R4)', () => {
+    const location = {
+      id: '0190d1a0-0000-7000-8000-0000000000a1',
+      name: 'Zensi > Chile > Santiago > Bodega Gambi',
+    };
+    for (const kind of ['receipt', 'delivery', 'return', 'adjustment', 'reversal'] as const) {
+      const v = describeMovement(movement({ kind, location }), par, t);
+      expect(v.place, kind).toBe('Bodega Gambi');
+      expect(v.placeTitle, kind).toBe('Zensi > Chile > Santiago > Bodega Gambi');
+      expect(v.route, kind).toBeNull();
+    }
+    expect(describeMovement(movement({}), par, t).placeTitle).toBeUndefined();
+  });
+
   it('una anulación muestra su motivo como tal', () => {
     const v = describeMovement(
       movement({ kind: 'reversal', delta: '-4', note: 'Entrega duplicada' }),

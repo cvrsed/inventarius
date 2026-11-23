@@ -549,7 +549,7 @@ async function goTo(movementId: string): Promise<void> {
               </p>
               <p
                 class="m-0 text-sm text-default"
-                :title="view.route?.title"
+                :title="view.placeTitle"
                 :data-testid="view.route ? 'transfer-route' : undefined"
               >
                 {{ view.place }}

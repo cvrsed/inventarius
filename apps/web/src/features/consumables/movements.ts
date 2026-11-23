@@ -43,8 +43,10 @@ export interface MovementView {
   quantity: string;
   /** Lo que dice la entrada: «Ingreso +12 pares» o «Traslado 2 pares» (la ruta va aparte, D15). */
   headline: string;
-  /** Dónde: una bodega (con su ruta), o «origen → destino» con los nombres cortos en un traslado. */
+  /** Dónde: el nombre corto de la bodega, o «origen → destino» con los nombres cortos en un traslado. */
   place: string;
+  /** Rutas completas para el tooltip de `place`; `undefined` si el nombre corto ya es la ruta entera. */
+  placeTitle: string | undefined;
   /** Solo en un traslado: la ruta con nombres cortos y, para el tooltip, con las rutas completas. */
   route: { text: string; title: string } | null;
   /** Líneas «campo: valor» propias del tipo (receptor, proveedor, motivo...). */
@@ -67,7 +69,8 @@ export function describeMovement(m: MovementDto, unit: UnitRef, t: Translate): M
   if (m.reason) add('reason', t(`consumables.reasons.${m.reason}`));
   add(m.kind === 'reversal' ? 'reversalReason' : 'note', m.note);
 
-  let place = m.location.name;
+  let place = shortPlace(m.location.name);
+  let placeTitle: string | undefined = place === m.location.name ? undefined : m.location.name;
   let route: MovementView['route'] = null;
   const isTransfer = m.counterpartLocation !== null;
   if (m.counterpartLocation) {
@@ -80,6 +83,7 @@ export function describeMovement(m: MovementDto, unit: UnitRef, t: Translate): M
       title: `${from} → ${to}`,
     };
     place = route.text;
+    placeTitle = route.title;
   }
   const reversesTransfer = m.kind === 'reversal' && m.reverses?.kind.startsWith('transfer');
   const title = reversesTransfer
@@ -94,6 +98,7 @@ export function describeMovement(m: MovementDto, unit: UnitRef, t: Translate): M
     quantity,
     headline: `${title} ${quantity}`,
     place,
+    placeTitle,
     route,
     lines,
   };

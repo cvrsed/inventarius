@@ -53,7 +53,7 @@ const entries = computed<Entry[]>(() => {
       at: r.movement.registeredAt,
       headline: view.headline,
       place: view.place,
-      placeTitle: view.route?.title,
+      placeTitle: view.placeTitle,
       name: r.consumable.name,
       id: r.consumable.id,
       date: r.movement.backdated
