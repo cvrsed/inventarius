@@ -18,7 +18,7 @@ import { errorMessage } from '@/features/auth/errors';
 import { ApiError } from '@/shared/api/http';
 import { formatDateTime } from '@/shared/format/format';
 import { useConsumableMutations } from './api';
-import { describeMovement } from './movements';
+import { describeMovement, shortPlace } from './movements';
 
 const props = defineProps<{ movement: MovementDto | null; consumable: ConsumableDetailDto }>();
 const visible = defineModel<boolean>('visible', { required: true });
@@ -64,7 +64,7 @@ const what = computed(() => {
   return {
     headline: v.headline,
     place: v.place,
-    title: v.route?.title,
+    title: v.placeTitle,
     date: formatDateTime(m.occurredAt),
   };
 });
@@ -110,15 +110,15 @@ async function submit(): Promise<void> {
         </div>
         <ul class="m-0 flex list-none flex-col gap-1 p-0 text-sm">
           <li v-for="e in effects" :key="e.id">
-            {{
+            <span :title="e.name === shortPlace(e.name) ? undefined : e.name">{{
               t('consumables.reverse.effect', {
-                where: e.name,
+                where: shortPlace(e.name),
                 before: formatQuantity(e.before, unit),
                 after: e.negative
                   ? '−' + formatQuantity(e.after.slice(1), unit)
                   : formatQuantity(e.after, unit),
               })
-            }}
+            }}</span>
           </li>
         </ul>
         <UAlert
@@ -126,7 +126,7 @@ async function submit(): Promise<void> {
           color="warning"
           variant="subtle"
           role="alert"
-          :description="t('consumables.reverse.negative', { where: blocked.name })"
+          :description="t('consumables.reverse.negative', { where: shortPlace(blocked.name) })"
         />
         <UFormField
           :label="t('consumables.reverse.reason')"

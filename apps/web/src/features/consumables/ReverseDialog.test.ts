@@ -37,6 +37,15 @@ describe('anular (D7)', () => {
     expect(text).toContain('No se borra nada');
   });
 
+  it('las líneas de saldo usan el nombre corto de la bodega y la ruta en tooltip (R3)', async () => {
+    const path = 'Zensi > Chile > Santiago > Bodega central';
+    await open(movement({ kind: 'delivery', delta: '-4', location: { id: ids.main, name: path } }));
+    const li = document.body.querySelector('ul li')!;
+    expect(li.textContent).toContain('En Bodega central el stock pasará de 10 pares a 14 pares');
+    expect(li.textContent).not.toContain('Zensi');
+    expect(li.querySelector('span')!.getAttribute('title')).toBe(path);
+  });
+
   it('el motivo es obligatorio y el botón no es rojo: anular no destruye nada', async () => {
     const fetchMock = mockApi({});
     await open(movement({ kind: 'delivery', delta: '-4' }));

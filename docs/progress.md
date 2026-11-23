@@ -849,7 +849,7 @@ Tercera revisión manual del PR #7. Un commit por punto; cada punto se marca aqu
 
 - [x] R1 Roles: la descripción se ajusta a 2 líneas (texto completo en tooltip) y la tabla no desborda en escritorio
 - [x] R2 Confirmación del ajuste: «solo quien tenga permiso para anular movimientos puede anularlo»
-- [ ] R3 Diálogo «Anular movimiento»: líneas de saldo con nombre corto de bodega y ruta en tooltip
+- [x] R3 Diálogo «Anular movimiento»: líneas de saldo con nombre corto de bodega y ruta en tooltip
 - [x] R4 Historial e Inicio: línea de bodega con nombre corto y ruta en tooltip en todos los tipos
 - [ ] R5 «Cambiar estado» no ofrece ni acepta estados de baja; la única vía es «Dar de baja»
 - [ ] R6 Auditoría de una devolución: «Identificador de quien devolvió»
