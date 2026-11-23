@@ -147,7 +147,16 @@ async function submit(): Promise<void> {
   }
 }
 
-const fetcherFor = (source: Section) => (q: string) => fetchOptions(source, q);
+/**
+ * Al editar una ubicación, «Ubicación superior» no ofrece a la propia ni a su subárbol (serían ciclos); el 422 de la API
+ * y la validación al guardar quedan como defensa.
+ */
+const parentExtra = (source: Section) =>
+  source === 'locations' && props.item ? { excludeSubtreeOf: props.item.id } : undefined;
+const fetcherFor = (source: Section) => (q: string) =>
+  fetchOptions(source, q, parentExtra(source) ? { extra: parentExtra(source)! } : {});
+/** La caché de opciones es por fuente: editar otra ubicación (o crear) no reutiliza la lista de ésta. */
+const sourceKey = (source: Section) => `${source}-form-${props.item?.id ?? 'new'}`;
 const selectItems = (f: FieldDef) =>
   (f.options ?? []).map((o) => ({
     value: o.value,
@@ -222,7 +231,7 @@ const onOpenChange = (open: boolean) => {
             v-else
             :id="`cf-${f.key}`"
             :model-value="refOf(f.key)"
-            :source="`${f.source}-form`"
+            :source="sourceKey(f.source!)"
             :fetcher="fetcherFor(f.source!)"
             :placeholder="
               f.key === 'parent' ? t('catalog.parentPlaceholder') : t('catalog.selectPlaceholder')

@@ -20,6 +20,8 @@ export interface ListOptions {
   /** Solo ubicaciones: deja solo ese tipo, o saca ese tipo. */
   type?: string | undefined;
   excludeType?: string | undefined;
+  /** Solo ubicaciones: saca a esa ubicación y a todo su subárbol (elegir el padre de otra). */
+  excludeSubtreeOf?: string | undefined;
   /** Solo categorías: `asset` o `consumable`. */
   scope?: string | undefined;
   q?: string | undefined;
@@ -338,6 +340,7 @@ export class CatalogRepository {
     if (o.active !== undefined) conds.push(sql`l.active = ${o.active}`);
     if (o.type) conds.push(sql`l.type = ${o.type}`);
     if (o.excludeType) conds.push(sql`l.type <> ${o.excludeType}`);
+    if (o.excludeSubtreeOf) conds.push(sql`l.id NOT IN ${subtreeIdsSql(o.excludeSubtreeOf)}`);
     const where = conds.length ? sql`WHERE ${sql.join(conds, sql` AND `)}` : sql``;
     const descending = o.sort?.startsWith('-') ?? false;
     const key = (descending ? o.sort!.slice(1) : o.sort) ?? '';

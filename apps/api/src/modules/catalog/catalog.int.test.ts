@@ -387,6 +387,26 @@ describe('ubicaciones jerárquicas (RF-12)', () => {
     expect((await reader.get(`${base}/locations?q=cíclico`)).statusCode).toBe(200);
   }, 15_000);
 
+  it('excludeSubtreeOf deja fuera a la ubicación y a todos sus descendientes, a cualquier profundidad', async () => {
+    const chile = await create(operator, 'locations', { name: 'Excl Chile' });
+    const lafquen = await create(operator, 'locations', {
+      name: 'Excl Lafquen',
+      parentId: chile.id,
+    });
+    const parcela = await create(operator, 'locations', {
+      name: 'Excl Parcela',
+      parentId: lafquen.id,
+    });
+    await create(operator, 'locations', { name: 'Excl Santiago', parentId: parcela.id });
+    await create(operator, 'locations', { name: 'Excl Peru' });
+    const res = await reader.get(
+      `${base}/locations?q=Excl&pageSize=100&excludeSubtreeOf=${chile.id}`,
+    );
+    expect(res.statusCode, res.body).toBe(200);
+    expect(res.json().data.map((l: { name: string }) => l.name)).toEqual(['Excl Peru']);
+    expect(res.json().meta.total).toBe(1);
+  });
+
   it('no se borra una ubicación con hijos (409) y el padre inexistente es 422', async () => {
     const parent = await create(operator, 'locations', { name: 'Padre' });
     await create(operator, 'locations', { name: 'Hijo', parentId: parent.id });

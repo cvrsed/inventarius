@@ -185,6 +185,8 @@ export const updateLocationSchema = z
 export const locationListQuerySchema = catalogListQuerySchema.extend({
   type: locationTypeSchema.optional(),
   excludeType: locationTypeSchema.optional(),
+  /** Saca a esa ubicación y a todo su subárbol: el selector «Ubicación superior» no ofrece ciclos. */
+  excludeSubtreeOf: z.uuid().optional(),
 });
 
 // --- Estados (RF-13) ---
