@@ -165,6 +165,14 @@ describe('exportación CSV', () => {
     expect(res.body).not.toContain('En rack');
     expect(res.body).not.toContain('En central');
   });
+
+  it('y el de bodega base, con sus sububicaciones', async () => {
+    const res = await reader.get(`${base}/assets/export?baseLocationId=${loc['Bodega Anexo']}`);
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toContain('En anexo');
+    expect(res.body).toContain('En rack');
+    expect(res.body).not.toContain('En central');
+  });
 });
 
 describe('ubicación actual con su ruta completa (U6)', () => {

@@ -5,6 +5,16 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). D
 
 ## [Sin publicar]
 
+### Fix ubicación — filtros jerárquicos del listado de activos
+
+- «Ubicación actual» (dónde está hoy el activo) es el filtro de ubicación de la barra; «Bodega base» pasa a «Filtros» y solo
+  ofrece bodegas. Ambos incluyen todas las sububicaciones, sin límite de profundidad (`WITH RECURSIVE … CYCLE`), en el
+  listado y en la exportación CSV. Los parámetros de la API (`locationId`, `baseLocationId`) no cambian de nombre, solo de
+  alcance (Q85).
+- Chips explícitos («Ubicación actual: Chile (incluye sububicaciones)»), columna «Ubicación» con nombre corto y ruta completa
+  en el tooltip, y selector de ubicación con buscador y dos líneas en los formularios de activos.
+- Una «Ubicación superior» que cree un ciclo se rechaza con 422; las consultas del árbol terminan aunque haya un ciclo.
+
 ### F3.5 — Consumibles por cantidad
 
 - Consumibles con categoría, unidad de medida y stock mínimo global y por bodega (RF-70, D9); con movimientos no se borran,

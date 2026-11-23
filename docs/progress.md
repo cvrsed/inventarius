@@ -890,5 +890,5 @@ su selector ofrecía todas las ubicaciones, y no incluía sububicaciones. Un com
 - [x] Un U5 Chips explícitos: «Ubicación actual: Chile (incluye sububicaciones)» y «Bodega base: …»
 - [x] Un U6 Columna «Ubicación» (listado y ficha): nombre corto, ruta completa en tooltip, «Con <persona>»
 - [x] Un U7 Selectores de ubicación con buscador «Buscar ubicación…» y dos líneas (patrón de WarehouseSelect)
-- [ ] Un U8 Exportación CSV y API respetan los filtros nuevos; compatibilidad de parámetros registrada
+- [x] Un U8 Exportación CSV y API respetan los filtros nuevos; compatibilidad de parámetros registrada
 - [ ] Un U9 Tests: árbol de 5+ niveles con rama hermana, rendimiento (500 ubicaciones, 2.000 activos) y e2e
