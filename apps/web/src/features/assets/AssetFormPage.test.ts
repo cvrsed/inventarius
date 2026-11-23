@@ -22,7 +22,7 @@ const existing = {
   manufacturer: { id: uuid(3), name: 'Lenovo' },
   category: { id: uuid(4), name: 'Notebooks', extension: 'none' },
   status: { id: uuid(5), name: 'Disponible', kind: 'deployable' },
-  location: { id: uuid(6), name: 'Sala 1' },
+  location: { id: uuid(6), name: 'Sala 1', path: 'Sala 1' },
   baseLocation: { id: uuid(6), name: 'Sala 1' },
   assignedUser: null,
   assignedLocation: null,

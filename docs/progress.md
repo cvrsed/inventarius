@@ -888,7 +888,7 @@ su selector ofrecía todas las ubicaciones, y no incluía sububicaciones. Un com
 - [x] Un U1 Filtro principal «Ubicación actual» en la barra; los asignados a una persona no entran
 - [x] Un U2 «Bodega base» pasa a «Más filtros», solo bodegas, y su filtro `baseLocationId` incluye sububicaciones
 - [x] Un U5 Chips explícitos: «Ubicación actual: Chile (incluye sububicaciones)» y «Bodega base: …»
-- [ ] Un U6 Columna «Ubicación» (listado y ficha): nombre corto, ruta completa en tooltip, «Con <persona>»
+- [x] Un U6 Columna «Ubicación» (listado y ficha): nombre corto, ruta completa en tooltip, «Con <persona>»
 - [ ] Un U7 Selectores de ubicación con buscador «Buscar ubicación…» y dos líneas (patrón de WarehouseSelect)
 - [ ] Un U8 Exportación CSV y API respetan los filtros nuevos; compatibilidad de parámetros registrada
 - [ ] Un U9 Tests: árbol de 5+ niveles con rama hermana, rendimiento (500 ubicaciones, 2.000 activos) y e2e

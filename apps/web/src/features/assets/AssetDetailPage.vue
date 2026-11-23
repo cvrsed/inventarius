@@ -5,7 +5,7 @@ import UButton from '@nuxt/ui/components/Button.vue';
 import { useToast } from '@nuxt/ui/composables/useToast';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { currentPlace } from './place';
+import { currentPlace, placeTitle } from './place';
 import { formatDateOnly, formatDateTime, formatMoney } from '@/shared/format/format';
 import { useRoute } from 'vue-router';
 import { errorMessage } from '@/features/auth/errors';
@@ -131,7 +131,7 @@ const rows = computed(() => {
             variant="subtle"
           />
           <span class="text-sm text-muted">
-            {{ currentPlace(asset, t) }} ·
+            <span :title="placeTitle(asset)">{{ currentPlace(asset, t) }}</span> ·
             {{ assigneeName || t('assets.unassigned') }}
           </span>
         </div>

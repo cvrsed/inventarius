@@ -7,7 +7,7 @@ import UIcon from '@nuxt/ui/components/Icon.vue';
 import UTable from '@nuxt/ui/components/Table.vue';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { currentPlace } from './place';
+import { currentPlace, placeTitle } from './place';
 import { useAuthStore } from '@/features/auth/useAuthStore';
 import { useListQuery } from '@/shared/list/useListQuery';
 import AppSelect from '@/shared/ui/AppSelect.vue';
@@ -237,12 +237,11 @@ const filterDefs = computed(() => assetFilterDefs(t));
             variant="subtle"
           />
         </template>
-        <template #location-cell="{ row }">{{
-          row.original.location?.name ??
-          (row.original.assignedUser
-            ? t('assets.withPerson', { name: row.original.assignedUser.name })
-            : '')
-        }}</template>
+        <template #location-cell="{ row }"
+          ><span :title="placeTitle(row.original)">{{
+            currentPlace(row.original, t)
+          }}</span></template
+        >
         <template #assignedTo-cell="{ row }">{{ assignedName(row.original) }}</template>
       </UTable>
     </div>
@@ -274,7 +273,7 @@ const filterDefs = computed(() => assetFilterDefs(t));
           </span>
           <span class="flex items-center gap-1 text-sm text-muted">
             <UIcon name="i-lucide-map-pin" class="size-4" aria-hidden="true" />
-            {{ currentPlace(a, t) }} ·
+            <span :title="placeTitle(a)">{{ currentPlace(a, t) }}</span> ·
             {{ assignedName(a) || t('assets.unassigned') }}
           </span>
           <UBadge

@@ -11,3 +11,11 @@ export function currentPlace(
   if (a.assignedUser) return t('assets.withPerson', { name: a.assignedUser.name });
   return t('assets.noLocation');
 }
+
+/** Ruta completa de la ubicación actual para el tooltip; vacía si no tiene padres (no repite el nombre). */
+export function placeTitle(
+  a: Pick<AssetListItemDto, 'location' | 'assignedUser'>,
+): string | undefined {
+  const loc = a.location;
+  return loc && loc.path !== loc.name ? loc.path : undefined;
+}

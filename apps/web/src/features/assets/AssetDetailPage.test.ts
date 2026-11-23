@@ -28,7 +28,7 @@ const baseAsset = {
   manufacturer: ref('f1', 'Lenovo'),
   category: { ...ref('c1', 'Notebooks'), extension: 'none' },
   status: { ...ref('s1', 'Disponible'), kind: 'deployable' },
-  location: ref('l1', 'Sala 1'),
+  location: { ...ref('l1', 'Sala 1'), path: 'Edificio A > Sala 1' },
   baseLocation: ref('l1', 'Sala 1'),
   assignedUser: null,
   assignedLocation: null,
@@ -109,6 +109,7 @@ describe('AssetDetailPage (RF-41)', () => {
     expect(w.get('h1').text()).toBe('Notebook de Ana');
     expect(w.text()).toContain('Disponible');
     expect(w.text()).toContain('Sala 1');
+    expect(w.get('[title="Edificio A > Sala 1"]').text()).toBe('Sala 1');
     expect(w.text()).toContain('Lenovo ThinkPad');
     expect(w.text()).toContain('Alta');
     expect(w.text()).toContain('31-01-2027');

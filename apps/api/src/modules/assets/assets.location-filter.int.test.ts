@@ -166,3 +166,32 @@ describe('exportación CSV', () => {
     expect(res.body).not.toContain('En central');
   });
 });
+
+describe('ubicación actual con su ruta completa (U6)', () => {
+  const path = 'Chile > Cliente Norte > Edificio A > Piso 2 > Sala 201 > Rack 7';
+
+  it('el listado y la ficha traen el nombre corto y la ruta de la ubicación actual', async () => {
+    const list = await reader.get(`${base}/assets?locationId=${loc['Rack 7']}`);
+    expect(list.json().data[0].location).toEqual({
+      id: loc['Rack 7'],
+      name: 'Rack 7',
+      path,
+    });
+    const one = await reader.get(`${base}/assets/${asset['En rack']}`);
+    expect(one.json().location.path).toBe(path);
+  });
+
+  it('un activo guardado en una bodega anidada muestra la ruta de la bodega', async () => {
+    const one = await reader.get(`${base}/assets/${asset['En anexo']}`);
+    expect(one.json().location).toMatchObject({
+      name: 'Bodega Anexo',
+      path: 'Bodega Central > Bodega Anexo',
+    });
+  });
+
+  it('un activo con una persona no tiene ubicación actual', async () => {
+    const one = await reader.get(`${base}/assets/${asset['Con persona']}`);
+    expect(one.json().location).toBeNull();
+    expect(one.json().assignedUser).not.toBeNull();
+  });
+});

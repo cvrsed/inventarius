@@ -106,7 +106,10 @@ export function toListItem(r: AssetRow): AssetListItemDto {
       extension: r.categoryExtension as CategoryExtension,
     },
     status: { id: r.statusId, name: r.statusName, kind: r.statusKind as StatusKind },
-    location: ref(r.locationId, r.locationName),
+    location:
+      r.locationId && r.locationName
+        ? { id: r.locationId, name: r.locationName, path: r.locationPath ?? r.locationName }
+        : null,
     baseLocation: ref(r.baseLocationId, r.baseLocationName),
     assignedUser: ref(r.assignedUserId, r.assignedUserName),
     assignedLocation: ref(r.assignedLocationId, r.assignedLocationName),

@@ -93,7 +93,7 @@ export const assetListItemSchema = z.object({
   category: refSchema.extend({ extension: categoryExtensionSchema }),
   status: refSchema.extend({ kind: statusKindSchema }),
   /** Dónde está ahora; vacío si lo tiene una persona (ver `assignedUser`). */
-  location: refSchema.nullable(),
+  location: refSchema.extend({ path: z.string() }).nullable(),
   /** Bodega donde vive el activo cuando no está asignado. */
   baseLocation: refSchema.nullable(),
   assignedUser: refSchema.nullable(),
