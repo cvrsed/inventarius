@@ -38,8 +38,8 @@
 1. **Esperas:** nunca `sleep N` antes de un comando (el harness lo bloquea). Un proceso largo se lanza con
    `run_in_background` y se espera su notificación. El CI no se espera salvo que el prompt lo pida.
 2. **Commits:** encabezado `tipo(ámbito): asunto` de **máximo 100 caracteres** (`header-max-length` de
-   `@commitlint/config-conventional`), asunto en minúsculas; lo que no cabe va al cuerpo. Los caracteres se cuentan ANTES de
-   commitear. Antes de `git commit`, Prettier sobre todos los archivos cambiados y nuevos (`git diff --name-only` y
+   `@commitlint/config-conventional`), asunto en minúsculas; lo que no cabe va al cuerpo, con líneas de máximo 100
+   caracteres. Los caracteres se cuentan ANTES de commitear. Antes de `git commit`, Prettier sobre todos los archivos cambiados y nuevos (`git diff --name-only` y
    `git ls-files -o --exclude-standard`). Si un hook falla, se lee el motivo antes de reintentar.
 3. **GitHub:** `gh api` está denegado por diseño; no se reintenta. Logs: `gh run view <id> --log-failed`. SHA de una acción:
    `git ls-remote https://github.com/<owner>/<repo> refs/tags/<tag>`.
