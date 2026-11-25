@@ -586,9 +586,11 @@ La VM corre el entorno completo de desarrollo (`compose.yml`: Postgres, ChirpSta
 
 Portabilidad: mover la app a otro servidor = copiar `deploy/`, crear `.env`, `docker compose pull && docker compose run --rm migrate && docker compose up -d`, y restaurar el dump si se migran datos. Queda escrito paso a paso en `docs/install.md`.
 
-## 13. Plan de entrega del MVP
+## 13. Plan de entrega
 
-Seis fases (F0 a F4, con F3.5 entre F3 y F4). Cada una termina en un PR revisado y un tag de pre-release (`v0.1.0`, `v0.2.0`...). El MVP es `v1.0.0`. Claude Code no empieza una fase sin el merge de la anterior.
+### 13.1 Fases del MVP ya desarrolladas
+
+De F0 a F3.5. Cada una termina en un PR revisado y un tag de pre-release (`v0.1.0`, `v0.2.0`...). El MVP es `v1.0.0` y se cierra en F4. Claude Code no empieza una fase sin el merge de la anterior.
 
 | Fase | Contenido | Criterio de aceptación |
 | --- | --- | --- |
@@ -597,16 +599,55 @@ Seis fases (F0 a F4, con F3.5 entre F3 y F4). Cada una termina en un PR revisado
 | F2 Inventario | Catálogo RF-10 a RF-14, activos RF-20 a RF-26, historial, vistas móviles RF-40 a RF-42 | CRUD completo e2e en escritorio y móvil; listado con 10.000 activos sembrados dentro del objetivo de rendimiento |
 | F3 LoRaWAN | Extensión LoRaWAN del activo, cifrado de claves, perfiles LNS RF-50 a RF-52, adaptadores ChirpStack y TTN, cola pg-boss y worker, RF-60 a RF-65, **importación CSV de datos LoRaWAN por número de serie (RF-66)** | Registro y baja OK contra ChirpStack de prueba en Docker; contra TTN con mock en CI y con una aplicación de prueba real en el job manual; compensación probada simulando fallo en cada paso; importar un CSV de 100 series asocia los datos a los activos correctos y rechaza filas inválidas con su error |
 | F3.5 Consumibles | Consumibles por cantidad (RF-70 a RF-74): catálogo, ingreso a bodega, entrega a persona, stock por bodega y stock mínimo con aviso en Inicio | e2e del ciclo ingreso → entrega → stock mínimo en escritorio y 360 px; no se puede entregar más que el stock de la bodega; el libro de movimientos cuadra con el stock mostrado |
-| F4 Cierre | Endurecimiento (CSP, cabeceras, revisión de secretos en logs), `deploy/` de producción, respaldo y restauración probados, docs de instalación y operación, release-please, imágenes en GHCR | Despliegue en la VM de producción siguiendo solo `docs/install.md`; restauración desde dump verificada; `v1.0.0` publicado |
+
+### 13.2 Fases siguientes: beta y v2
+
+**El orden de F5 a F9 es el orden por defecto y se ajusta según lo que más pidan los testers de la beta.** Al reordenar se respetan las dependencias de la última columna y se actualiza esta sección. Antes de empezar una fase se responden sus preguntas abiertas («Antes de» en `docs/open-questions.md`) y se aceptan o corrigen sus ADR. Desde F4, **cada fase se despliega en la beta al mergearse** (D6).
+
+| Entrega | Contenido | Criterio de aceptación | Depende de |
+| --- | --- | --- | --- |
+| Fix suelto, **antes de abrir la beta** | Scroll horizontal a 360 px en el listado de Consumibles (backlog post-F3.5 en `docs/progress.md`), revisando el mismo patrón en Inicio y en la ficha del consumible. PR propio | e2e a 360 px con el aviso largo (mínimo global y varias bodegas bajo mínimo) que verifica `scrollWidth <= clientWidth` y que el nombre se ve completo en listado, Inicio y ficha; el test falla sin el arreglo | — |
+| F4 Despliegue y entorno de beta | RF-88 (N9) y RF-89 (N10). Detalle en 13.3 | Ver 13.3 | Fix suelto (para invitar testers) |
+| F5 Clientes, asignación a sitios, En tránsito y Excel | RF-84 (N5), RF-92 (N13), RF-90 (N11), RF-91 (N12) | Los criterios de esos cuatro RF; las migraciones probadas sobre una copia de los datos de la beta, con el informe de activos sin bodega base y de ubicaciones no asignables con equipos; cada fila de `lns_registrations` queda con su aplicación; re-registro probado contra el ChirpStack de pruebas; e2e en escritorio y 360 px | F4 |
+| F6 Órdenes de trabajo y fotos | RF-83 (N4), RF-82 (N3) | Los criterios de ambos RF; ciclo completo en escritorio y 360 px; pruebas de concurrencia de reservas contra Postgres real; el libro cuadra; fotos probadas con ambos drivers y desde al menos un Android y un iPhone reales de testers | F5 (clientes y asignables), F4 (almacenamiento) |
+| F7 Gateways y SIM | RF-81 (N2) | Los criterios de RF-81; registro y baja de un gateway contra el ChirpStack de pruebas; TTN con mock en CI; ninguna clave en respuestas, exportaciones, auditoría ni logs | F4; para TTN, la credencial de Q94 |
+| F8 LoRaWAN avanzado | RF-80 (N1), RF-85 (N6), RF-86 (N7, primera etapa) | Los criterios de esos tres RF; escritura y reversa verificadas campo por campo contra el ChirpStack de pruebas; lo no verificado en TTN queda declarado y desactivado o marcado en la UI | F4; Q51 si el LNS usa CA propia |
+| F9 API de integración | RF-87 (N8). **Se puede adelantar** si la plataforma consumidora la necesita antes: es independiente de F6 a F8. Adelantada antes de F5, incluye la entidad Cliente y su alcance (sin aplicaciones LNS), porque el alcance por cliente es obligatorio desde el primer día (D3) | Los criterios de RF-87; la plataforma consumidora lee datos de prueba desde la beta con un token de alcance «cliente» y otro «todo»; OpenAPI publicado | F4; la entidad Cliente de F5 |
+| Endurecimiento (fase aparte, después) | Backlog post-F3 de `docs/progress.md`: bajas con aprobación, `last_seen`, registro por lote, progreso por paso y demás. **Se adelanta solo lo que un RF nuevo necesite antes** (candidato: borrar en el LNS solo lo registrado por Inventarius, para el re-registro de RF-84; Q129) | Se fija al abrir la fase, por punto | — |
+
+### 13.3 F4: despliegue y entorno de beta
+
+**Contenido y criterio de aceptación** de cada punto:
+
+| Punto | Criterio de aceptación |
+| --- | --- |
+| Entorno de producción (donde corre la beta) **separado de la VM de desarrollo**, con `deploy/` de producción e imágenes en GHCR con versión fija (release-please) | Instalación desde cero siguiendo solo `docs/install.md`; ninguna credencial ni dato compartido con la VM de desarrollo |
+| Acceso por `inventarius.example.com` (el dominio real va solo en la documentación privada y en el `.env`) vía Cloudflare Tunnel, sin puertos abiertos | La app responde por el dominio y no por otra vía desde fuera |
+| HTTPS, CSP estricta y HSTS | Un test sobre el despliegue verifica las cabeceras (sin `unsafe-inline` en scripts, `frame-ancestors 'none'`); cookie `__Host-` y `Secure`; sin violaciones de CSP en el recorrido e2e, incluido el origen del almacenamiento |
+| `TRUSTED_PROXIES` acotado al proxy, e IP real desde `CF-Connecting-IP` | La auditoría registra la IP real del cliente; una cabecera falsa desde otro origen se ignora |
+| Endurecimiento del proxy inverso: cabeceras, TLS, límites de tamaño y de tasa. **El responsable del proyecto dará contexto adicional antes de F4** | Cuerpos sobre el límite y ráfagas sobre la tasa se rechazan; configuración y motivos documentados en `docs/security.md` |
+| Secretos en el `.env` del servidor (permisos 600) con copia en un gestor de contraseñas. **`APP_ENCRYPTION_KEY` es irrecuperable** | `docs/install.md` exige la copia antes de cargar datos; la app no arranca sin la clave ni con la de desarrollo |
+| Asistente de primer arranque: primer administrador y **prefijo de etiqueta** (el real de la instalación se escribe ahí; los ejemplos del repo siguen con `INV`), según el backlog post-F3: 2 a 6 alfanuméricos, guardado en la base, mayúsculas en la etiqueta y minúsculas en los ids del LNS, bloqueado al crear el primer activo | e2e del asistente; no se puede volver a ejecutar; el prefijo queda bloqueado con el primer activo; no queda abierto a un tercero en una instalación recién expuesta |
+| RF-88 nombre visible y RF-89 almacenamiento (`local` y `s3`) | Los criterios de ambos RF |
+| Respaldos de la base (y de los archivos) con retención configurable, fuera del servidor | **Restauración probada** en un entorno limpio y documentada (RNF-15) |
+| Logs de Docker limitados en el compose, por servicio: driver `local`, `max-size: 5m`, `max-file: 3`, definidos con un ancla `x-logging` | `docker inspect` muestra esa configuración en todos los servicios del compose de producción |
+| Monitoreo mínimo y aviso de caída contra `/api/health/ready` (incluye saber si el worker procesa y si el último respaldo se hizo) | Detener la API en la beta genera un aviso en pocos minutos |
+| Lista de contraseñas comunes de ~10.000 entradas, versionada (issue #4) | Tests que rechazan entradas de la lista y sus variantes; sin llamadas externas |
+| **ChirpStack de pruebas para la beta** (Q121). Nunca el ChirpStack de producción | Registro y baja desde la beta contra ese ChirpStack; ningún perfil apunta a un LNS de producción |
+| Apertura de la beta | Fix suelto desplegado y Q114 y Q121 a Q125 respondidas (datos, recuperación de contraseña, canal de reporte, testers y roles) |
+| Cierre del MVP | `v1.0.0` publicado (Q127) |
+
+**Operación de la beta (desde F4):** cada fase mergeada se despliega por número de versión, con respaldo previo, migraciones como paso separado y la posibilidad de volver a la versión anterior; el CHANGELOG dice qué probar. El despliegue lo hace el responsable del proyecto: Claude Code no tiene acceso a ese servidor (sección 12).
 
 ### Definición de terminado (cada PR)
 
 - Lint, typecheck y todos los tests en verde; cobertura sobre el umbral.
 - Requerimientos tocados citados por ID en el PR.
 - Migraciones nuevas probadas desde cero y sobre la versión anterior.
-- Textos de UI en i18n; vista revisada en 360 px.
+- Textos de UI en i18n; vista revisada en 360 px, sin scroll horizontal también con los textos más largos.
 - Documentación y ADR actualizados si cambió algo de arquitectura.
 - Sin secretos, sin `console.log`, sin TODO sin issue asociado.
+- Desde F4: el CHANGELOG dice qué pueden probar los testers y qué cambia en los datos al desplegar en la beta.
 
 ## 14. Reglas de trabajo para Claude Code
 

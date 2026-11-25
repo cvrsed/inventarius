@@ -5,6 +5,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). D
 
 ## [Sin publicar]
 
+### Requisitos v2 (solo documentación)
+
+- Sección 16 del requerimiento (RF-80 a RF-92), plan de entrega reescrito (sección 13: beta en F4 y fases F5 a F9),
+  preguntas Q90 a Q129 y ADR 0009 a 0013 propuestos. Sin cambios en la aplicación.
+
 ### Fix ubicación — filtros jerárquicos del listado de activos
 
 - «Ubicación actual» (dónde está hoy el activo) es el filtro de ubicación de la barra; «Bodega base» pasa a «Filtros» y solo

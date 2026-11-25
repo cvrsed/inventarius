@@ -948,7 +948,7 @@ PR solo de documentación (rama `docs/requisitos-v2`, desde `main` en `182791d`)
 - [x] Tarea 2: «Requisitos v2» en `docs/requirements.md` (RF-80 en adelante)
 - [x] Tarea 3: preguntas abiertas (Q90 en adelante) y backlog de Consumibles a 360 px
 - [x] Tarea 4: borradores de ADR (0009 en adelante, estado «Propuesto»)
-- [ ] Tarea 5: plan de entrega (sección 13 de `docs/requirements.md`)
+- [x] Tarea 5: plan de entrega (sección 13 de `docs/requirements.md`)
 
 Notas de la tarea 1:
 
