@@ -24,6 +24,8 @@ Despliegue inicial: una VM de producción detrás de un túnel hacia Internet (v
 - Modo offline, app nativa, SSO/LDAP, API tokens para terceros, multiempresa.
 - Adjuntos y fotos (se deja el modelo preparado).
 
+Parte de esta lista entra después del MVP: ver la sección 16 (Requisitos v2), que manda sobre ella.
+
 ## 2. Lluvia de ideas priorizada
 
 Todo lo que salió, clasificado con MoSCoW. **Must** = MVP. **Should** = entra si sobra tiempo en el MVP, si no es la primera iteración post-MVP. **Could / Won't (por ahora)** = backlog.
@@ -584,9 +586,11 @@ La VM corre el entorno completo de desarrollo (`compose.yml`: Postgres, ChirpSta
 
 Portabilidad: mover la app a otro servidor = copiar `deploy/`, crear `.env`, `docker compose pull && docker compose run --rm migrate && docker compose up -d`, y restaurar el dump si se migran datos. Queda escrito paso a paso en `docs/install.md`.
 
-## 13. Plan de entrega del MVP
+## 13. Plan de entrega
 
-Seis fases (F0 a F4, con F3.5 entre F3 y F4). Cada una termina en un PR revisado y un tag de pre-release (`v0.1.0`, `v0.2.0`...). El MVP es `v1.0.0`. Claude Code no empieza una fase sin el merge de la anterior.
+### 13.1 Fases del MVP ya desarrolladas
+
+De F0 a F3.5. Cada una termina en un PR revisado y un tag de pre-release (`v0.1.0`, `v0.2.0`...). El MVP es `v1.0.0` y se cierra en F4. Claude Code no empieza una fase sin el merge de la anterior.
 
 | Fase | Contenido | Criterio de aceptación |
 | --- | --- | --- |
@@ -595,16 +599,55 @@ Seis fases (F0 a F4, con F3.5 entre F3 y F4). Cada una termina en un PR revisado
 | F2 Inventario | Catálogo RF-10 a RF-14, activos RF-20 a RF-26, historial, vistas móviles RF-40 a RF-42 | CRUD completo e2e en escritorio y móvil; listado con 10.000 activos sembrados dentro del objetivo de rendimiento |
 | F3 LoRaWAN | Extensión LoRaWAN del activo, cifrado de claves, perfiles LNS RF-50 a RF-52, adaptadores ChirpStack y TTN, cola pg-boss y worker, RF-60 a RF-65, **importación CSV de datos LoRaWAN por número de serie (RF-66)** | Registro y baja OK contra ChirpStack de prueba en Docker; contra TTN con mock en CI y con una aplicación de prueba real en el job manual; compensación probada simulando fallo en cada paso; importar un CSV de 100 series asocia los datos a los activos correctos y rechaza filas inválidas con su error |
 | F3.5 Consumibles | Consumibles por cantidad (RF-70 a RF-74): catálogo, ingreso a bodega, entrega a persona, stock por bodega y stock mínimo con aviso en Inicio | e2e del ciclo ingreso → entrega → stock mínimo en escritorio y 360 px; no se puede entregar más que el stock de la bodega; el libro de movimientos cuadra con el stock mostrado |
-| F4 Cierre | Endurecimiento (CSP, cabeceras, revisión de secretos en logs), `deploy/` de producción, respaldo y restauración probados, docs de instalación y operación, release-please, imágenes en GHCR | Despliegue en la VM de producción siguiendo solo `docs/install.md`; restauración desde dump verificada; `v1.0.0` publicado |
+
+### 13.2 Fases siguientes: beta y v2
+
+**El orden de F5 a F9 es el orden por defecto y se ajusta según lo que más pidan los testers de la beta.** Al reordenar se respetan las dependencias de la última columna y se actualiza esta sección. Antes de empezar una fase se responden sus preguntas abiertas («Antes de» en `docs/open-questions.md`) y se aceptan o corrigen sus ADR. Desde F4, **cada fase se despliega en la beta al mergearse** (D6).
+
+| Entrega | Contenido | Criterio de aceptación | Depende de |
+| --- | --- | --- | --- |
+| Fix suelto, **antes de abrir la beta** | Scroll horizontal a 360 px en el listado de Consumibles (backlog post-F3.5 en `docs/progress.md`), revisando el mismo patrón en Inicio y en la ficha del consumible. PR propio | e2e a 360 px con el aviso largo (mínimo global y varias bodegas bajo mínimo) que verifica `scrollWidth <= clientWidth` y que el nombre se ve completo en listado, Inicio y ficha; el test falla sin el arreglo | — |
+| F4 Despliegue y entorno de beta | RF-88 (N9) y RF-89 (N10). Detalle en 13.3 | Ver 13.3 | Fix suelto (para invitar testers) |
+| F5 Clientes, asignación a sitios, En tránsito y Excel | RF-84 (N5), RF-92 (N13), RF-90 (N11), RF-91 (N12) | Los criterios de esos cuatro RF; las migraciones probadas sobre una copia de los datos de la beta, con el informe de activos sin bodega base y de ubicaciones no asignables con equipos; cada fila de `lns_registrations` queda con su aplicación; re-registro probado contra el ChirpStack de pruebas; e2e en escritorio y 360 px | F4 |
+| F6 Órdenes de trabajo y fotos | RF-83 (N4), RF-82 (N3) | Los criterios de ambos RF; ciclo completo en escritorio y 360 px; pruebas de concurrencia de reservas contra Postgres real; el libro cuadra; fotos probadas con ambos drivers y desde al menos un Android y un iPhone reales de testers | F5 (clientes y asignables), F4 (almacenamiento) |
+| F7 Gateways y SIM | RF-81 (N2) | Los criterios de RF-81; registro y baja de un gateway contra el ChirpStack de pruebas; TTN con mock en CI; ninguna clave en respuestas, exportaciones, auditoría ni logs | F4; para TTN, la credencial de Q94 |
+| F8 LoRaWAN avanzado | RF-80 (N1), RF-85 (N6), RF-86 (N7, primera etapa) | Los criterios de esos tres RF; escritura y reversa verificadas campo por campo contra el ChirpStack de pruebas; lo no verificado en TTN queda declarado y desactivado o marcado en la UI | F4; Q51 si el LNS usa CA propia |
+| F9 API de integración | RF-87 (N8). **Se puede adelantar** si la plataforma consumidora la necesita antes: es independiente de F6 a F8. Adelantada antes de F5, incluye la entidad Cliente y su alcance (sin aplicaciones LNS), porque el alcance por cliente es obligatorio desde el primer día (D3) | Los criterios de RF-87; la plataforma consumidora lee datos de prueba desde la beta con un token de alcance «cliente» y otro «todo»; OpenAPI publicado | F4; la entidad Cliente de F5 |
+| Endurecimiento (fase aparte, después) | Backlog post-F3 de `docs/progress.md`: bajas con aprobación, `last_seen`, registro por lote, progreso por paso y demás. **Se adelanta solo lo que un RF nuevo necesite antes** (candidato: borrar en el LNS solo lo registrado por Inventarius, para el re-registro de RF-84; Q129) | Se fija al abrir la fase, por punto | — |
+
+### 13.3 F4: despliegue y entorno de beta
+
+**Contenido y criterio de aceptación** de cada punto:
+
+| Punto | Criterio de aceptación |
+| --- | --- |
+| Entorno de producción (donde corre la beta) **separado de la VM de desarrollo**, con `deploy/` de producción e imágenes en GHCR con versión fija (release-please) | Instalación desde cero siguiendo solo `docs/install.md`; ninguna credencial ni dato compartido con la VM de desarrollo |
+| Acceso por `inventarius.example.com` (el dominio real va solo en la documentación privada y en el `.env`) vía Cloudflare Tunnel, sin puertos abiertos | La app responde por el dominio y no por otra vía desde fuera |
+| HTTPS, CSP estricta y HSTS | Un test sobre el despliegue verifica las cabeceras (sin `unsafe-inline` en scripts, `frame-ancestors 'none'`); cookie `__Host-` y `Secure`; sin violaciones de CSP en el recorrido e2e, incluido el origen del almacenamiento |
+| `TRUSTED_PROXIES` acotado al proxy, e IP real desde `CF-Connecting-IP` | La auditoría registra la IP real del cliente; una cabecera falsa desde otro origen se ignora |
+| Endurecimiento del proxy inverso: cabeceras, TLS, límites de tamaño y de tasa. **El responsable del proyecto dará contexto adicional antes de F4** | Cuerpos sobre el límite y ráfagas sobre la tasa se rechazan; configuración y motivos documentados en `docs/security.md` |
+| Secretos en el `.env` del servidor (permisos 600) con copia en un gestor de contraseñas. **`APP_ENCRYPTION_KEY` es irrecuperable** | `docs/install.md` exige la copia antes de cargar datos; la app no arranca sin la clave ni con la de desarrollo |
+| Asistente de primer arranque: primer administrador y **prefijo de etiqueta** (el real de la instalación se escribe ahí; los ejemplos del repo siguen con `INV`), según el backlog post-F3: 2 a 6 alfanuméricos, guardado en la base, mayúsculas en la etiqueta y minúsculas en los ids del LNS, bloqueado al crear el primer activo | e2e del asistente; no se puede volver a ejecutar; el prefijo queda bloqueado con el primer activo; no queda abierto a un tercero en una instalación recién expuesta |
+| RF-88 nombre visible y RF-89 almacenamiento (`local` y `s3`) | Los criterios de ambos RF |
+| Respaldos de la base (y de los archivos) con retención configurable, fuera del servidor | **Restauración probada** en un entorno limpio y documentada (RNF-15) |
+| Logs de Docker limitados en el compose, por servicio: driver `local`, `max-size: 5m`, `max-file: 3`, definidos con un ancla `x-logging` | `docker inspect` muestra esa configuración en todos los servicios del compose de producción |
+| Monitoreo mínimo y aviso de caída contra `/api/health/ready` (incluye saber si el worker procesa y si el último respaldo se hizo) | Detener la API en la beta genera un aviso en pocos minutos |
+| Lista de contraseñas comunes de ~10.000 entradas, versionada (issue #4) | Tests que rechazan entradas de la lista y sus variantes; sin llamadas externas |
+| **ChirpStack de pruebas para la beta** (Q121). Nunca el ChirpStack de producción | Registro y baja desde la beta contra ese ChirpStack; ningún perfil apunta a un LNS de producción |
+| Apertura de la beta | Fix suelto desplegado y Q114 y Q121 a Q125 respondidas (datos, recuperación de contraseña, canal de reporte, testers y roles) |
+| Cierre del MVP | `v1.0.0` publicado (Q127) |
+
+**Operación de la beta (desde F4):** cada fase mergeada se despliega por número de versión, con respaldo previo, migraciones como paso separado y la posibilidad de volver a la versión anterior; el CHANGELOG dice qué probar. El despliegue lo hace el responsable del proyecto: Claude Code no tiene acceso a ese servidor (sección 12).
 
 ### Definición de terminado (cada PR)
 
 - Lint, typecheck y todos los tests en verde; cobertura sobre el umbral.
 - Requerimientos tocados citados por ID en el PR.
 - Migraciones nuevas probadas desde cero y sobre la versión anterior.
-- Textos de UI en i18n; vista revisada en 360 px.
+- Textos de UI en i18n; vista revisada en 360 px, sin scroll horizontal también con los textos más largos.
 - Documentación y ADR actualizados si cambió algo de arquitectura.
 - Sin secretos, sin `console.log`, sin TODO sin issue asociado.
+- Desde F4: el CHANGELOG dice qué pueden probar los testers y qué cambia en los datos al desplegar en la beta.
 
 ## 14. Reglas de trabajo para Claude Code
 
@@ -671,3 +714,423 @@ Además, `.claude/settings.json` del repo restringe comandos: permite `pnpm`, `d
 | Claude Code se sale del alcance o acumula deuda | Fases cortas, PR por fase, DoD, revisión humana y snapshots de la VM |
 | Infraestructura propia sin redundancia (un solo host, corte de luz o falla de disco) | Aceptado en el MVP; respaldos diarios fuera de la VM y portabilidad probada |
 | Pérdida de `APP_ENCRYPTION_KEY` | Copia en gestor de contraseñas; procedimiento de rotación documentado |
+
+## 16. Requisitos v2
+
+Requerimientos posteriores al MVP (RF-80 a RF-92, de N1 a N13). Donde contradigan la lista «Fuera de alcance del MVP» (sección 1), el MoSCoW (sección 2) o la matriz de la sección 3, **manda esta sección**. El orden de entrega está en la sección 13. Las decisiones de arquitectura están en los ADR 0009 a 0013 (propuestos) y las dudas, en `docs/open-questions.md` (Q90 en adelante): lo que cada RF marca como «provisional» es la recomendación de esas preguntas y se puede cambiar antes de implementar la fase.
+
+| RF | Origen | Tema | Fase |
+| --- | --- | --- | --- |
+| RF-80 | N1 | Sincronización con el LNS al crear o vincular, con reversa | F8 |
+| RF-81 | N2 | Gateways y SIM | F7 |
+| RF-82 | N3 | Fotos de instalación | F6 |
+| RF-83 | N4 | Órdenes de trabajo | F6 |
+| RF-84 | N5 | Clientes y aplicación del LNS por cliente | F5 |
+| RF-85 | N6 | Perfil y decoder visibles | F8 |
+| RF-86 | N7 | Datos técnicos de nodos | F8 |
+| RF-87 | N8 | API de integración | F9 |
+| RF-88 | N9 | Nombre visible configurable | F4 |
+| RF-89 | N10 | Almacenamiento de archivos configurable | F4 |
+| RF-90 | N11 | Estado «En tránsito» y bodega base obligatoria | F5 |
+| RF-91 | N12 | Exportación a Excel y rutas de ubicación | F5 |
+| RF-92 | N13 | Asignación solo a ubicaciones asignables | F5 |
+
+### 16.0 Decisiones tomadas y reglas comunes
+
+**Decisiones tomadas (no se reabren):**
+
+- **D1 Cliente** es una entidad propia ligada a una ubicación raíz del árbol: todo lo que cuelga de ella es del cliente. Un cliente puede tener varios sitios. Datos: nombre, RUT, contactos y su aplicación en cada perfil LNS (puede tener una en ChirpStack y otra en TTN).
+- **D2** Las órdenes de trabajo viven en Inventarius. El **nombre visible** del producto (título, logo, textos de marca, correos) es configurable; `inventarius` queda como nombre de código (repo, paquetes, base).
+- **D3 API de integración:** la consume primero la «plataforma consumidora» (la de la organización que opera la primera instalación; su nombre no se escribe en el repo) y quizás clientes después. Es por cliente desde el primer día: tokens de servicio con alcance «todo» o «solo el cliente X» (subárbol de su ubicación raíz).
+- **D4 Archivos:** `STORAGE_DRIVER=local` (volumen) o `s3` (cualquier S3 compatible: endpoint, bucket y credenciales por variables). Desarrollo y testing con volumen local (en la VM de desarrollo, un disco virtual agregado desde el host, nunca un montaje de red); producción con S3. Bucket privado, URLs firmadas con vencimiento, nunca objetos públicos. MinIO en el compose de desarrollo y en el CI para probar el driver `s3`.
+- **D5 «En tránsito»:** un activo comprado que aún no llega se registra con ese estado y la ubicación base apuntando a la bodega de destino; RF-20 se mantiene (la base siempre es una bodega).
+- **D6 Beta:** el entorno de beta se abre en F4 y cada fase de v2 se despliega en él al mergearse, para que los usuarios prueben cada parte apenas esté lista.
+
+**Reglas que aplican a todos los RF de esta sección** (cada RF solo agrega lo propio):
+
+- **UI:** usable a 360 px **sin scroll horizontal** (los e2e comprueban `scrollWidth <= clientWidth` con textos largos reales: avisos, nombres y rutas); todo texto por i18n es-CL; estados vacío, de carga y de error (RNF-04); axe en claro y oscuro (RNF-02); objetivos táctiles de 44 px.
+  - **Confirmación estructurada «Se enviará exactamente esto»** (patrón D6 de F3.5 y P9 de F3) antes de toda escritura en un LNS, de toda acción masiva y de lo que no se deshace desde la misma pantalla: filas campo → valor (antes → después si cambia algo), armadas por la misma función que arma lo que se ejecuta.
+  - **Ubicaciones:** nombre corto con la ruta completa en el tooltip; **selectores con buscador en dos líneas** (nombre y ruta o dato distintivo), patrón de `LocationSelect` y `WarehouseSelect`.
+  - **Lo no disponible se ve desactivado con el motivo** (en el botón u opción, no solo al enviar). Lo que el usuario no puede hacer por permiso se oculta (sección 3).
+- **Auditoría:** RF-30 sin excepciones: actor, fecha, IP, acción `entidad.verbo`, entidad, id y diff, en la misma transacción que el cambio. Cada acción, entidad, campo y valor enumerado nuevo tiene traducción en la web (los tests de `AUDIT_ACTIONS` y `AUDIT_ENUM_FIELDS` lo exigen) y se ve también en el historial de la ficha cuando corresponde. Nunca van claves, tokens, URLs firmadas ni contenido de archivos.
+- **Seguridad:** toda ruta declara su acceso (hoy `publicRoute`, `authenticatedRoute` o `requirePermission`) y entra en el test de permisos por rol; validación Zod; secretos cifrados como la AppKey (`SecretBox`, AAD `tabla:id:columna`).
+- **Permisos:** abreviaturas de roles semilla: **A** Administrador, **O** Operador, **T** Técnico de campo, **L** Lector. Los roles creados a mano parten sin los permisos nuevos (como en Q61). Los siembra una migración.
+- **Datos de ejemplo:** inventados (prefijo `INV`, `example.com`/`.test`, `192.0.2.0/24`).
+
+**Matriz de permisos nuevos** (propuesta; el detalle está en cada RF):
+
+| Permiso | A | O | T | L |
+| --- | --- | --- | --- | --- |
+| `client:read` | Sí | Sí | Sí | Sí |
+| `client:manage` | Sí | Sí | No | No |
+| `lns:application:create` | Sí | No | No | No |
+| `lorawan:remote:write` | Sí | No | No | No |
+| `gateway:register` | Sí | Sí | No | No |
+| `gateway:keys:reveal` | Sí | No | No | No |
+| `sim:assign` | Sí | Sí | Sí | No |
+| `attachment:read` | Sí | Sí | Sí | Sí |
+| `attachment:write` | Sí | Sí | Sí | No |
+| `attachment:delete` | Sí | Sí | No | No |
+| `workorder:read` | Sí | Sí | Sí | Sí |
+| `workorder:manage` | Sí | Sí | No | No |
+| `workorder:dispatch` | Sí | Sí | No | No |
+| `workorder:execute` | Sí | Sí | Sí | No |
+| `workorder:close` | Sí | Sí | No | No |
+| `asset:receive` | Sí | Sí | No | No |
+| `api_token:manage` | Sí | No | No | No |
+| `settings:manage` | Sí | No | No | No |
+
+### RF-80 Sincronización con el LNS al crear o vincular (N1)
+
+**Descripción.**
+
+1. **Traer datos.** Al guardar un DevEUI en un activo (alta, edición o desde la ficha) o al pedir «Buscar en el LNS» en la ficha, Inventarius consulta el perfil elegido (solo lectura). Si el dispositivo existe, ofrece **traer sus datos** reutilizando Vincular (RF-64): diferencias, adopción por campo y `remote_snapshot`. Nada se adopta sin elegirlo. Una consulta que falla no impide guardar el activo.
+2. **Completar el LNS.** Si el LNS tiene en blanco campos que Inventarius tiene, se **pregunta siempre** si se cargan en el LNS (sin casilla «no volver a preguntar», nada marcado por defecto). «En blanco» = vacío, ausente o en ceros (JoinEUI o clave). **Nunca se pisa un valor que el LNS ya tiene.**
+3. **Reversa.** Antes de escribir se guarda el estado previo del LNS de cada campo que se va a tocar, y **«Revertir»** lo restaura. Solo revierte si el valor remoto actual sigue siendo el que escribió Inventarius; si alguien lo cambió después, no sobrescribe: muestra la diferencia y se detiene (Q98).
+
+**Restricción explícita.** Esto es **escribir en dispositivos que Inventarius no creó** y modifica la regla «lo vinculado no se toca» (ADR 0007, decisiones 5 y 12): exige permiso aparte, confirmación previa exacta y auditoría; **subir la AppKey o la NwkKey exige confirmación doble**. Lo que sigue intacto: un dispositivo vinculado **nunca se borra** del LNS y **nunca recibe la marca** `inventarius_asset_id` (con ella el registro idempotente lo trataría como propio y podría borrarlo). El mecanismo está en el ADR 0013.
+
+**Campos escribibles (provisional, Q97):** nombre, descripción, JoinEUI (donde el LNS lo permita), AppKey y NwkKey. No se cambia aplicación, device profile, clase, versión, región ni etiquetas o atributos ajenos.
+
+**Criterio de aceptación.**
+
+- Con un dispositivo ajeno en el ChirpStack de prueba sin AppKey, vincular pregunta si se carga; si se responde no, `GetKeys` sigue igual.
+- Tras cargar, una lectura campo por campo muestra lo confirmado y el resto del dispositivo (incluidas sus etiquetas) idéntico.
+- «Revertir» deja la lectura igual a la previa; si antes se cambió un campo en el LNS, no escribe y lo informa.
+- Sin `lorawan:remote:write` la API responde 403 y la web no ofrece la carga. Una petición sin la segunda confirmación que incluya claves responde 422.
+- Un fallo a mitad deja registrado qué campos quedaron escritos y permite reintentar o revertir.
+
+**Permisos.** `lorawan:remote:write` (A) para cargar y revertir. Consultar y traer datos sigue con `lorawan:register` (A, O, T). Las claves no se muestran: para verlas sigue `lorawan:keys:reveal`.
+
+**Auditoría.** `lns.remote_write` («Carga de datos en el LNS»), `lns.remote_write_failed` («Falló la carga en el LNS») y `lns.remote_revert` («Reversa en el LNS»), entidad `asset`. Campos: perfil LNS, origen del registro (vinculado o creado), campos escritos, valor anterior y nuevo de lo no secreto, claves cargadas o retiradas (solo el nombre, nunca el valor), confirmación de claves (sí/no), resultado.
+
+**UI.** Diálogo en dos pasos: diferencias con casilla por campo y «Se enviará exactamente esto» (perfil, destino, DevEUI y campo: «en blanco → valor»; claves como «•••• (32 hex)»). Con claves, un segundo paso separado que exige marcar una casilla y escribir los últimos 4 caracteres del DevEUI. Ficha: bloque «Cambios hechos en el LNS» con fecha, autor y «Revertir» (desactivado con motivo si ya se revirtió, si el remoto cambió o si el perfil está inactivo). A 360 px las diferencias van apiladas.
+
+**Seguridad.** Las claves se descifran solo en el worker; no van en logs, errores, auditoría ni en el estado previo guardado. La confirmación lleva una huella de la lectura: si el remoto cambió entre la confirmación y el job, no se escribe. Escrituras por la cola, idempotentes, con reintento solo ante errores transitorios.
+
+**Migraciones y datos.** Tabla nueva de cambios remotos (activo, registro, perfil, campos escritos, estado previo, estado, actor y fechas). Como solo se llenan campos en blanco, el estado previo no contiene claves; si alguna vez se permitiera reemplazar una, el valor previo se guardaría cifrado. No cambia datos existentes; los vinculados actuales no se escriben solos.
+
+**LNS.**
+
+- **ChirpStack v4:** `DeviceService.Update` reemplaza el objeto completo: hay que leer, modificar solo lo confirmado y escribir, conservando etiquetas, variables y banderas. Claves con `CreateKeys` o `UpdateKeys` (en 1.0.x la AppKey va en `nwk_key`); la reversa de una clave que no existía es `DeleteKeys` o dejarla como estaba, a verificar contra la versión real (si borrar las claves afecta la sesión activa).
+- **TTN v3:** `PUT` con `field_mask` solo de lo confirmado (nombre y descripción en el Identity Server; claves en el Join Server). Según la documentación, el JoinEUI es parte de la identidad del dispositivo y no se cambia: si se confirma, la opción se muestra desactivada con ese motivo. Un dispositivo registrado fuera del Join Server de TTN no admite cargar claves. Nada de esto está verificado contra una aplicación real (Q48 de F3).
+
+**Preguntas abiertas:** Q97, Q98.
+
+### RF-81 Gateways y SIM (N2)
+
+**Descripción.**
+
+- **Gateway:** es un activo cuya categoría usa el **tipo de extensión** ya existente (RF-10) con el valor nuevo `gateway`. Datos: Gateway EUI (16 hex, único), MAC Ethernet, MAC WiFi, modelo y serie (los del activo), firmware, plan de frecuencias y sub-banda, backhaul (Ethernet, WiFi, celular u otro; uno o más), protocolo (Semtech UDP packet forwarder o Basics Station), latitud, longitud y altura de antena, ubicación (la del activo) e ID en el LNS. Todo es opcional al crear; se exige al registrar lo que pida cada LNS.
+- **Secretos de Basics Station:** claves CUPS y LNS, **cifradas como la AppKey**, de solo escritura, con reveal autorizado y auditado.
+- **Registro en el LNS:** registrar, dar de baja, reintentar y vincular un gateway, con los mismos estados, cola y reglas de RF-60 a RF-65 (lo no creado por Inventarius no se borra).
+- **SIM:** activo propio con tipo de extensión nuevo `sim`: ICCID (18 a 22 dígitos, único, texto), IMSI (14 o 15 dígitos, opcional), número telefónico (opcional), operador y plan. Se **asigna a un gateway** y se retira, con **historial** (desde, hasta, quién). Un gateway puede tener más de una SIM; una SIM, un solo gateway a la vez. Una SIM instalada no se asigna a personas ni ubicaciones y su ubicación sigue a la del gateway; al retirarla se elige la bodega de destino.
+
+**Criterio de aceptación.**
+
+- Un Gateway EUI o ICCID repetido o mal formado se rechaza con el error en el campo.
+- Registrar y dar de baja un gateway contra el ChirpStack de prueba; contra TTN con mock en CI (y job manual); compensación probada.
+- Ninguna clave CUPS o LNS aparece en respuestas, CSV, XLSX, auditoría ni logs (los tests revisan `audit_log` completo).
+- Dos asignaciones simultáneas de la misma SIM: solo una prospera. La ficha del gateway y la de la SIM muestran el mismo historial.
+
+**Permisos.** Datos con `asset:write` (A, O; las claves son de solo escritura); lectura con `asset:read` y `lorawan:read` (todos); `gateway:register` (A, O) para registrar y dar de baja en el LNS; `gateway:keys:reveal` (A) para ver claves; `sim:assign` (A, O, T) para instalar y retirar una SIM.
+
+**Auditoría.** `gateway.update` («Edición de datos de gateway»), `gateway.reveal_keys` («Claves de gateway reveladas»: qué claves), `gateway.register`, `gateway.registered`, `gateway.register_failed`, `gateway.deregister`, `gateway.deregistered`, `gateway.link`, `gateway.unlink` y `gateway.cancel` (rótulos paralelos a los de `lns.*`); `sim.update`, `sim.assign` («SIM instalada»: gateway, desde) y `sim.unassign` («SIM retirada»: gateway, bodega de destino). Campos con sus nombres en español.
+
+**UI.** Secciones «Gateway» y «SIM» en la ficha según la extensión; en el gateway, «Instalar SIM» con selector con buscador en dos líneas (ICCID · operador y plan); SIM ocupadas o dadas de baja, desactivadas con motivo. Registro con «Se enviará exactamente esto» (claves enmascaradas). Coordenadas escritas a mano o con «Usar mi ubicación» (pide permiso al navegador; Q99). ICCID y EUI largos se parten sin ensanchar la vista.
+
+**Seguridad.** CUPS y LNS con `SecretBox` y `key_id`; se incluyen en `cli reencrypt-secrets` y en la redacción de logs. IMSI, ICCID y número no son claves, pero son datos de la red: no van en URLs ni logs. PIN y PUK no se guardan (Q100). Las coordenadas son datos sensibles de la instalación: solo con sesión.
+
+**Migraciones y datos.** `CHECK` de extensión de categorías ampliado a `gateway` y `sim`; tablas `asset_gateway`, `asset_sim`, `sim_assignments` (índice único parcial sobre la abierta) y `gateway_registrations`. No cambia categorías ni activos existentes: un gateway ya cargado se migra cambiando el modelo a una categoría `gateway`. Cambiar la extensión de una categoría con activos sigue las reglas vigentes.
+
+**LNS.**
+
+- **ChirpStack v4:** el gateway pertenece al **tenant** (no a una aplicación): `GatewayService` (`Get`, `Create`, `Update`, `Delete`) con `gateway_id` = EUI y `tenant_id` del perfil. Basics Station se configura en el gateway bridge o en el propio gateway (certificados), no como claves CUPS/LNS por API: en ChirpStack las claves se guardan como dato de inventario y no se envían; la UI lo dice.
+- **TTN v3:** se registra en el registro de gateways con **gateway ID** (derivado y estable, `inv-gw-` + EUI en minúsculas), EUI, plan de frecuencias y dirección del Gateway Server; el propietario es un usuario u organización, por lo que **la API key de aplicación del perfil no alcanza**: el perfil necesita una segunda credencial con derechos de gateways (Q94). Las claves LNS son API keys con derecho de enlace y CUPS usa su propio secreto; Inventarius no las genera en esta fase.
+
+**Preguntas abiertas:** Q94, Q99, Q100.
+
+### RF-82 Fotos de instalación (N3)
+
+**Descripción.** Al asignar un activo a un sitio de cliente (desde «Asignar» o en una orden de trabajo, RF-83) se pueden **adjuntar fotos**, con captura desde la cámara del celular o desde la galería. Quedan ligadas a esa asignación (la instalación), no solo al activo, y se ven en la ficha por instalación. Son opcionales (Q106). Una foto que falla al subir no deshace la asignación: se reintenta. Se guardan con el almacenamiento de RF-89.
+
+**Restricción explícita:** límite de tamaño, validación de tipo (**sin SVG**) y compresión.
+
+- Se aceptan JPEG, PNG y WebP, validados por **contenido** (firma del archivo), no por extensión ni `Content-Type`. SVG, HTML, PDF y cualquier otro se rechazan.
+- Límites provisionales (Q106): 15 MB por archivo recibido, 40 megapíxeles, 10 fotos por instalación.
+- La web comprime antes de subir (lado mayor 2.048 px, JPEG o WebP de calidad ~80); el servidor **vuelve a codificar siempre** (el archivo original no se guarda) y genera una miniatura.
+- **EXIF:** provisionalmente se elimina todo, incluido el GPS (Q105), conservando la orientación aplicada a los píxeles.
+
+**Criterio de aceptación.** Un SVG renombrado a `.jpg` se rechaza (415 o 422); un archivo sobre el límite o la foto 11 se rechaza con el motivo; la imagen guardada no tiene metadatos EXIF y respeta la orientación; sin sesión o sin `attachment:read` no se obtiene la URL; una URL firmada vencida no sirve; el flujo de captura funciona en el e2e a 360 px; los tests pasan con ambos drivers.
+
+**Permisos.** `attachment:read` (A, O, T, L; Q107), `attachment:write` (A, O, T), `attachment:delete` (A, O). Adjuntar al asignar exige además `asset:checkout`.
+
+**Auditoría.** `attachment.upload` («Foto agregada»), `attachment.delete` («Foto eliminada», con motivo), entidad `asset`: instalación (sitio y fecha), orden de trabajo si la hay, tipo, tamaño y hash SHA-256. Ver una foto no se audita (Q19).
+
+**UI.** En «Asignar» a un sitio de cliente, bloque «Fotos de la instalación» con «Tomar foto» y «Elegir de la galería», miniaturas, progreso, reintento y quitar. Cuadrícula que se ajusta a 360 px sin scroll horizontal; visor a pantalla completa con texto alternativo. Sin señal: aviso claro y reintento (no hay modo offline). Botón desactivado con motivo al llegar al máximo.
+
+**Seguridad.** Nunca objetos públicos; URLs firmadas de vida corta emitidas solo tras comprobar permiso; nombre de objeto generado por el servidor (UUID, sin el nombre original); respuestas con `Content-Type` fijado por el servidor y `nosniff`; protección contra «bombas» de descompresión (tope de píxeles antes de decodificar); límite de tamaño también en el proxy y límite de tasa de subida; la CSP agrega solo el origen del almacenamiento a `img-src`/`connect-src`.
+
+**Migraciones y datos.** Tabla `attachments` (entidad, id, asignación, clave del objeto, tipo, bytes, ancho, alto, hash, autor, fecha, `deleted_at`). Sin impacto en datos existentes. Requiere una librería de procesamiento de imágenes fuera del stack 7.2 (se justifica en el PR de F6).
+
+**LNS.** Ninguno, ni en ChirpStack v4 ni en TTN v3: las fotos no se envían al LNS.
+
+**Preguntas abiertas:** Q105, Q106, Q107.
+
+### RF-83 Órdenes de trabajo (N4)
+
+**Descripción.** Las órdenes de trabajo (OT) viven en Inventarius (D2). En v2 son de **instalación** (retiro y mantención, Q103). Modelo y relación con el libro de consumibles en el ADR 0012.
+
+1. **Crear:** cliente y sitio (ubicación del subárbol del cliente), fecha programada, técnico (usuario activo), bodega de origen (una por OT), equipos (activos concretos) y consumibles (cantidad), y nota. Correlativo `OT-000123`.
+2. **Reservar:** los activos quedan en estado **«Reservado»** (estado del sistema, como «Asignado») y los consumibles se reservan en la bodega. Solo se reserva un activo asignable, sin asignar y ubicado en esa bodega. No se puede reservar más que el **disponible** (saldo menos reservado), ni con reservas simultáneas. Entregas y traslados respetan lo reservado.
+3. **Despachar contra la OT:** los activos quedan asignados al técnico (check-out ligado a la OT) y los consumibles salen como **entrega** del libro ligada a la OT, con el técnico como receptor. Se puede despachar en parte.
+4. **En terreno, por equipo:** asignar a su **ubicación final** (asignable, RF-92, dentro del cliente), adjuntar fotos (RF-82), registrar en el LNS (RF-60, con la aplicación del cliente, RF-84) y, opcional, registrar la **conformidad del cliente** (Q101). Cada paso se guarda por separado: un fallo del LNS no deshace la instalación. Se declara cuánto se usó de cada consumible.
+5. **Cerrar:** lo **no instalado vuelve a su bodega base**; los sobrantes de consumibles se registran como **devolución** ligada a la entrega. El cierre exige resolver cada línea (instalado o devuelto; usado + devuelto = despachado, o diferencia justificada con un ajuste aparte). Si un equipo no vuelve (perdido o dañado), se indica su estado y motivo.
+
+**Estados** (provisional, Q102): `borrador` → `reservada` → `despachada` → `cerrada`; `anulada` solo desde `borrador` o `reservada` (libera reservas). Una OT despachada no se anula: se cierra devolviendo todo. Una OT cerrada no se edita.
+
+**Criterio de aceptación.**
+
+- e2e a escritorio y 360 px: crear → reservar → despachar → instalar 2 de 3 equipos con foto y registro en el LNS de prueba → cerrar; el tercero queda Disponible en su bodega base y el libro cuadra (`cli verify-consumables`).
+- Con reservas simultáneas del mismo activo o del último stock, solo una prospera.
+- Un activo reservado o despachado no se puede asignar, cambiar de estado, dar de baja ni reservar por otra vía; la UI muestra el motivo con enlace a la OT.
+- Anular una OT reservada devuelve cada activo a su estado anterior y libera las cantidades.
+- Un Técnico solo ejecuta las OT asignadas a él (403 en las demás).
+
+**Permisos.** `workorder:read` (todos), `workorder:manage` (A, O: crear, editar, reservar, anular), `workorder:dispatch` (A, O), `workorder:execute` (A, O, T; el T solo en sus OT), `workorder:close` (A, O). Además cada acción exige el permiso de lo que hace: registrar en el LNS, `lorawan:register`; fotos, `attachment:write`. La OT autoriza sus propios movimientos de activos y consumibles: no exige `asset:checkout` ni `consumables:deliver` por separado a quien tiene el permiso de OT correspondiente (ADR 0012).
+
+**Auditoría.** `work_order.create`, `work_order.update`, `work_order.reserve` («Orden reservada»), `work_order.dispatch` («Orden despachada»), `work_order.install` («Equipo instalado»), `work_order.consumption` («Consumo declarado»), `work_order.signoff` («Conformidad del cliente»), `work_order.close` («Orden cerrada») y `work_order.cancel` («Orden anulada»), entidad `work_order`. Campos: número, cliente, sitio, fecha, técnico, bodega, equipos, consumibles y cantidades, ubicación final, estado antes y después, devueltos, motivo, nombre de quien dio conformidad. Los activos y consumibles siguen generando sus eventos (`asset.checkout`, `asset.checkin`, `consumable.deliver`, `consumable.return`) con el número de OT.
+
+**UI.** Listado de OT (filtros por estado, cliente, técnico y fecha; «Mis órdenes» para el técnico), ficha con avance por línea y barra de acción al alcance del pulgar. Selectores con buscador en dos líneas (activos: etiqueta · modelo y bodega; sitios: nombre y ruta; técnico). «Se enviará exactamente esto» antes de reservar, despachar y cerrar (qué vuelve a qué bodega). Acciones no disponibles, desactivadas con motivo. Ficha de activo, consumible y cliente muestran sus OT; el stock muestra «saldo», «reservado» y «disponible».
+
+**Seguridad.** El alcance del técnico se valida en el servicio. Transiciones con bloqueo de fila y `If-Match`; operaciones de stock con el mismo candado del libro (ADR 0008). La conformidad (nombre, y firma o foto si se aprueban) es dato personal: solo con sesión y fuera de exportaciones masivas y de la API de integración.
+
+**Migraciones y datos.** Tablas `work_orders`, `work_order_assets`, `work_order_consumables` (cantidad pedida, reservada, despachada, devuelta); `work_order_id` opcional en asignaciones y movimientos (el libro sigue append-only: la columna se llena al insertar); estado semilla del sistema «Reservado» (`system_key`, tipo no desplegable, no se elige a mano). Si ya existe un estado con ese nombre, la migración se detiene y lo informa. Sin cambios a datos existentes.
+
+**LNS.** ChirpStack v4 y TTN v3: la OT no agrega operaciones nuevas; usa el registro de RF-60 con la aplicación del cliente (RF-84). Reservar, despachar y cerrar **no tocan el LNS**. Un equipo que vuelve sin instalarse y ya estaba pre-registrado queda registrado y la UI lo avisa, con enlace a «Dar de baja en LNS»; si va a otro cliente, rige el re-registro de RF-84. En TTN la aplicación y sus claves condicionan quién puede registrar (Q94).
+
+**Preguntas abiertas:** Q101 a Q104.
+
+### RF-84 Clientes y aplicación del LNS por cliente (N5, D1)
+
+**Descripción.**
+
+- **Cliente:** nombre (único), RUT (validado con dígito verificador; obligatoriedad en Q90), contactos (nombre, cargo, correo, teléfono), **ubicación raíz** y activo/inactivo. Todo lo que cuelga de la raíz es del cliente; los sitios son sus sububicaciones. La raíz puede tener padre (p. ej. un país). No se permiten clientes anidados ni dos clientes en la misma raíz (Q92). El cliente de un equipo se **deriva** de su ubicación actual: en bodega fuera del subárbol o con una persona no tiene cliente.
+- **Aplicación por perfil:** el cliente se mapea a **su aplicación en cada perfil LNS**, **elegida de las existentes o creada desde Inventarius**. Un cliente puede tener una en ChirpStack y otra en TTN.
+- **Al registrar** un equipo se **propone** la aplicación del cliente de destino (el de su ubicación actual o el de la OT). Sin mapeo se usa la del perfil, y la confirmación lo dice. Se puede cambiar antes de confirmar.
+- **Cada registro guarda la aplicación usada**; consulta, reintento y baja actúan sobre esa, aunque después cambie el mapeo.
+
+**Restricción explícita:** en ChirpStack y en TTN **un dispositivo no se mueve entre aplicaciones**: hay que borrarlo y registrarlo de nuevo. Cambiar un equipo de cliente es un **re-registro** y la UI debe decirlo: al asignar a un sitio de otro cliente un equipo ya registrado, se avisa que la asignación no cambia nada en el LNS y se ofrece «Volver a registrar», explicando que se borra el dispositivo (se pierde la sesión, debe volver a hacer join y el historial en la aplicación anterior no se traslada) y que si el segundo paso falla queda sin registrar. Solo para dispositivos que Inventarius creó; uno **vinculado** nunca se borra: se informa que hay que moverlo a mano en el LNS y volver a vincular (Q96). **Crear aplicaciones en el LNS es una escritura:** permiso, confirmación y auditoría. Inventarius no borra aplicaciones.
+
+**Criterio de aceptación.**
+
+- Un equipo en una sub-sub-ubicación de un cliente figura como suyo; en la bodega general, sin cliente.
+- Con aplicaciones distintas en los perfiles de prueba, el registro propone la del cliente de destino y el dispositivo queda en ella (leído del LNS). Cambiar el mapeo no impide dar de baja lo ya registrado.
+- El re-registro muestra aplicación de origen y destino, exige confirmación y deja ambos pasos auditados; con fallo simulado en el alta queda en `error` y reintentable. Un vinculado no ofrece el re-registro.
+- Crear una aplicación sin `lns:application:create` responde 403; un reintento no crea duplicados.
+- Un cliente con equipos o OT no se borra: se desactiva.
+
+**Permisos.** `client:read` (todos), `client:manage` (A, O: clientes, contactos y elegir aplicaciones existentes), `lns:application:create` (A). Re-registrar usa `lorawan:register` (A, O, T). La lista de aplicaciones del LNS se consulta con `client:manage`.
+
+**Auditoría.** `client.create`, `client.update`, `client.delete`, `client.lns_application_set` («Aplicación LNS del cliente»: perfil, antes y después), `lns.application_create` («Aplicación creada en el LNS»), `lns.application_create_failed` y `lns.reregister` («Re-registro por cambio de aplicación», además de los eventos de baja y alta). Campos: nombre, RUT, ubicación raíz, contactos (qué cambió), perfil, id y nombre de la aplicación, origen y destino. Entidad nueva `client`.
+
+**UI.** Sección «Clientes»: listado (tarjetas a 360 px), ficha con datos, contactos, sitios, equipos y aplicaciones por perfil. Selector de aplicación con buscador en dos líneas (nombre e id); «Crear aplicación» desactivado con motivo si la credencial del perfil no alcanza. La ficha del activo y el listado muestran el cliente (filtro «Cliente»). El selector de ubicación raíz excluye las que ya son de un cliente o las contienen, con motivo.
+
+**Seguridad.** RUT y contactos son datos personales: no van en logs ni en URLs. La lista de aplicaciones del LNS puede mostrar nombres de otros clientes: solo con `client:manage`. Credenciales adicionales por aplicación, cifradas como la del perfil.
+
+**Migraciones y datos.** Tablas `clients`, `client_contacts` y `client_lns_applications` (único por cliente y perfil). Columna de aplicación en `lns_registrations`, **rellenada desde el destino actual del perfil** (obligatoria antes de permitir mapeos). No se crean clientes automáticamente: se dan de alta a mano eligiendo su raíz. Mover una ubicación de un subárbol a otro cambia de cliente a sus equipos: exige confirmación con «Afecta a N equipos (M registrados en el LNS)» (Q93).
+
+**LNS.**
+
+- **ChirpStack v4:** `ApplicationService.List` y `Create` dentro del tenant del perfil. La API key de tenant sirve para varias aplicaciones; hay que verificar contra el ChirpStack de prueba los derechos que exige crear. El DevEUI es único en la instancia, así que el re-registro es borrar y crear. Una aplicación nueva **no trae integraciones** (HTTP, MQTT por aplicación, InfluxDB u otras): sus datos pueden no llegar a la plataforma que los consume; la confirmación lo advierte (Q95).
+- **TTN v3:** la aplicación pertenece a un usuario u organización. La API key de aplicación del perfil **solo sirve para esa aplicación**: listar y crear aplicaciones exige una key de usuario u organización, y registrar en la aplicación de un cliente exige una key con derechos sobre ella (por cliente, o una de organización). Provisional: credencial opcional por mapeo cliente-perfil (Q94). Los id de aplicaciones borradas no se reutilizan (verificar). Una aplicación nueva no trae webhooks ni formatters (Q95). Antes de re-registrar hay que verificar que el DevEUI quede libre en el Join Server.
+
+**Preguntas abiertas:** Q90 a Q96.
+
+### RF-85 Perfil y decoder visibles (N6)
+
+**Descripción.** La ficha de un dispositivo registrado o vinculado muestra cómo decodifica el LNS sus datos, con fecha de la última lectura y **«Actualizar desde LNS»**:
+
+- **ChirpStack:** el **device profile** (nombre, región, versión) y su codec (ninguno, Cayenne LPP o JavaScript): el codec vive en el device profile.
+- **TTN:** si el dispositivo tiene **formatter propio** o **hereda el de la aplicación**, y de qué tipo (uplink y downlink).
+
+Solo lectura: no se editan ni se suben decoders, y el código del script no se muestra ni se guarda.
+
+**Criterio de aceptación.** Con el ChirpStack de prueba, cambiar el codec del device profile y actualizar refleja el cambio. Con el mock de TTN se distinguen propio, heredado y sin formatter. Si el LNS no responde, se conserva la última lectura con su fecha y un error legible. Sin permiso para leer la aplicación en TTN, dice «Hereda de la aplicación (no se pudo leer cuál)».
+
+**Permisos.** Ver: `lorawan:read` (todos). «Actualizar desde LNS» (llama al LNS con la credencial): `lorawan:register` (A, O, T).
+
+**Auditoría.** `lns.refresh` («Datos actualizados desde el LNS»), entidad `asset`: perfil, device profile, tipo de codec o formatter, antes y después. Solo se registra si algo cambió.
+
+**UI.** Bloque «Decodificación en el LNS» con rótulos en lenguaje claro; botón desactivado con motivo (sin registro, perfil inactivo, actualización en curso). Nombres largos se parten a 360 px.
+
+**Seguridad.** Los scripts pueden contener datos sensibles: solo se guarda el tipo. Límite de tasa en la actualización.
+
+**Migraciones y datos.** Se amplía la lectura guardada del registro (hoy `remote_snapshot` solo para vinculados) con los campos de decodificación, para creados y vinculados. Los registros existentes quedan «sin leer» hasta actualizar.
+
+**LNS.** ChirpStack v4: `DeviceService.Get` y `DeviceProfileService.Get`. TTN v3: formatters del end device en el Application Server y valores por defecto en el enlace de la aplicación (este último puede exigir derechos que la key no tiene).
+
+**Preguntas abiertas:** ninguna propia (ver Q94 y Q108).
+
+### RF-86 Datos técnicos de nodos (N7)
+
+**Descripción.** Cada nodo LoRaWAN registra **intervalo de envío**, **versión de firmware** y **versión de decoder**. Por ahora son valores escritos a mano: el intervalo, un entero en segundos (1 a 604.800); las versiones, texto numérico con puntos (`1`, `2.3`, `1.0.4`; Q109). Cada **modelo** define valores por defecto, que se copian al crear la extensión LoRaWAN (como clase y región, Q41 de F3) y se pueden cambiar por equipo. El historial de cambios es el de la auditoría.
+
+**Segunda etapa (solo descrita, no se implementa):** traer la versión desde el LNS o desde un repositorio git de decoders (Q108). Comparar el intervalo declarado con el real requiere la última actividad del dispositivo (`last_seen`), que está en el backlog de endurecimiento.
+
+**Criterio de aceptación.** Un nodo nuevo hereda los valores del modelo; cambiar el modelo después no pisa los equipos existentes; cada cambio aparece en el historial con antes y después; valores no numéricos o fuera de rango se rechazan; CSV y XLSX incluyen las tres columnas.
+
+**Permisos.** `asset:write` (A, O) para el equipo y `catalog:write` (A, O) para el modelo; ver con `lorawan:read` (todos).
+
+**Auditoría.** Dentro de `lorawan.update` y `model.update`: «Intervalo de envío», «Versión de firmware», «Versión de decoder».
+
+**UI.** En la sección LoRaWAN de la ficha y en el formulario del modelo; «Del modelo: …» como referencia; el intervalo se escribe con unidad (segundos, minutos u horas) y se muestra legible («15 min»).
+
+**Seguridad.** Sin datos secretos; validación en servidor.
+
+**Migraciones y datos.** Columnas opcionales en `asset_lorawan` y `models` (defaults). Los equipos existentes quedan vacíos; no se rellenan solos.
+
+**LNS.** Ninguno en ChirpStack v4 ni en TTN v3: no se envían ni se leen del LNS en esta etapa (no se usa el intervalo de status del device profile).
+
+**Preguntas abiertas:** Q108, Q109.
+
+### RF-87 API de integración (N8, D3)
+
+**Descripción.** API **de solo lectura** para otros sistemas: dispositivos LoRaWAN con **DevEUI, cliente, modelo** (y fabricante), **estado, estado LNS**, ubicación actual (id, nombre y ruta), etiqueta y fecha de actualización. Autenticación con **tokens de servicio** (`Authorization: Bearer`), independientes de las sesiones. Detalle en el ADR 0011.
+
+- **Alcance (D3):** «todo» o **«solo el cliente X»** (lo que hoy está en el subárbol de su ubicación raíz). Un equipo en una bodega fuera del subárbol o con una persona no lo ve un token de cliente.
+- **Tokens:** se muestran **una sola vez**, se guardan **solo con hash**, tienen nombre, alcance, vencimiento y último uso; **rotación** (token nuevo y el anterior sigue por un plazo corto elegido, 0 a 7 días) y **revocación** inmediata.
+- **Consulta:** `GET /api/v1/integration/devices` (paginado, máximo 100, `{ data, meta }`) y `GET /api/v1/integration/devices/{devEui}`. Filtros por **ubicación (con sububicaciones)**, **cliente** y **DevEUI**. Los dados de baja no se listan. Orden estable.
+- **OpenAPI** publicado solo con lo de integración, **límite de tasa** por token y **registro de accesos en la auditoría**.
+
+**Restricción explícita: nunca expone claves** (AppKey, NwkKey, claves de gateway, credenciales LNS), ni enmascaradas ni como «tiene clave». El esquema de respuesta es una lista blanca de campos.
+
+**Criterio de aceptación.** Un token del cliente X no obtiene nada del cliente Y por ninguna combinación de filtros ni por DevEUI (mismas respuestas que si no existiera); un token revocado o vencido recibe 401; en la base no hay ningún token en claro; sobre el límite, 429 con `Retry-After`; un test recorre las respuestas y falla si aparece un campo fuera de la lista; la respuesta cumple el OpenAPI; con 10.000 activos el p95 cumple RNF-06; un token no sirve en rutas de sesión ni una cookie en las de integración.
+
+**Permisos.** `api_token:manage` (A) para crear, rotar, revocar y ver tokens. El token no es un usuario ni tiene roles: su único derecho es esta lectura dentro de su alcance. Las rutas declaran un acceso nuevo («token de integración»).
+
+**Auditoría.** `api_token.create` («Token de API creado»), `api_token.rotate`, `api_token.revoke` y `api.access` («Acceso por API»), con el actor rotulado `API: <nombre del token>`. Campos: nombre, alcance, cliente, vencimiento, prefijo visible (nunca el token ni su hash); en el acceso: ruta, filtros, estado HTTP, cantidad de resultados e IP. Un registro por petición autenticada (Q113); los 401 se cuentan en métricas y logs, y se limitan por IP.
+
+**UI.** Configuración > «Tokens de API»: listado (nombre, alcance, creado, último uso, vence, estado), creación con selector de cliente en dos líneas, vista única del token con «Copiar» y aviso de que no se volverá a mostrar; rotar y revocar con confirmación estructurada; revocados visibles y desactivados. La Auditoría filtra por «Acceso por API» y, por defecto, no mezcla esos eventos con el resto.
+
+**Seguridad.** Token de al menos 256 bits aleatorios, SHA-256 en la base, comparación en tiempo constante; solo por HTTPS; sin CORS (es servidor a servidor); sin CSRF porque no usa cookies; nunca en la URL ni en logs (la redacción cubre `authorization`). Un cliente inactivo deja sin acceso a sus tokens. Si hay Cloudflare Access delante, la ruta de integración necesita su propio mecanismo (Q112).
+
+**Migraciones y datos.** Tabla `api_tokens` (hash, prefijo, nombre, alcance, cliente, fechas, reemplazo). Requiere clientes (RF-84). Si se adelanta antes de F5, solo se puede entregar el alcance «todo», lo que incumple D3: **F9 adelantada incluye la entidad Cliente** (sin aplicaciones LNS).
+
+**LNS.** Ninguno en ChirpStack v4 ni en TTN v3: el estado LNS es el que guarda Inventarius; la API no consulta el LNS.
+
+**Preguntas abiertas:** Q110 a Q113.
+
+### RF-88 Nombre visible configurable (N9, D2)
+
+**Descripción.** El nombre del producto que ve el usuario es configurable: título del navegador, cabecera y login, logo e íconos de la PWA, manifest, textos de marca y, cuando existan, correos (hoy no hay envío). `inventarius` queda como nombre de código: repositorio, paquetes, base, variables, métricas, etiqueta `inventarius_asset_id` en el LNS y prefijos de id (`inv-`), que **no cambian**. Provisional: se guarda en la base como ajuste de la instalación, editable por un administrador y en el asistente de primer arranque; `APP_DISPLAY_NAME` solo lo sugiere; por defecto «Inventarius» (Q114).
+
+**Criterio de aceptación.** Con el nombre «Inventario Demo», un e2e recorre login, navegación, título, manifest y aviso sin conexión y no encuentra «Inventarius» en el texto visible; un test falla si una traducción tiene el nombre escrito a mano; lo enviado al LNS no cambia; sin configurar se ve «Inventarius».
+
+**Permisos.** `settings:manage` (A). Nombre y logo se leen sin sesión (el login los necesita).
+
+**Auditoría.** `settings.update` («Cambio de configuración»), entidad nueva `settings`: nombre visible, nombre corto, logo (hash y tamaño), antes y después.
+
+**UI.** Configuración > «Marca»: nombre (1 a 40), nombre corto (hasta 12, para el ícono), logo con vista previa en claro y oscuro y «Restaurar». Un nombre largo se trunca o se parte en la cabecera a 360 px sin scroll horizontal.
+
+**Seguridad.** El nombre se trata como texto (sin HTML); logo PNG o WebP validado por contenido y recodificado, **sin SVG**. Es el único archivo que se sirve sin sesión, siempre desde el mismo origen y a través de la API (no es un objeto público del bucket).
+
+**Migraciones y datos.** Claves nuevas de configuración de la instalación (hay tabla `app_meta`; se decide en F4 si alcanza). Instalaciones existentes ven lo mismo que hoy.
+
+**LNS.** Ninguno en ChirpStack v4 ni en TTN v3. Los textos de la app que hablan de «Inventarius» sobre el LNS usan el nombre configurado.
+
+**Preguntas abiertas:** Q114.
+
+### RF-89 Almacenamiento de archivos configurable (N10, D4)
+
+**Descripción.** Un módulo de almacenamiento con dos drivers elegidos por `STORAGE_DRIVER`: `local` (volumen) y `s3` (cualquier S3 compatible). Variables nuevas (en `.env.example` con comentario): `STORAGE_DRIVER`, `STORAGE_LOCAL_PATH`, `STORAGE_URL_TTL_SECONDS` (300 por defecto), `STORAGE_URL_SECRET` (firma del driver local), `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_FORCE_PATH_STYLE`. **Bucket privado, URLs firmadas con vencimiento, nunca objetos públicos** (con `local`, URL de la API firmada y con vencimiento). Desarrollo y testing con volumen local (en la VM de desarrollo, un disco virtual agregado desde el host, nunca un montaje de red); producción con S3. **MinIO** en el compose de desarrollo y en el CI (Q120). **Migración de archivos entre drivers documentada**, con un comando que copia, verifica el hash y se puede repetir. Detalle en el ADR 0010.
+
+**Criterio de aceptación.** La misma batería de tests de contrato (guardar, leer, borrar, URL firmada, URL vencida, inexistente) pasa con `local` y con `s3` contra MinIO en el CI; un acceso anónimo al objeto se rechaza; con configuración incompleta la app no arranca y dice qué falta; el procedimiento `local` → `s3` documentado se prueba en un test de integración y es idempotente; la restauración de un respaldo incluye los archivos.
+
+**Permisos.** Ninguno nuevo: cada uso (fotos, logo) aplica los suyos. La migración se ejecuta por CLI en el servidor.
+
+**Auditoría.** Las subidas y borrados los audita quien los usa. El comando de migración registra `storage.migrate` («Migración de archivos»), actor `cli`: origen, destino, copiados, omitidos y errores.
+
+**UI.** Sin pantalla propia. El estado de la instalación muestra el driver y si responde; los errores de almacenamiento se ven como mensajes accionables.
+
+**Seguridad.** Credenciales solo por entorno, redactadas en logs; las URLs firmadas no se guardan ni se registran; claves de objeto generadas por el servidor (sin recorrido de rutas en `local`); credenciales S3 limitadas a ese bucket; cifrado en reposo del proveedor recomendado.
+
+**Migraciones y datos.** No hay archivos previos. La base guarda la clave del objeto, no la URL ni el driver. Requiere un cliente S3 fuera del stack 7.2 (se justifica en el PR de F4). `/api/health/ready` no depende de S3 (no se baja la app por el almacenamiento); se mide aparte.
+
+**LNS.** Ninguno en ChirpStack v4 ni en TTN v3.
+
+**Preguntas abiertas:** Q120.
+
+### RF-90 «En tránsito» y bodega base obligatoria (N11, D5)
+
+**Descripción.**
+
+- Estado nuevo **«En tránsito»** (estado del sistema, tipo `pendiente`; nombre en Q115) para activos comprados que aún no llegan. Se elige al crear («Nuevo activo» y «Alta en lote»). La **ubicación base es la bodega de destino** (RF-20 se mantiene) y la **ubicación actual queda vacía** hasta recibirlo; la UI muestra «En camino a <bodega>». No se asigna, no se reserva en una OT y no cuenta como disponible. «Cambiar estado» no entra ni sale de este estado (Q116).
+- Acción **«Recibir»**, individual y **por lote** (hasta 500, todo o nada): pasa a **Disponible** o **Pendiente de configuración**, fija la ubicación actual en la bodega base (se puede elegir otra bodega de recepción, que pasa a ser la base) y deja la **fecha de recepción** en el historial (hoy por defecto, nunca futura).
+- **Ubicación base obligatoria** en «Nuevo activo» (hoy opcional) igual que en «Alta en lote», en la web y en la API. Una edición no puede dejarla vacía.
+- Filtro **«En camino a <bodega>»** en el listado (estado + bodega base, con chip y exportación).
+
+**Criterio de aceptación.** Crear sin bodega base responde 422 (alta, lote y edición que la borre); un activo en tránsito no aparece en «Ubicación actual», en disponibles ni en los selectores de asignación (desactivado con motivo donde se busque); «Recibir» 100 activos los deja en la bodega con fecha en cada historial, y si uno ya no está en tránsito no se recibe ninguno y se indica cuál; el filtro «En camino» y su CSV/XLSX coinciden.
+
+**Permisos.** `asset:receive` (A, O; Q116). Crear en tránsito usa `asset:write`.
+
+**Auditoría.** `asset.receive` («Recepción») por activo (con `batchId` en lote) y `asset.batch_receive` («Recepción en lote», entidad `asset_batch`): fecha de recepción, bodega, estado antes y después, nota. La asignación masiva de bodega base queda como `asset.update`.
+
+**UI.** Botón «Recibir» en la ficha; en el listado, selección múltiple al filtrar «En camino» con «Recibir (N)». Confirmación estructurada (cuántos, bodega, estado, fecha y las etiquetas). Selector de bodega en dos líneas. A 360 px, selección por tarjeta con barra de acción inferior.
+
+**Seguridad.** El lote bloquea las filas; límite de tamaño; permisos por activo vigente.
+
+**Migraciones y datos.**
+
+1. Estado semilla «En tránsito» (`system_key`); si ya existe un estado con ese nombre, la migración se detiene y lo informa.
+2. **Activos sin base** (hoy posibles): la migración completa la base **solo cuando es inequívoca** (la ubicación actual es una bodega; o, si no, la bodega de la última devolución registrada) y registra cada cambio con actor `sistema`. Lo demás **no se inventa**: un comando lo lista, el listado tiene el filtro «Sin bodega base» y una acción masiva «Definir bodega base»; la ficha muestra el aviso y editar, devolver o restaurar exige definirla.
+3. **`NOT NULL` no se aplica en esta fase.** Una migración posterior, cuando la lista esté vacía en la instalación, se detiene y lista lo que falte (como la 0014) antes de aplicar la restricción, incluidos los dados de baja.
+
+**LNS.** ChirpStack v4 y TTN v3: sin cambios. Un equipo en tránsito puede tener sus datos LoRaWAN cargados (p. ej. por CSV con lo que envía el proveedor) y registrarse como hoy (Q116).
+
+**Preguntas abiertas:** Q115, Q116.
+
+### RF-91 Exportación a Excel y rutas de ubicación (N12)
+
+**Descripción.**
+
+- El **CSV actual se mantiene** para integraciones (coma, UTF-8 con BOM, CRLF, fórmulas neutralizadas; Q30). Sus columnas no cambian de nombre ni de orden.
+- Botón nuevo **«Exportar Excel (.xlsx)»** con los **mismos filtros** y orden del listado: **etiqueta, serie y DevEUI como celdas de texto** (Excel convierte series largas a notación científica y pierde dígitos), igual que JoinEUI, ICCID, IMSI y códigos si se exportan; **fechas en hora de Chile** (la zona `APP_TIMEZONE`, `America/Santiago` por defecto) como fechas de Excel; **encabezado congelado**; **anchos de columna**.
+- Columnas nuevas **«Ubicación actual (ruta)»** y **«Ubicación base (ruta)»** en CSV y XLSX, **al final** del archivo.
+- **Otras exportaciones:** hoy la única es el CSV de activos (RF-26). Candidatas, no incluidas (Q118): stock y movimientos de consumibles (backlog post-F3.5), auditoría, clientes y órdenes de trabajo.
+
+**Criterio de aceptación.** Un test abre el XLSX generado: la serie `12345678901234567890` y un DevEUI inventado con ceros a la izquierda y una «E» entre dígitos (el caso que una planilla confunde con un número) se leen idénticos y de tipo texto; un instante cercano a medianoche cae en el día correcto de Chile, también al cambiar el horario; la primera fila está congelada; CSV y XLSX tienen las mismas filas para los mismos filtros; la ruta coincide con la del tooltip; 10.000 activos se exportan dentro de un tiempo y memoria acotados que fija la fase; sin claves.
+
+**Permisos.** `asset:read` (todos), igual que el CSV.
+
+**Auditoría.** Ninguna: las lecturas no se auditan (Q19, Q119).
+
+**UI.** Menú «Exportar» con «CSV (integraciones)» y «Excel (.xlsx)»; en curso se ve el progreso y se desactiva con motivo; a 360 px el menú no desborda.
+
+**Seguridad.** Texto del usuario siempre como valor de texto, nunca como fórmula; sin hipervínculos ni macros; `Cache-Control: no-store`; las rutas se calculan sin repetir el problema de rendimiento de «Fix ubicación» (consulta aparte por lotes); límite de tasa.
+
+**Migraciones y datos.** Ninguna. Requiere una librería XLSX fuera del stack 7.2 (se justifica en el PR de F5, revisando licencia y mantenimiento). Una integración que lea columnas **por posición** no se rompe porque las nuevas van al final.
+
+**LNS.** Ninguno en ChirpStack v4 ni en TTN v3.
+
+**Preguntas abiertas:** Q118, Q119.
+
+### RF-92 Asignación solo a ubicaciones asignables (N13)
+
+**Descripción.** Hoy «Asignar» admite cualquier ubicación que no sea bodega (RF-23, Q38), incluidos niveles como país o ciudad. Se restringe a ubicaciones **asignables**. Criterio propuesto (Q117): una **marca «Se pueden instalar equipos aquí»** en cada ubicación, cuyo valor inicial sale del **tipo**: sitio de cliente y oficina, sí; otro, no; bodega, nunca (la marca no se puede activar). La marca es de cada ubicación: **no se hereda**. Se prefiere a decidir solo por tipo porque «otro» mezcla niveles geográficos con salas y pisos.
+
+**Criterio de aceptación.** La API rechaza con 422 un check-out (y una instalación de OT) a una ubicación no asignable, bodega o inactiva; los selectores las muestran **desactivadas con el motivo** y siguen permitiendo buscar; devolver un equipo que está en una ubicación que dejó de ser asignable funciona; los filtros por ubicación siguen incluyendo todos los niveles.
+
+**Permisos.** La marca se edita con `catalog:write` (A, O); asignar sigue con `asset:checkout`.
+
+**Auditoría.** Dentro de `location.create` y `location.update`: «Admite instalación de equipos», antes y después.
+
+**UI.** Casilla en el formulario de ubicación (desactivada con motivo en bodegas), insignia en el catálogo, y en «Asignar» el selector en dos líneas con las no asignables atenuadas («No admite instalación: actívala en Catálogo»). Aviso en el catálogo con las ubicaciones **no asignables que tienen equipos**.
+
+**Seguridad.** Validación en el servicio, no solo en el selector.
+
+**Migraciones y datos.** Columna `assignable` (con `CHECK`: una bodega no puede serlo). Inicial: `customer_site` y `office` → sí; `other` y `warehouse` → no. **No se deshacen asignaciones existentes**: quien esté en una ubicación no asignable sigue ahí y aparece en el aviso para que alguien marque la ubicación o mueva el equipo.
+
+**LNS.** Ninguno en ChirpStack v4 ni en TTN v3.
+
+**Preguntas abiertas:** Q117.

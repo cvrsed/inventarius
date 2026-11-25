@@ -14,7 +14,8 @@
 ## Forma de trabajo
 - TDD en dominio y servicios: primero el test que falla, después la implementación.
 - Commits pequeños, Conventional Commits, mensaje con el porqué y el ID del requerimiento (RF-xx / RNF-xx).
-- Antes de cada commit: `pnpm lint && pnpm typecheck && pnpm test`. No se commitea en rojo.
+- Antes de cada commit: `pnpm lint && pnpm typecheck && pnpm test`. No se commitea en rojo. En PRs solo de documentación
+  rige la regla 7 de «Herramientas y entorno».
 - Nunca push a `main`. Nunca force push. Nunca reescribir historial ya publicado.
 - Dependencias: solo las del stack de la sección 7.2. Una dependencia nueva se justifica en el PR.
   Versiones exactas siempre (`save-exact`), lockfile commiteado.
@@ -31,7 +32,28 @@
 - Si algo bloquea de verdad (credencial que falta, decisión de producto), se documenta en
   `docs/open-questions.md`, se deja la tarea marcada en `docs/progress.md` y se sigue con otra.
 
-- Un PR no se da por terminado con checks en rojo: tras el push se revisa `gh pr checks` hasta que todos estén en verde (o `skipped` con motivo explícito). Un fallo que solo ocurre en CI se reproduce en local sin artefactos de build (p. ej. sin `packages/shared/dist`) y se arregla de raíz.
+- Un PR no se da por terminado con checks en rojo: se revisa `gh pr checks` hasta que todos estén en verde (o `skipped` con motivo explícito). Si el prompt no pide esperar el CI, se avisa que los checks quedan sin revisar. Un fallo que solo ocurre en CI se reproduce en local sin artefactos de build (p. ej. sin `packages/shared/dist`) y se arregla de raíz.
+
+## Herramientas y entorno
+1. **Esperas:** nunca `sleep N` antes de un comando (el harness lo bloquea). Un proceso largo se lanza con
+   `run_in_background` y se espera su notificación. El CI no se espera salvo que el prompt lo pida.
+2. **Commits:** encabezado `tipo(ámbito): asunto` de **máximo 100 caracteres** (`header-max-length` de
+   `@commitlint/config-conventional`), asunto en minúsculas; lo que no cabe va al cuerpo, con líneas de máximo 100
+   caracteres. Los caracteres se cuentan ANTES de commitear. Antes de `git commit`, Prettier sobre todos los archivos cambiados y nuevos (`git diff --name-only` y
+   `git ls-files -o --exclude-standard`). Si un hook falla, se lee el motivo antes de reintentar.
+3. **GitHub:** `gh api` está denegado por diseño; no se reintenta. Logs: `gh run view <id> --log-failed`. SHA de una acción:
+   `git ls-remote https://github.com/<owner>/<repo> refs/tags/<tag>`.
+4. **Herramientas:** el nombre es `Bash` (con mayúscula). Si `Grep` no está disponible, `grep -rn` vía Bash excluyendo
+   `node_modules` y `dist`. Se edita con Edit/Write y se relee el archivo antes de escribir si pudo cambiar (linter,
+   formateo); no se reescriben archivos con scripts.
+5. **Rutas y logs:** rutas absolutas desde `/home/dev/inventarius`. Logs de procesos largos en
+   `/tmp/inventarius/<nombre>.log`, nunca en el scratchpad de otra sesión. Al explorar, `|| true` tras un `grep` o `ls` que
+   puede no encontrar nada.
+6. **e2e y disco:** si cambian tests o dependencias, `--build` en el runner de e2e. Antes de una corrida grande, `df -h /`;
+   con menos de 10 GB libres, `docker builder prune -f`.
+7. **Antes del push final:** en PRs con código, suite completa (lint, typecheck, unitarias, integración y el e2e de lo
+   tocado) después del último cambio. En PRs solo de documentación bastan Prettier y el lint de lo tocado. Todo cambio fuera
+   de lo pedido se anota en `docs/progress.md` ANTES de hacerlo.
 
 ## Código
 - Estructura de módulos: `routes -> service -> repository`. Sin lógica de negocio en rutas ni en componentes Vue.

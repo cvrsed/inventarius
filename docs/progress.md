@@ -842,6 +842,14 @@ Fuera de alcance de F3.5; **no se implementa**.
 - Lotes y vencimientos.
 - Notificaciones por correo del stock mínimo.
 - Prueba con lector de pantalla real (NVDA, VoiceOver, TalkBack) de los diálogos, los selectores de bodega y el historial de consumibles: hoy solo hay axe y pruebas de roles y nombres accesibles.
+- **Error a 360 px en Consumibles (fix suelto antes de abrir la beta, sección 13 del requerimiento).** El listado en tarjetas
+  tiene scroll horizontal y corta el contenido por la izquierda: el nombre del consumible no se ve. Viola la regla de 360 px sin
+  scroll horizontal (RF-40); el e2e existente no lo detectó porque no tenía el aviso largo.
+  - Causa probable (sin verificar): el aviso «Bajo mínimo global · N bodega(s) bajo mínimo» no se parte en líneas y ensancha
+    la tarjeta.
+  - Arreglo propuesto: permitir salto de línea en el aviso (o dos avisos apilados), `min-w-0` en la tarjeta y un e2e a 360 px
+    con ese caso que verifique `scrollWidth <= clientWidth`.
+  - Revisar el mismo patrón en Inicio y en la ficha del consumible.
 
 ## F3.5 revisión 3
 
@@ -931,3 +939,21 @@ aviso «incluye sububicaciones» en ambos chips (corregido en la revisión del P
   `excludeSubtreeOf` en `GET /locations` y el formulario lo usa. La validación al guardar y el 422 siguen como defensa.
   Pruebas: `catalog.int.test.ts` y `CatalogFormDialog.test.ts` (editar «Chile» no ofrece Chile, Lafquen, Parcela h22 ni Santiago).
 - F2: el chip de «Bodega base» también dice «(incluye sububicaciones)» (`assetFilters.test.ts`).
+
+## Requisitos v2
+
+PR solo de documentación (rama `docs/requisitos-v2`, desde `main` en `182791d`). Sin código de la app ni migraciones.
+
+- [x] Tarea 1: reglas «Herramientas y entorno» en `CLAUDE.md` y lectura de `.env.example` en `.claude/settings.json`
+- [x] Tarea 2: «Requisitos v2» en `docs/requirements.md` (RF-80 en adelante)
+- [x] Tarea 3: preguntas abiertas (Q90 en adelante) y backlog de Consumibles a 360 px
+- [x] Tarea 4: borradores de ADR (0009 en adelante, estado «Propuesto»)
+- [x] Tarea 5: plan de entrega (sección 13 de `docs/requirements.md`)
+
+Notas de la tarea 1:
+
+- `.claude/settings.json` no se cambió: desde `0e95a9e` la regla `.env*` ya no existe (se deniegan `.env`, `.env.local`,
+  `.env.production`, `.env.development` y `.env.test`), `.env.example` se leyó con `Read` en esta sesión y
+  `apps/web/.env.example` no existe ni quedaría bloqueado. `gh api` sigue denegado. Con esto Q32 deja de aplicar.
+- Fuera de lo pedido: se ajustaron dos líneas previas de `CLAUDE.md` que chocaban con las reglas nuevas (la de «antes de cada
+  commit» remite a la regla 7; la de checks en rojo aclara qué pasa cuando el prompt no pide esperar el CI).
